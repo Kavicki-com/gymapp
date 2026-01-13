@@ -1,0 +1,19 @@
+{
+  "name": "gym-manager-local",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão para Academias - Execução Local",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  },
+  "keywords": [
+    "react",
+    "gym",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT"
+}

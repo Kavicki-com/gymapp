@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WM Fitness</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel (para transpilar JSX no navegador) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Fonte Inter do Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Aplica a fonte Inter como padrão */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <!-- Elemento raiz onde a aplicação React será montada -->
+    <div id="root"></div>
+
+    <!-- Todo o código da aplicação está agora dentro deste script -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const API_URL = 'http://localhost:4000';
+
+        // --- COMPONENTES DE ÍCONES SVG ---
+        const Icon = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+        const Users = ({ className }) => <Icon className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></Icon>;
+        const Dumbbell = ({ className }) => <Icon className={className}><path d="m6.5 6.5 11 11" /><path d="m21 21-1-1" /><path d="m3 3 1 1" /><path d="m18 22 4-4" /><path d="m2 6 4-4" /><path d="m3 10 7-7" /><path d="m14 21 7-7" /></Icon>;
+        const UserCog = ({ className }) => <Icon className={className}><circle cx="18" cy="15" r="3" /><circle cx="9" cy="7" r="4" /><path d="M10 15H6a4 4 0 0 0-4 4v2" /><path d="m21.7 16.4-.9-.3" /><path d="m15.2 13.9-.9-.3" /><path d="m15.2 16.1.9-.3" /><path d="m21.7 13.6.9-.3" /><path d="m19.6 11.8.7.7" /><path d="m17.1 14.3.7.7" /><path d="m19.6 18.2-.7.7" /><path d="m17.1 15.7-.7.7" /></Icon>;
+        const BadgeDollarSign = ({ className }) => <Icon className={className}><path d="M3.85 8.62a4 4 0 0 1 4.78-4.78l1.42 1.42a2 2 0 0 0 2.82 0l1.42-1.42a4 4 0 0 1 4.78 4.78l-1.42 1.42a2 2 0 0 0 0 2.82l1.42 1.42a4 4 0 0 1-4.78 4.78l-1.42-1.42a2 2 0 0 0-2.82 0l-1.42 1.42a4 4 0 0 1-4.78-4.78l1.42-1.42a2 2 0 0 0 0-2.82z"/><path d="M12 7v10"/><path d="M10 9h4"/></Icon>;
+        const LayoutDashboard = ({ className }) => <Icon className={className}><rect width="7" height="9" x="3" y="3" rx="1" /><rect width="7" height="5" x="14" y="3" rx="1" /><rect width="7" height="9" x="14" y="12" rx="1" /><rect width="7" height="5" x="3" y="16" rx="1" /></Icon>;
+        const X = ({ className }) => <Icon className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></Icon>;
+        const AlertTriangle = ({ className }) => <Icon className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></Icon>;
+        const Menu = ({ className }) => <Icon className={className}><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></Icon>;
+        const Mail = ({ className }) => <Icon className={className}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></Icon>;
+        const Calendar = ({ className }) => <Icon className={className}><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></Icon>;
+        const Edit = ({ className }) => <Icon className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></Icon>;
+        const Trash2 = ({ className }) => <Icon className={className}><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></Icon>;
+        const LogOut = ({ className }) => <Icon className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></Icon>;
+
+        // --- COMPONENTES ---
+
+        // --- MODAL DE CONFIRMAÇÃO DE EXCLUSÃO ---
+        const ModalConfirmacao = ({ onClose, onConfirm, message }) => {
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-6 text-center">
+                        <div className="flex justify-center mb-4">
+                            <AlertTriangle className="w-16 h-16 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white mb-2">Tem certeza?</h2>
+                        <p className="text-gray-400 mb-6">{message}</p>
+                        <div className="flex justify-center space-x-4">
+                            <button onClick={onClose} className="bg-gray-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-500 transition-colors">
+                                Cancelar
+                            </button>
+                            <button onClick={onConfirm} className="bg-red-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-700 transition-colors">
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MODAIS DE GERENCIAMENTO (CRIAR/EDITAR) ---
+        const ModalGerenciarCliente = ({ onClose, onSave, planos, cliente }) => {
+            const isEditing = !!cliente;
+            const [formData, setFormData] = useState({
+                nome: cliente?.nome || '',
+                email: cliente?.email || '',
+                telefone: cliente?.telefone || '',
+                data_nascimento: cliente?.data_nascimento ? new Date(cliente.data_nascimento).toISOString().split('T')[0] : '',
+                peso: cliente?.peso || '',
+                plano_id: cliente?.plano_id || planos[0]?.id || '',
+            });
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const url = isEditing ? `${API_URL}/clientes/${cliente.id}` : `${API_URL}/clientes`;
+                const method = isEditing ? 'PUT' : 'POST';
+
+                fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(() => onSave());
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2"><label htmlFor="nome" className="block text-sm font-medium text-gray-300 mb-1">Nome Completo</label><input type="text" name="nome" value={formData.nome} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div className="md:col-span-2"><label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email</label><input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="telefone" className="block text-sm font-medium text-gray-300 mb-1">Telefone</label><input type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="data_nascimento" className="block text-sm font-medium text-gray-300 mb-1">Data de Nascimento</label><input type="date" name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="peso" className="block text-sm font-medium text-gray-300 mb-1">Peso (kg)</label><input type="number" name="peso" value={formData.peso} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="plano_id" className="block text-sm font-medium text-gray-300 mb-1">Plano</label><select name="plano_id" value={formData.plano_id} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500">{planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></div>
+                            </div>
+                            <div className="mt-6 flex justify-end space-x-3"><button type="button" onClick={onClose} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancelar</button><button type="submit" className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">Salvar</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+        
+        const ModalGerenciarAparelho = ({ onClose, onSave, aparelho }) => {
+            const isEditing = !!aparelho;
+            const [formData, setFormData] = useState({
+                nome: aparelho?.nome || '',
+                custo: aparelho?.custo || '',
+                ultima_manutencao: aparelho?.ultima_manutencao ? new Date(aparelho.ultima_manutencao).toISOString().split('T')[0] : '',
+                tempo_medio_manutencao_dias: aparelho?.tempo_medio_manutencao_dias || '',
+            });
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const url = isEditing ? `${API_URL}/aparelhos/${aparelho.id}` : `${API_URL}/aparelhos`;
+                const method = isEditing ? 'PUT' : 'POST';
+                 fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(() => onSave());
+            };
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Aparelho' : 'Cadastrar Novo Aparelho'}</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2"><label htmlFor="nome-aparelho" className="block text-sm font-medium text-gray-300 mb-1">Nome do Aparelho</label><input type="text" name="nome" value={formData.nome} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="custo" className="block text-sm font-medium text-gray-300 mb-1">Custo (R$)</label><input type="number" name="custo" value={formData.custo} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="ultima_manutencao" className="block text-sm font-medium text-gray-300 mb-1">Última Manutenção</label><input type="date" name="ultima_manutencao" value={formData.ultima_manutencao} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div className="md:col-span-2"><label htmlFor="tempo_medio_manutencao_dias" className="block text-sm font-medium text-gray-300 mb-1">Tempo para Manutenção (dias)</label><input type="number" name="tempo_medio_manutencao_dias" value={formData.tempo_medio_manutencao_dias} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                            </div>
+                            <div className="mt-6 flex justify-end space-x-3"><button type="button" onClick={onClose} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancelar</button><button type="submit" className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">Salvar</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const ModalGerenciarColaborador = ({ onClose, onSave, colaborador }) => {
+            const isEditing = !!colaborador;
+            const [formData, setFormData] = useState({
+                nome: colaborador?.nome || '',
+                email: colaborador?.email || '',
+                telefone: colaborador?.telefone || '',
+                data_nascimento: colaborador?.data_nascimento ? new Date(colaborador.data_nascimento).toISOString().split('T')[0] : '',
+                cpf: colaborador?.cpf || '',
+                rg: colaborador?.rg || '',
+                salario: colaborador?.salario || '',
+            });
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const url = isEditing ? `${API_URL}/colaboradores/${colaborador.id}` : `${API_URL}/colaboradores`;
+                const method = isEditing ? 'PUT' : 'POST';
+                fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(() => onSave());
+            };
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Colaborador' : 'Cadastrar Novo Colaborador'}</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2"><label htmlFor="nome-colab" className="block text-sm font-medium text-gray-300 mb-1">Nome Completo</label><input type="text" name="nome" value={formData.nome} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="email-colab" className="block text-sm font-medium text-gray-300 mb-1">Email</label><input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="telefone-colab" className="block text-sm font-medium text-gray-300 mb-1">Telefone</label><input type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="data_nascimento-colab" className="block text-sm font-medium text-gray-300 mb-1">Data de Nascimento</label><input type="date" name="data_nascimento" value={formData.data_nascimento} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="cpf" className="block text-sm font-medium text-gray-300 mb-1">CPF</label><input type="text" name="cpf" value={formData.cpf} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="rg" className="block text-sm font-medium text-gray-300 mb-1">RG</label><input type="text" name="rg" value={formData.rg} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                                <div><label htmlFor="salario" className="block text-sm font-medium text-gray-300 mb-1">Salário (R$)</label><input type="number" name="salario" value={formData.salario} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" /></div>
+                            </div>
+                            <div className="mt-6 flex justify-end space-x-3"><button type="button" onClick={onClose} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancelar</button><button type="submit" className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">Salvar</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const ModalGerenciarPlano = ({ onClose, onSave, plano }) => {
+            const isEditing = !!plano;
+            const [formData, setFormData] = useState(
+                isEditing ? { ...plano } : { nome: '', valor: '', servicos: '' }
+            );
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const url = isEditing ? `${API_URL}/planos/${plano.id}` : `${API_URL}/planos`;
+                const method = isEditing ? 'PUT' : 'POST';
+
+                fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    onSave();
+                });
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                        <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Plano' : 'Criar Novo Plano'}</h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4">
+                                <div><label htmlFor="nome-plano" className="block text-sm font-medium text-gray-300 mb-1">Nome do Plano</label><input type="text" name="nome" value={formData.nome} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="valor-plano" className="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label><input type="number" step="0.01" name="valor" value={formData.valor} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" required /></div>
+                                <div><label htmlFor="servicos-plano" className="block text-sm font-medium text-gray-300 mb-1">Serviços Incluídos</label><textarea name="servicos" value={formData.servicos} onChange={handleChange} rows="3" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500"></textarea></div>
+                            </div>
+                            <div className="mt-6 flex justify-end space-x-3"><button type="button" onClick={onClose} className="bg-gray-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-500 transition-colors">Cancelar</button><button type="submit" className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">Salvar</button></div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- TELA DE LOGIN ---
+        const LoginScreen = ({ onLogin }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setError('');
+                fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        localStorage.setItem('isAuthenticated', 'true');
+                        onLogin();
+                    } else {
+                        setError(data.message || 'Email ou senha inválidos.');
+                    }
+                })
+                .catch(() => setError('Não foi possível conectar ao servidor.'));
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-900 flex flex-col justify-center items-center p-4">
+                    <div className="flex items-center mb-8">
+                        <Dumbbell className="w-12 h-12 text-yellow-400 mr-4"/>
+                        <h1 className="text-4xl font-bold text-white">WM Fitness</h1>
+                    </div>
+                    <div className="w-full max-w-md bg-gray-800 p-8 rounded-lg shadow-xl">
+                        <h2 className="text-2xl font-bold text-white text-center mb-6">Acesso do Administrador</h2>
+                        <form onSubmit={handleLogin}>
+                            <div className="mb-4">
+                                <label className="block text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+                                    Email
+                                </label>
+                                <input 
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" 
+                                    id="email" 
+                                    type="email" 
+                                    placeholder="admin@gym.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                            <div className="mb-6">
+                                <label className="block text-gray-300 text-sm font-bold mb-2" htmlFor="password">
+                                    Senha
+                                </label>
+                                <input 
+                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-yellow-500 focus:border-yellow-500" 
+                                    id="password" 
+                                    type="password" 
+                                    placeholder="admin123"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                            {error && <p className="bg-red-500/20 text-red-400 text-xs italic p-2 rounded-md mb-4">{error}</p>}
+                            <div className="flex items-center justify-between">
+                                <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors" type="submit">
+                                    Entrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- CONTEÚDO PRINCIPAL DO DASHBOARD ---
+        const DashboardContent = ({ onLogout }) => {
+            const [activePage, setActivePage] = useState('dashboard');
+            const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+            const renderPage = () => {
+                switch (activePage) {
+                  case 'dashboard': return <Dashboard />;
+                  case 'clientes': return <Clientes />;
+                  case 'aparelhos': return <Aparelhos />;
+                  case 'colaboradores': return <Colaboradores />;
+                  case 'planos': return <Planos />;
+                  default: return <Dashboard />;
+                }
+            };
+
+            const NavLink = ({ page, label, icon: IconComponent }) => (
+              <button 
+                onClick={() => {
+                    setActivePage(page);
+                    setSidebarOpen(false);
+                }}
+                className={`flex items-center w-full text-left px-4 py-3 rounded-lg transition-colors ${activePage === page ? 'bg-yellow-500 text-gray-900' : 'text-gray-300 hover:bg-gray-700'}`}
+              >
+                  <IconComponent className="w-5 h-5 mr-3" />
+                  <span className="font-medium">{label}</span>
+              </button>
+            );
+
+            return (
+                <div className="min-h-screen bg-gray-800 text-gray-200">
+                  {isSidebarOpen && <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/60 z-20 md:hidden"></div>}
+                  <aside className={`fixed top-0 left-0 h-screen w-64 bg-gray-900 shadow-lg p-4 flex flex-col z-30 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center">
+                            <Dumbbell className="w-8 h-8 text-yellow-400 mr-2"/>
+                            <h1 className="text-xl font-bold text-white">WM Fitness</h1>
+                        </div>
+                        <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <nav className="flex-grow flex flex-col space-y-2">
+                        <NavLink page="dashboard" label="Dashboard" icon={LayoutDashboard} />
+                        <NavLink page="clientes" label="Clientes" icon={Users} />
+                        <NavLink page="aparelhos" label="Aparelhos" icon={Dumbbell} />
+                        <NavLink page="colaboradores" label="Colaboradores" icon={UserCog} />
+                        <NavLink page="planos" label="Planos" icon={BadgeDollarSign} />
+                    </nav>
+                    <div>
+                        <button onClick={onLogout} className="flex items-center w-full text-left px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors">
+                            <LogOut className="w-5 h-5 mr-3" />
+                            <span className="font-medium">Sair</span>
+                        </button>
+                        <div className="mt-4 text-center text-gray-500 text-sm">
+                            <p>&copy; 2024 kavicki.com</p>
+                        </div>
+                    </div>
+                  </aside>
+                  <main className="p-4 md:p-8 overflow-y-auto md:ml-64">
+                    <header className="md:hidden flex items-center justify-between mb-4 sticky top-0 bg-gray-800 py-2 z-10">
+                        <button onClick={() => setSidebarOpen(true)} className="text-gray-300 hover:text-yellow-400">
+                            <Menu className="w-8 h-8"/>
+                        </button>
+                        <div className="flex items-center">
+                            <Dumbbell className="w-6 h-6 text-yellow-400 mr-2"/>
+                            <h1 className="text-lg font-bold text-white">WM Fitness</h1>
+                        </div>
+                    </header>
+                    {renderPage()}
+                  </main>
+                </div>
+            );
+        };
+
+        // --- SEÇÕES DO DASHBOARD ---
+        const Dashboard = () => {
+            const [stats, setStats] = useState({ clientes: 0, aparelhos: 0, colaboradores: 0, planos: 0, aVencer: 0 });
+
+            useEffect(() => {
+                const fetchData = async () => {
+                    try {
+                        const [clientesRes, aparelhosRes, colaboradoresRes, planosRes] = await Promise.all([
+                            fetch(`${API_URL}/clientes`),
+                            fetch(`${API_URL}/aparelhos`),
+                            fetch(`${API_URL}/colaboradores`),
+                            fetch(`${API_URL}/planos`)
+                        ]);
+
+                        const clientes = await clientesRes.json();
+                        const aparelhos = await aparelhosRes.json();
+                        const colaboradores = await colaboradoresRes.json();
+                        const planos = await planosRes.json();
+                        
+                        const hoje = new Date();
+                        const totalAVencer = clientes.reduce((total, cliente) => {
+                            if (!cliente.data_vencimento) return total;
+                            const dataVencimento = new Date(cliente.data_vencimento);
+                            const diffTime = dataVencimento.getTime() - hoje.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            if (diffDays >= 0 && diffDays <= 7) {
+                                const planoCliente = planos.find(p => p.id === cliente.plano_id);
+                                if (planoCliente) return total + parseFloat(planoCliente.valor);
+                            }
+                            return total;
+                        }, 0);
+
+                        setStats({
+                            clientes: clientes.length,
+                            aparelhos: aparelhos.length,
+                            colaboradores: colaboradores.length,
+                            planos: planos.length,
+                            aVencer: totalAVencer
+                        });
+                    } catch (error) {
+                        console.error("Erro ao buscar dados para o dashboard:", error);
+                    }
+                };
+                fetchData();
+            }, []);
+
+            return (
+                <div className="p-4 md:p-8 bg-gray-800 rounded-lg shadow-xl">
+                    <h2 className="text-3xl font-bold text-white mb-4">Dashboard</h2>
+                    <p className="text-gray-400">Resumo geral da sua academia.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mt-8">
+                        <div className="bg-gray-700 p-6 rounded-lg text-yellow-400"><Users className="w-8 h-8 mb-2"/><h3 className="font-bold text-xl text-white">{stats.clientes}</h3><p className="text-gray-300">Clientes Ativos</p></div>
+                        <div className="bg-gray-700 p-6 rounded-lg text-yellow-400"><AlertTriangle className="w-8 h-8 mb-2"/><h3 className="font-bold text-xl text-white">{stats.aVencer.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3><p className="text-gray-300">A vencer nos próximos 7 dias</p></div>
+                        <div className="bg-gray-700 p-6 rounded-lg text-yellow-400"><Dumbbell className="w-8 h-8 mb-2"/><h3 className="font-bold text-xl text-white">{stats.aparelhos}</h3><p className="text-gray-300">Aparelhos</p></div>
+                        <div className="bg-gray-700 p-6 rounded-lg text-yellow-400"><UserCog className="w-8 h-8 mb-2"/><h3 className="font-bold text-xl text-white">{stats.colaboradores}</h3><p className="text-gray-300">Colaboradores</p></div>
+                        <div className="bg-gray-700 p-6 rounded-lg text-yellow-400"><BadgeDollarSign className="w-8 h-8 mb-2"/><h3 className="font-bold text-xl text-white">{stats.planos}</h3><p className="text-gray-300">Tipos de Planos</p></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Clientes = () => {
+            const [clientes, setClientes] = useState([]);
+            const [planos, setPlanos] = useState([]);
+            const [itemSelecionado, setItemSelecionado] = useState(null);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+            const fetchData = () => {
+                fetch(`${API_URL}/clientes`).then(res => res.json()).then(setClientes);
+                fetch(`${API_URL}/planos`).then(res => res.json()).then(setPlanos);
+            };
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const handleOpenModal = (cliente = null) => {
+                setItemSelecionado(cliente);
+                setIsEditModalOpen(true);
+            };
+
+            const handleOpenDeleteModal = (cliente) => {
+                setItemSelecionado(cliente);
+                setIsDeleteModalOpen(true);
+            };
+
+            const handleSave = () => {
+                fetchData();
+                setIsEditModalOpen(false);
+            };
+
+            const handleDelete = () => {
+                fetch(`${API_URL}/clientes/${itemSelecionado.id}`, { method: 'DELETE' })
+                .then(() => {
+                    fetchData();
+                    setIsDeleteModalOpen(false);
+                    setItemSelecionado(null);
+                });
+            };
+
+            return (
+                <>
+                    {isEditModalOpen && <ModalGerenciarCliente onClose={() => setIsEditModalOpen(false)} onSave={handleSave} planos={planos} cliente={itemSelecionado} />}
+                    {isDeleteModalOpen && <ModalConfirmacao onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} message={`Deseja realmente excluir o cliente ${itemSelecionado?.nome}?`} />}
+                    <div className="p-4 md:p-8 bg-gray-800 rounded-lg shadow-xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                            <h2 className="text-3xl font-bold text-white mb-4 sm:mb-0">Gestão de Clientes</h2>
+                            <button onClick={() => handleOpenModal()} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors w-full sm:w-auto">
+                                + Adicionar Cliente
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {clientes.map(c => (
+                                <div key={c.id} className="bg-gray-700 rounded-lg p-5 flex flex-col shadow-lg">
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-bold text-white">{c.nome}</h3>
+                                        <p className="text-sm text-gray-400 flex items-center mt-2"><Mail className="w-4 h-4 mr-2"/> {c.email}</p>
+                                        <div className="mt-4 flex items-center justify-between">
+                                            <span className={`px-3 py-1 text-sm font-semibold rounded-full ${c.plano_nome && c.plano_nome.toLowerCase() === 'básico' ? 'bg-red-200 text-red-800' : c.plano_nome && c.plano_nome.toLowerCase() === 'super' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>{c.plano_nome || 'N/A'}</span>
+                                            <p className="text-sm text-gray-300 flex items-center"><Calendar className="w-4 h-4 mr-2 text-yellow-400"/> Vence em: {new Date(c.data_vencimento).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    </div>
+                                    <div className="border-t border-gray-600 mt-4 pt-4 flex justify-end space-x-3">
+                                        <button onClick={() => handleOpenModal(c)} className="flex items-center text-yellow-400 hover:underline"><Edit className="w-4 h-4 mr-1"/> Editar</button>
+                                        <button onClick={() => handleOpenDeleteModal(c)} className="flex items-center text-red-500 hover:underline"><Trash2 className="w-4 h-4 mr-1"/> Excluir</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        const Aparelhos = () => {
+            const [aparelhos, setAparelhos] = useState([]);
+            const [itemSelecionado, setItemSelecionado] = useState(null);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+            const fetchData = () => {
+                fetch(`${API_URL}/aparelhos`).then(res => res.json()).then(setAparelhos);
+            };
+            
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const handleOpenModal = (aparelho = null) => {
+                setItemSelecionado(aparelho);
+                setIsEditModalOpen(true);
+            };
+
+            const handleOpenDeleteModal = (aparelho) => {
+                setItemSelecionado(aparelho);
+                setIsDeleteModalOpen(true);
+            };
+
+            const handleSave = () => {
+                fetchData();
+                setIsEditModalOpen(false);
+            };
+
+            const handleDelete = () => {
+                fetch(`${API_URL}/aparelhos/${itemSelecionado.id}`, { method: 'DELETE' })
+                .then(() => {
+                    fetchData();
+                    setIsDeleteModalOpen(false);
+                    setItemSelecionado(null);
+                });
+            };
+
+            const checkManutencao = (aparelho) => {
+                const hoje = new Date();
+                const ultima = new Date(aparelho.ultima_manutencao);
+                const proxima = new Date(ultima.setDate(ultima.getDate() + parseInt(aparelho.tempo_medio_manutencao_dias)));
+                const diff = Math.ceil((proxima - hoje) / (1000 * 60 * 60 * 24));
+                if (diff <= 0) return <span className="text-red-500 font-bold">Vencida</span>;
+                if (diff <= 15) return <span className="text-yellow-500 font-bold">Vence em {diff}d</span>;
+                return <span className="text-green-500">Em dia</span>;
+            };
+
+            return (
+                <>
+                    {isEditModalOpen && <ModalGerenciarAparelho onClose={() => setIsEditModalOpen(false)} onSave={handleSave} aparelho={itemSelecionado} />}
+                    {isDeleteModalOpen && <ModalConfirmacao onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} message={`Deseja realmente excluir o aparelho ${itemSelecionado?.nome}?`} />}
+                    <div className="p-4 md:p-8 bg-gray-800 rounded-lg shadow-xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                            <h2 className="text-3xl font-bold text-white mb-4 sm:mb-0">Gestão de Aparelhos</h2>
+                            <button onClick={() => handleOpenModal()} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors w-full sm:w-auto">
+                                + Adicionar Aparelho
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {aparelhos.map(a => (
+                                <div key={a.id} className="bg-gray-700 rounded-lg p-5 flex flex-col shadow-lg">
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-bold text-white">{a.nome}</h3>
+                                        <p className="text-sm text-gray-400 mt-2">Última Manutenção: {new Date(a.ultima_manutencao).toLocaleDateString('pt-BR')}</p>
+                                        <p className="text-sm text-gray-300 mt-2">Status: {checkManutencao(a)}</p>
+                                    </div>
+                                    <div className="border-t border-gray-600 mt-4 pt-4 flex justify-end space-x-3">
+                                        <button onClick={() => handleOpenModal(a)} className="flex items-center text-yellow-400 hover:underline"><Edit className="w-4 h-4 mr-1"/> Editar</button>
+                                        <button onClick={() => handleOpenDeleteModal(a)} className="flex items-center text-red-500 hover:underline"><Trash2 className="w-4 h-4 mr-1"/> Excluir</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        const Colaboradores = () => {
+            const [colaboradores, setColaboradores] = useState([]);
+            const [itemSelecionado, setItemSelecionado] = useState(null);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+            const fetchData = () => {
+                fetch(`${API_URL}/colaboradores`).then(res => res.json()).then(setColaboradores);
+            };
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const handleOpenModal = (colaborador = null) => {
+                setItemSelecionado(colaborador);
+                setIsEditModalOpen(true);
+            };
+            
+            const handleOpenDeleteModal = (colaborador) => {
+                setItemSelecionado(colaborador);
+                setIsDeleteModalOpen(true);
+            };
+
+            const handleSave = () => {
+                fetchData();
+                setIsEditModalOpen(false);
+            };
+
+            const handleDelete = () => {
+                fetch(`${API_URL}/colaboradores/${itemSelecionado.id}`, { method: 'DELETE' })
+                .then(() => {
+                    fetchData();
+                    setIsDeleteModalOpen(false);
+                    setItemSelecionado(null);
+                });
+            };
+
+            return (
+                <>
+                    {isEditModalOpen && <ModalGerenciarColaborador onClose={() => setIsEditModalOpen(false)} onSave={handleSave} colaborador={itemSelecionado} />}
+                    {isDeleteModalOpen && <ModalConfirmacao onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} message={`Deseja realmente excluir o colaborador ${itemSelecionado?.nome}?`} />}
+                    <div className="p-4 md:p-8 bg-gray-800 rounded-lg shadow-xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                            <h2 className="text-3xl font-bold text-white mb-4 sm:mb-0">Gestão de Colaboradores</h2>
+                            <button onClick={() => handleOpenModal()} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors w-full sm:w-auto">
+                                + Adicionar Colaborador
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {colaboradores.map(c => (
+                                <div key={c.id} className="bg-gray-700 rounded-lg p-5 flex flex-col shadow-lg">
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-bold text-white">{c.nome}</h3>
+                                        <p className="text-sm text-gray-400 flex items-center mt-2"><Mail className="w-4 h-4 mr-2"/> {c.email}</p>
+                                        <p className="text-sm text-gray-300 mt-2">Salário: {c.salario ? parseFloat(c.salario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'N/A'}</p>
+                                    </div>
+                                    <div className="border-t border-gray-600 mt-4 pt-4 flex justify-end space-x-3">
+                                        <button onClick={() => handleOpenModal(c)} className="flex items-center text-yellow-400 hover:underline"><Edit className="w-4 h-4 mr-1"/> Editar</button>
+                                        <button onClick={() => handleOpenDeleteModal(c)} className="flex items-center text-red-500 hover:underline"><Trash2 className="w-4 h-4 mr-1"/> Excluir</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        const Planos = () => {
+            const [planos, setPlanos] = useState([]);
+            const [itemSelecionado, setItemSelecionado] = useState(null);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+            const [deleteError, setDeleteError] = useState('');
+
+            const fetchData = () => {
+                fetch(`${API_URL}/planos`).then(res => res.json()).then(setPlanos);
+            };
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const handleOpenModal = (plano = null) => {
+                setItemSelecionado(plano);
+                setIsEditModalOpen(true);
+            };
+            
+            const handleOpenDeleteModal = (plano) => {
+                setItemSelecionado(plano);
+                setDeleteError('');
+                setIsDeleteModalOpen(true);
+            };
+
+            const handleSave = () => {
+                fetchData();
+                setIsEditModalOpen(false);
+            };
+
+            const handleDelete = () => {
+                fetch(`${API_URL}/planos/${itemSelecionado.id}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        setDeleteError(data.error);
+                    } else {
+                        fetchData();
+                        setIsDeleteModalOpen(false);
+                        setItemSelecionado(null);
+                    }
+                });
+            };
+
+            return (
+                <>
+                    {isEditModalOpen && <ModalGerenciarPlano onClose={() => setIsEditModalOpen(false)} onSave={handleSave} plano={itemSelecionado} />}
+                    {isDeleteModalOpen && <ModalConfirmacao onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} message={deleteError || `Deseja realmente excluir o plano ${itemSelecionado?.nome}?`} />}
+                    <div className="p-4 md:p-8 bg-gray-800 rounded-lg shadow-xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                            <h2 className="text-3xl font-bold text-white mb-4 sm:mb-0">Gestão de Planos</h2>
+                            <button onClick={() => handleOpenModal()} className="bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors w-full sm:w-auto">
+                                + Criar Novo Plano
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {planos.map(p => (
+                                <div key={p.id} className="bg-gray-700 rounded-lg p-6 flex flex-col shadow-lg">
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-bold text-yellow-400">{p.nome}</h3>
+                                        <p className="text-3xl font-bold my-4 text-white">
+                                            {parseFloat(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            <span className="text-base font-normal text-gray-400">/mês</span>
+                                        </p>
+                                        <p className="text-gray-300">{p.servicos}</p>
+                                    </div>
+                                    <div className="border-t border-gray-600 mt-4 pt-4 flex justify-end space-x-3">
+                                        <button onClick={() => handleOpenModal(p)} className="flex items-center text-yellow-400 hover:underline"><Edit className="w-4 h-4 mr-1"/> Editar</button>
+                                        <button onClick={() => handleOpenDeleteModal(p)} className="flex items-center text-red-500 hover:underline"><Trash2 className="w-4 h-4 mr-1"/> Excluir</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
+        // --- COMPONENTE PRINCIPAL ---
+        function App() {
+          const [isAuthenticated, setIsAuthenticated] = useState(
+            localStorage.getItem('isAuthenticated') === 'true'
+          );
+
+          const handleLogin = () => {
+            localStorage.setItem('isAuthenticated', 'true');
+            setIsAuthenticated(true);
+          };
+
+          const handleLogout = () => {
+            localStorage.removeItem('isAuthenticated');
+            setIsAuthenticated(false);
+          };
+
+          if (!isAuthenticated) {
+            return <LoginScreen onLogin={handleLogin} />;
+          }
+
+          return <DashboardContent onLogout={handleLogout} />;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
