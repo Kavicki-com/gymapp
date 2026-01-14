@@ -3,6 +3,7 @@ import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCPF, formatPhone } from '@/src/utils/masks';
+import { validateCPF, validateEmail, validatePhone } from '@/src/utils/validations';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -108,6 +109,21 @@ export default function ManageClientScreen() {
             return;
         }
 
+        if (!validateEmail(formData.email)) {
+            Alert.alert('Erro', 'Email inválido.');
+            return;
+        }
+
+        if (formData.cpf && !validateCPF(formData.cpf)) {
+            Alert.alert('Erro', 'CPF inválido.');
+            return;
+        }
+
+        if (formData.phone && !validatePhone(formData.phone)) {
+            Alert.alert('Erro', 'Telefone deve ter 11 dígitos.');
+            return;
+        }
+
         setLoading(true);
         try {
             const payload = {
@@ -150,7 +166,7 @@ export default function ManageClientScreen() {
             style={{ flex: 1 }}
         >
             <Container>
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 50 }}>
                     <View style={{ alignItems: 'center', marginBottom: 24 }}>
                         <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
                     </View>

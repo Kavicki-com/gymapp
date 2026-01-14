@@ -3,6 +3,7 @@ import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCPF, formatCurrency, formatCurrencyInput, formatPhone, parseCurrencyToFloat } from '@/src/utils/masks';
+import { validateCPF, validateEmail, validatePhone } from '@/src/utils/validations';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -96,6 +97,21 @@ export default function ManageEmployeeScreen() {
     const handleSave = async () => {
         if (!formData.name || !formData.email) {
             Alert.alert('Erro', 'Nome e Email são obrigatórios');
+            return;
+        }
+
+        if (!validateEmail(formData.email)) {
+            Alert.alert('Erro', 'Email inválido.');
+            return;
+        }
+
+        if (formData.phone && !validatePhone(formData.phone)) {
+            Alert.alert('Erro', 'Telefone deve ter 11 dígitos.');
+            return;
+        }
+
+        if (formData.cpf && !validateCPF(formData.cpf)) {
+            Alert.alert('Erro', 'CPF inválido.');
             return;
         }
 

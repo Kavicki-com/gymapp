@@ -12,8 +12,7 @@ import {
     HighlightText,
     Input,
     Label,
-    LinkText,
-    Title
+    LinkText
 } from '../src/components/styled';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/services/supabase';
@@ -21,6 +20,14 @@ import { theme } from '../src/styles/theme';
 
 const FooterLink = styled(TouchableOpacity)`
   margin-top: ${theme.spacing.lg}px;
+`;
+
+const LogoImage = styled.Image`
+  width: 100px;
+  height: 100px;
+  align-self: center;
+  margin-bottom: ${theme.spacing.xl}px;
+  resize-mode: contain;
 `;
 
 export default function LoginScreen() {
@@ -133,8 +140,9 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, width: '100%', justifyContent: 'center' }}
             >
+                <LogoImage source={require('../assets/images/logoicon.png')} />
                 <Card>
-                    <Title>Acesso do Administrador</Title>
+
 
                     <FormGroup>
                         <Label>Email</Label>

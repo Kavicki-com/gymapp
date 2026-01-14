@@ -16,6 +16,7 @@ import {
 } from '../src/components/styled';
 import { theme } from '../src/styles/theme';
 import { formatCNPJ, formatCPF, formatPhone } from '../src/utils/masks';
+import { validateCPF, validateEmail, validatePassword, validatePhone } from '../src/utils/validations';
 
 const LogoContainer = styled(TouchableOpacity)`
   width: 100px;
@@ -312,9 +313,25 @@ export default function RegisterScreen() {
                 Alert.alert('Erro', 'Preencha todos os campos.');
                 return false;
             }
+            if (!validateEmail(formData.email)) {
+                Alert.alert('Erro', 'Email inválido.');
+                return false;
+            }
+            if (!validatePhone(formData.phone)) {
+                Alert.alert('Erro', 'Telefone deve ter 11 dígitos (DDD + número).');
+                return false;
+            }
+            if (!validatePassword(formData.password)) {
+                Alert.alert('Erro', 'A senha deve ter mais de 6 caracteres, incluir letras, números e um caractere especial.');
+                return false;
+            }
         } else if (step === 2) {
             if (!formData.cpf || !formData.birth_date) {
                 Alert.alert('Erro', 'Preencha CPF e Data de Nascimento.');
+                return false;
+            }
+            if (!validateCPF(formData.cpf)) {
+                Alert.alert('Erro', 'CPF inválido.');
                 return false;
             }
         } else if (step === 3) {
