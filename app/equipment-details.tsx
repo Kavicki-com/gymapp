@@ -63,6 +63,7 @@ const AddImageButton = styled(TouchableOpacity)`
   border: 2px dashed ${theme.colors.primary};
   justify-content: center;
   align-items: center;
+  margin-right: 8px;
 `;
 
 // Modal Styled Components

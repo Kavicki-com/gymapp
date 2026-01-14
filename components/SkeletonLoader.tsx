@@ -119,9 +119,9 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
                     width: width || '100%',
                     height: height || 20,
                     marginVertical: variant === 'text' ? 4 : 0,
-                },
+                } as any,
                 animatedStyle,
-                style,
+                style as any,
             ]}
         />
     );
