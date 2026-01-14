@@ -27,7 +27,7 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn, session } = useAuth();
+    const { signIn, session, loading: authLoading } = useAuth();
     const router = useRouter();
     const isFocused = useIsFocused();
 
@@ -117,6 +117,14 @@ export default function LoginScreen() {
             }
         }
     };
+
+    if (authLoading || session) {
+        return (
+            <CenteredContainer>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+            </CenteredContainer>
+        );
+    }
 
     return (
         <CenteredContainer>

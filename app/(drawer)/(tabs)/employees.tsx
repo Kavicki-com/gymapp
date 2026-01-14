@@ -1,3 +1,5 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { SearchBar } from '@/src/components/SearchBar';
 import {
     AddButton,
     AddButtonText,
@@ -36,7 +38,9 @@ const ActionButton = styled(TouchableOpacity)`
 
 export default function EmployeesScreen() {
     const [employees, setEmployees] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     const fetchData = async () => {
@@ -60,6 +64,7 @@ export default function EmployeesScreen() {
             }
         } finally {
             setRefreshing(false);
+            setLoading(false);
         }
     };
 
@@ -93,27 +98,37 @@ export default function EmployeesScreen() {
         );
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <ListItem>
-            <Row style={{ alignItems: 'flex-start' }}>
-                <View style={{ flex: 1 }}>
-                    <ListItemTitle>{item.name}</ListItemTitle>
-                    <ListItemSubtitle>{item.email}</ListItemSubtitle>
-                    <SalaryText>
-                        Salário: <SalaryValue>R$ {item.salary ? Number(item.salary).toFixed(2) : '0.00'}</SalaryValue>
-                    </SalaryText>
-                </View>
+    const filteredEmployees = employees.filter(employee =>
+        employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        employee.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-                <View style={{ marginLeft: 16 }}>
-                    <ActionButton onPress={() => router.push({ pathname: '/manage-employee', params: { id: item.id } })}>
-                        <FontAwesome name="edit" size={24} color={theme.colors.primary} />
-                    </ActionButton>
-                    <ActionButton onPress={() => handleDelete(item.id, item.name)}>
-                        <FontAwesome name="trash" size={24} color={theme.colors.danger} />
-                    </ActionButton>
-                </View>
-            </Row>
-        </ListItem>
+    const renderItem = ({ item }: { item: any }) => (
+        <TouchableOpacity
+            onPress={() => router.push({ pathname: '/employee-details', params: { id: item.id } })}
+            style={{ marginHorizontal: 16, marginBottom: 16 }}
+        >
+            <ListItem style={{ marginHorizontal: 0, marginBottom: 0 }}>
+                <Row style={{ alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                        <ListItemTitle>{item.name}</ListItemTitle>
+                        <ListItemSubtitle>{item.email}</ListItemSubtitle>
+                        <SalaryText>
+                            Salário: <SalaryValue>R$ {item.salary ? Number(item.salary).toFixed(2) : '0.00'}</SalaryValue>
+                        </SalaryText>
+                    </View>
+
+                    <View style={{ marginLeft: 16 }}>
+                        <ActionButton onPress={() => router.push({ pathname: '/manage-employee', params: { id: item.id } })}>
+                            <FontAwesome name="edit" size={24} color={theme.colors.primary} />
+                        </ActionButton>
+                        <ActionButton onPress={() => handleDelete(item.id, item.name)}>
+                            <FontAwesome name="trash" size={24} color={theme.colors.danger} />
+                        </ActionButton>
+                    </View>
+                </Row>
+            </ListItem>
+        </TouchableOpacity>
     );
 
     return (
@@ -125,16 +140,35 @@ export default function EmployeesScreen() {
                 </AddButton>
             </PageHeader>
 
-            <FlatList
-                data={employees}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                ListEmptyComponent={
-                    <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>Nenhum colaborador cadastrado.</ListItemSubtitle>
-                }
+            <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar colaboradores por nome ou email..."
             />
+
+            {loading ? (
+                <View style={{ padding: 16 }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SkeletonLoader key={i} variant="list-item" />
+                    ))}
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredEmployees}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    ListEmptyComponent={
+                        <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
+                            {searchQuery ? 'Nenhum colaborador encontrado.' : 'Nenhum colaborador cadastrado.'}
+                        </ListItemSubtitle>
+                    }
+                    initialNumToRender={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                />
+            )}
         </PageContainer>
     );
 }

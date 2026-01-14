@@ -63,6 +63,9 @@ function RootLayoutNav() {
             <Stack.Screen name="manage-plan" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="manage-equipment" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="manage-employee" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="client-details" options={{ headerShown: false }} />
+            <Stack.Screen name="employee-details" options={{ headerShown: false }} />
+            <Stack.Screen name="equipment-details" options={{ headerShown: false }} />
           </Stack>
         </GestureHandlerRootView>
       </ThemeProvider>

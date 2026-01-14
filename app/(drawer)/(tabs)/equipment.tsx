@@ -1,3 +1,5 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { SearchBar } from '@/src/components/SearchBar';
 import {
     AddButton,
     AddButtonText,
@@ -32,7 +34,9 @@ const ActionButton = styled(TouchableOpacity)`
 
 export default function EquipmentScreen() {
     const [equipment, setEquipment] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     const fetchData = async () => {
@@ -56,6 +60,7 @@ export default function EquipmentScreen() {
             }
         } finally {
             setRefreshing(false);
+            setLoading(false);
         }
     };
 
@@ -105,28 +110,37 @@ export default function EquipmentScreen() {
         return { color: theme.colors.success, label: 'Em dia' };
     };
 
+    const filteredEquipment = equipment.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     const renderItem = ({ item }: { item: any }) => {
         const status = getMaintenanceStatus(item.last_maintenance, item.maintenance_interval_days);
 
         return (
-            <ListItem>
-                <Row style={{ alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1 }}>
-                        <ListItemTitle>{item.name}</ListItemTitle>
-                        <ListItemSubtitle>Última: {item.last_maintenance}</ListItemSubtitle>
-                        <StatusText color={status.color}>{status.label}</StatusText>
-                    </View>
+            <TouchableOpacity
+                onPress={() => router.push({ pathname: '/equipment-details', params: { id: item.id } })}
+                style={{ marginHorizontal: 16, marginBottom: 16 }}
+            >
+                <ListItem style={{ marginHorizontal: 0, marginBottom: 0 }}>
+                    <Row style={{ alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                            <ListItemTitle>{item.name}</ListItemTitle>
+                            <ListItemSubtitle>Última: {item.last_maintenance}</ListItemSubtitle>
+                            <StatusText color={status.color}>{status.label}</StatusText>
+                        </View>
 
-                    <View style={{ marginLeft: 16 }}>
-                        <ActionButton onPress={() => router.push({ pathname: '/manage-equipment', params: { id: item.id } })}>
-                            <FontAwesome name="edit" size={24} color={theme.colors.primary} />
-                        </ActionButton>
-                        <ActionButton onPress={() => handleDelete(item.id, item.name)}>
-                            <FontAwesome name="trash" size={24} color={theme.colors.danger} />
-                        </ActionButton>
-                    </View>
-                </Row>
-            </ListItem>
+                        <View style={{ marginLeft: 16 }}>
+                            <ActionButton onPress={() => router.push({ pathname: '/manage-equipment', params: { id: item.id } })}>
+                                <FontAwesome name="edit" size={24} color={theme.colors.primary} />
+                            </ActionButton>
+                            <ActionButton onPress={() => handleDelete(item.id, item.name)}>
+                                <FontAwesome name="trash" size={24} color={theme.colors.danger} />
+                            </ActionButton>
+                        </View>
+                    </Row>
+                </ListItem>
+            </TouchableOpacity>
         );
     };
 
@@ -139,16 +153,35 @@ export default function EquipmentScreen() {
                 </AddButton>
             </PageHeader>
 
-            <FlatList
-                data={equipment}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                ListEmptyComponent={
-                    <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>Nenhum aparelho cadastrado.</ListItemSubtitle>
-                }
+            <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar aparelhos..."
             />
+
+            {loading ? (
+                <View style={{ padding: 16 }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SkeletonLoader key={i} variant="list-item" />
+                    ))}
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredEquipment}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    ListEmptyComponent={
+                        <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
+                            {searchQuery ? 'Nenhum aparelho encontrado.' : 'Nenhum aparelho cadastrado.'}
+                        </ListItemSubtitle>
+                    }
+                    initialNumToRender={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                />
+            )}
         </PageContainer>
     );
 }

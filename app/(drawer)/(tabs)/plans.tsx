@@ -1,3 +1,5 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { SearchBar } from '@/src/components/SearchBar';
 import {
     AddButton,
     AddButtonText,
@@ -49,7 +51,9 @@ const ActionButton = styled(TouchableOpacity)`
 
 export default function PlansScreen() {
     const [plans, setPlans] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     const fetchData = async () => {
@@ -73,6 +77,7 @@ export default function PlansScreen() {
             }
         } finally {
             setRefreshing(false);
+            setLoading(false);
         }
     };
 
@@ -106,6 +111,11 @@ export default function PlansScreen() {
         );
     };
 
+    const filteredPlans = plans.filter(plan =>
+        plan.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (plan.services && plan.services.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
     const renderItem = ({ item }: { item: any }) => (
         <ListItem>
             <Row style={{ alignItems: 'flex-start' }}>
@@ -138,16 +148,35 @@ export default function PlansScreen() {
                 </AddButton>
             </PageHeader>
 
-            <FlatList
-                data={plans}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                ListEmptyComponent={
-                    <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>Nenhum plano cadastrado.</ListItemSubtitle>
-                }
+            <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar planos..."
             />
+
+            {loading ? (
+                <View style={{ padding: 16 }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SkeletonLoader key={i} variant="list-item" />
+                    ))}
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredPlans}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    ListEmptyComponent={
+                        <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
+                            {searchQuery ? 'Nenhum plano encontrado.' : 'Nenhum plano cadastrado.'}
+                        </ListItemSubtitle>
+                    }
+                    initialNumToRender={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                />
+            )}
         </PageContainer>
     );
 }

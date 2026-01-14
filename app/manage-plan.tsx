@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
@@ -84,7 +85,11 @@ export default function ManagePlanScreen() {
         }
     };
 
-    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
+    if (fetching) return (
+        <Container>
+            <SkeletonLoader variant="form" />
+        </Container>
+    );
 
     return (
         <KeyboardAvoidingView

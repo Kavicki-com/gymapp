@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
@@ -144,10 +145,20 @@ export default function DashboardScreen() {
       <HeaderSubtitle>Resumo geral da sua academia.</HeaderSubtitle>
 
       <StatsGrid>
-        <StatCard title="Clientes Ativos" value={stats.clients} icon="users" />
-        <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" />
-        <StatCard title="Colaboradores" value={stats.employees} icon="id-card" />
-        <StatCard title="Planos" value={stats.plans} icon="money" />
+        {loading ? (
+          <>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonLoader key={i} variant="card" />
+            ))}
+          </>
+        ) : (
+          <>
+            <StatCard title="Clientes Ativos" value={stats.clients} icon="users" />
+            <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" />
+            <StatCard title="Colaboradores" value={stats.employees} icon="id-card" />
+            <StatCard title="Planos" value={stats.plans} icon="money" />
+          </>
+        )}
 
         <CardContainer fullWidth>
           <Row>

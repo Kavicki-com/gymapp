@@ -1,7 +1,8 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
-import { formatPhone } from '@/src/utils/masks';
+import { formatCPF, formatPhone } from '@/src/utils/masks';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -34,6 +35,7 @@ export default function ManageClientScreen() {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        cpf: '',
         phone: '',
         birth_date: '',
         weight: '',
@@ -83,6 +85,7 @@ export default function ManageClientScreen() {
                     setFormData({
                         name: client.name || '',
                         email: client.email || '',
+                        cpf: client.cpf ? formatCPF(client.cpf) : '',
                         phone: formatPhone(client.phone || ''),
                         birth_date: formatISODateToDisplay(client.birth_date),
                         weight: client.weight ? String(client.weight) : '',
@@ -110,6 +113,7 @@ export default function ManageClientScreen() {
             const payload = {
                 name: formData.name,
                 email: formData.email,
+                cpf: formData.cpf,
                 phone: formData.phone,
                 birth_date: convertDateToISO(formData.birth_date),
                 weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -134,7 +138,11 @@ export default function ManageClientScreen() {
         }
     };
 
-    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
+    if (fetching) return (
+        <Container>
+            <SkeletonLoader variant="form" />
+        </Container>
+    );
 
     return (
         <KeyboardAvoidingView
@@ -163,6 +171,16 @@ export default function ManageClientScreen() {
                             onChangeText={t => setFormData({ ...formData, email: t })}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                        />
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>CPF</Label>
+                        <Input
+                            value={formData.cpf}
+                            onChangeText={t => setFormData({ ...formData, cpf: formatCPF(t) })}
+                            keyboardType="number-pad"
+                            maxLength={14}
                         />
                     </FormGroup>
 

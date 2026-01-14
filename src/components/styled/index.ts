@@ -174,3 +174,26 @@ export const HighlightText = styled.Text`
   color: ${theme.colors.primary};
   font-weight: bold;
 `;
+
+export const DetailLabel = styled.Text`
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSize.sm}px;
+  margin-bottom: ${theme.spacing.xs}px;
+`;
+
+export const DetailValue = styled.Text`
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSize.lg}px;
+  font-weight: 500;
+  margin-bottom: ${theme.spacing.md}px;
+`;
+
+export const DetailHeader = styled(PageHeader)`
+  padding-top: 60px;
+`;
+
+export const DetailTitle = styled.Text`
+  font-size: ${theme.fontSize.md}px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+`;

@@ -1,3 +1,5 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { SearchBar } from '@/src/components/SearchBar';
 import {
     AddButton,
     AddButtonText,
@@ -26,8 +28,10 @@ const ActionButton = styled(TouchableOpacity)`
 
 export default function ClientsScreen() {
     const [clients, setClients] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [plans, setPlans] = useState<any[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     const fetchData = async () => {
@@ -63,6 +67,7 @@ export default function ClientsScreen() {
             }
         } finally {
             setRefreshing(false);
+            setLoading(false);
         }
     };
 
@@ -103,34 +108,45 @@ export default function ClientsScreen() {
         return { bg: '#14532D', text: '#86EFAC' }; // green-900, green-300
     };
 
+    const filteredClients = clients.filter(client =>
+        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        client.plano_nome.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     const renderItem = ({ item }: { item: any }) => {
         const badgeColors = getBadgeColor(item.plano_nome);
         return (
-            <ListItem>
-                <Row style={{ alignItems: 'flex-start' }}>
-                    <View style={{ flex: 1 }}>
-                        <ListItemTitle>{item.name}</ListItemTitle>
-                        <ListItemSubtitle>{item.email}</ListItemSubtitle>
-                        <Row style={{ marginTop: 8, justifyContent: 'flex-start' }}>
-                            <Badge color={badgeColors.bg}>
-                                <BadgeText color={badgeColors.text}>{item.plano_nome}</BadgeText>
-                            </Badge>
-                            <ListItemSubtitle style={{ color: theme.colors.primary, fontSize: 12 }}>
-                                Vence dia: {item.due_day || 'N/A'}
-                            </ListItemSubtitle>
-                        </Row>
-                    </View>
+            <TouchableOpacity
+                onPress={() => router.push({ pathname: '/client-details', params: { id: item.id } })}
+                style={{ marginHorizontal: 16, marginBottom: 16 }}
+            >
+                <ListItem style={{ marginHorizontal: 0, marginBottom: 0 }}>
+                    <Row style={{ alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1 }}>
+                            <ListItemTitle>{item.name}</ListItemTitle>
+                            <ListItemSubtitle>{item.email}</ListItemSubtitle>
+                            <Row style={{ marginTop: 8, justifyContent: 'flex-start' }}>
+                                <Badge color={badgeColors.bg}>
+                                    <BadgeText color={badgeColors.text}>{item.plano_nome}</BadgeText>
+                                </Badge>
+                                <ListItemSubtitle style={{ color: theme.colors.primary, fontSize: 12 }}>
+                                    Vence dia: {item.due_day || 'N/A'}
+                                </ListItemSubtitle>
+                            </Row>
+                        </View>
 
-                    <Row>
-                        <ActionButton onPress={() => router.push({ pathname: '/manage-client', params: { id: item.id } })}>
-                            <FontAwesome name="edit" size={20} color={theme.colors.primary} />
-                        </ActionButton>
-                        <ActionButton onPress={() => handleDelete(item.id, item.name)}>
-                            <FontAwesome name="trash" size={20} color={theme.colors.danger} />
-                        </ActionButton>
+                        <Row>
+                            <ActionButton onPress={() => router.push({ pathname: '/manage-client', params: { id: item.id } })}>
+                                <FontAwesome name="edit" size={20} color={theme.colors.primary} />
+                            </ActionButton>
+                            <ActionButton onPress={() => handleDelete(item.id, item.name)}>
+                                <FontAwesome name="trash" size={20} color={theme.colors.danger} />
+                            </ActionButton>
+                        </Row>
                     </Row>
-                </Row>
-            </ListItem>
+                </ListItem>
+            </TouchableOpacity>
         );
     };
 
@@ -143,16 +159,35 @@ export default function ClientsScreen() {
                 </AddButton>
             </PageHeader>
 
-            <FlatList
-                data={clients}
-                keyExtractor={item => item.id}
-                renderItem={renderItem}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                ListEmptyComponent={
-                    <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>Nenhum cliente cadastrado.</ListItemSubtitle>
-                }
+            <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar clientes por nome, email ou plano..."
             />
+
+            {loading ? (
+                <View style={{ padding: 16 }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <SkeletonLoader key={i} variant="list-item" />
+                    ))}
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredClients}
+                    keyExtractor={item => item.id}
+                    renderItem={renderItem}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    ListEmptyComponent={
+                        <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
+                            {searchQuery ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado.'}
+                        </ListItemSubtitle>
+                    }
+                    initialNumToRender={10}
+                    windowSize={5}
+                    removeClippedSubviews={true}
+                />
+            )}
         </PageContainer>
     );
 }

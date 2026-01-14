@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
@@ -38,6 +39,9 @@ export default function ManageEmployeeScreen() {
         rg: '',
         salary: '',
         role: '',
+        ctps: '',
+        admission_date: '',
+        payment_day: '',
     });
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -75,6 +79,9 @@ export default function ManageEmployeeScreen() {
                         rg: data.rg || '',
                         salary: formatCurrency(data.salary),
                         role: data.role || '',
+                        ctps: data.ctps || '',
+                        admission_date: formatISODateToDisplay(data.admission_date),
+                        payment_day: data.payment_day ? String(data.payment_day) : '',
                     });
                 }
             }
@@ -103,6 +110,9 @@ export default function ManageEmployeeScreen() {
                 rg: formData.rg,
                 salary: formData.salary ? parseCurrencyToFloat(formData.salary) : null,
                 role: formData.role,
+                ctps: formData.ctps,
+                admission_date: convertDateToISO(formData.admission_date),
+                payment_day: formData.payment_day ? parseInt(formData.payment_day) : null,
             };
 
             if (isEditing) {
@@ -122,7 +132,11 @@ export default function ManageEmployeeScreen() {
         }
     };
 
-    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
+    if (fetching) return (
+        <Container>
+            <SkeletonLoader variant="form" />
+        </Container>
+    );
 
     return (
         <KeyboardAvoidingView
@@ -214,6 +228,41 @@ export default function ManageEmployeeScreen() {
                             keyboardType="numeric"
                         />
                     </FormGroup>
+
+                    <FormGroup>
+                        <Label>CTPS</Label>
+                        <Input
+                            value={formData.ctps}
+                            onChangeText={t => setFormData({ ...formData, ctps: t })}
+                            placeholder="Número da CTPS"
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </FormGroup>
+
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Data de Admissão</Label>
+                            <Input
+                                value={formData.admission_date}
+                                onChangeText={t => setFormData({ ...formData, admission_date: formatDate(t) })}
+                                placeholder="DD/MM/YYYY"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={10}
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Dia do Pagamento</Label>
+                            <Input
+                                value={formData.payment_day}
+                                onChangeText={t => setFormData({ ...formData, payment_day: t.replace(/\D/g, '').slice(0, 2) })}
+                                placeholder="Ex: 5"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                            />
+                        </View>
+                    </Row>
 
                     <Button onPress={handleSave} disabled={loading}>
                         {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}

@@ -1,3 +1,4 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
@@ -372,7 +373,11 @@ export default function EditProfileScreen() {
         }
     };
 
-    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
+    if (fetching) return (
+        <Container>
+            <SkeletonLoader variant="profile" />
+        </Container>
+    );
 
     return (
         <Container>

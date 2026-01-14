@@ -1,6 +1,8 @@
+import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src/utils/masks';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -44,6 +46,9 @@ export default function ManageEquipmentScreen() {
 
     const [formData, setFormData] = useState({
         name: '',
+        brand: '',
+        serial_number: '',
+        acquisition_date: '',
         cost: '',
         last_maintenance: '',
         maintenance_interval_days: '',
@@ -63,7 +68,10 @@ export default function ManageEquipmentScreen() {
                 if (data) {
                     setFormData({
                         name: data.name || '',
-                        cost: data.cost ? String(data.cost) : '',
+                        brand: data.brand || '',
+                        serial_number: data.serial_number || '',
+                        acquisition_date: formatISODateToDisplay(data.acquisition_date || ''),
+                        cost: formatCurrency(data.cost),
                         last_maintenance: formatISODateToDisplay(data.last_maintenance || ''),
                         maintenance_interval_days: data.maintenance_interval_days ? String(data.maintenance_interval_days) : '',
                     });
@@ -87,7 +95,10 @@ export default function ManageEquipmentScreen() {
         try {
             const payload = {
                 name: formData.name,
-                cost: formData.cost ? parseFloat(formData.cost) : null,
+                brand: formData.brand,
+                serial_number: formData.serial_number,
+                acquisition_date: convertDateToISO(formData.acquisition_date),
+                cost: formData.cost ? parseCurrencyToFloat(formData.cost) : null,
                 last_maintenance: convertDateToISO(formData.last_maintenance),
                 maintenance_interval_days: formData.maintenance_interval_days ? parseInt(formData.maintenance_interval_days) : null,
             };
@@ -109,7 +120,11 @@ export default function ManageEquipmentScreen() {
         }
     };
 
-    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
+    if (fetching) return (
+        <Container>
+            <SkeletonLoader variant="form" />
+        </Container>
+    );
 
     return (
         <KeyboardAvoidingView
@@ -132,13 +147,42 @@ export default function ManageEquipmentScreen() {
                     </FormGroup>
 
                     <FormGroup>
-                        <Label>Custo de Aquisição (R$)</Label>
+                        <Label>Marca/Modelo</Label>
                         <Input
-                            value={formData.cost}
-                            onChangeText={t => setFormData({ ...formData, cost: t })}
-                            keyboardType="numeric"
+                            value={formData.brand}
+                            onChangeText={t => setFormData({ ...formData, brand: t })}
                         />
                     </FormGroup>
+
+                    <FormGroup>
+                        <Label>Número de Série</Label>
+                        <Input
+                            value={formData.serial_number}
+                            onChangeText={t => setFormData({ ...formData, serial_number: t })}
+                        />
+                    </FormGroup>
+
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Data de Aquisição</Label>
+                            <Input
+                                value={formData.acquisition_date}
+                                onChangeText={t => setFormData({ ...formData, acquisition_date: formatDate(t) })}
+                                placeholder="DD/MM/YYYY"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={10}
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Custo de Aquisição (R$)</Label>
+                            <Input
+                                value={formData.cost}
+                                onChangeText={t => setFormData({ ...formData, cost: formatCurrencyInput(t) })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                    </Row>
 
                     <Row style={{ marginBottom: 16 }}>
                         <View style={{ width: '48%' }}>
@@ -170,3 +214,4 @@ export default function ManageEquipmentScreen() {
         </KeyboardAvoidingView>
     );
 }
+
