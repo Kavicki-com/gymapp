@@ -1,6 +1,7 @@
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCPF, formatCurrency, formatCurrencyInput, formatPhone, parseCurrencyToFloat } from '@/src/utils/masks';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -68,11 +69,11 @@ export default function ManageEmployeeScreen() {
                     setFormData({
                         name: data.name || '',
                         email: data.email || '',
-                        phone: data.phone || '',
+                        phone: formatPhone(data.phone || ''),
                         birth_date: formatISODateToDisplay(data.birth_date),
-                        cpf: data.cpf || '',
+                        cpf: formatCPF(data.cpf || ''),
                         rg: data.rg || '',
-                        salary: data.salary ? String(data.salary) : '',
+                        salary: formatCurrency(data.salary),
                         role: data.role || '',
                     });
                 }
@@ -100,7 +101,7 @@ export default function ManageEmployeeScreen() {
                 birth_date: convertDateToISO(formData.birth_date),
                 cpf: formData.cpf,
                 rg: formData.rg,
-                salary: formData.salary ? parseFloat(formData.salary) : null,
+                salary: formData.salary ? parseCurrencyToFloat(formData.salary) : null,
                 role: formData.role,
             };
 
@@ -169,7 +170,7 @@ export default function ManageEmployeeScreen() {
                             <Label>Telefone</Label>
                             <Input
                                 value={formData.phone}
-                                onChangeText={t => setFormData({ ...formData, phone: t })}
+                                onChangeText={t => setFormData({ ...formData, phone: formatPhone(t) })}
                                 keyboardType="phone-pad"
                             />
                         </View>
@@ -191,7 +192,7 @@ export default function ManageEmployeeScreen() {
                             <Label>CPF</Label>
                             <Input
                                 value={formData.cpf}
-                                onChangeText={t => setFormData({ ...formData, cpf: t })}
+                                onChangeText={t => setFormData({ ...formData, cpf: formatCPF(t) })}
                                 keyboardType="numeric"
                             />
                         </View>
@@ -209,7 +210,7 @@ export default function ManageEmployeeScreen() {
                         <Label>Salário (R$)</Label>
                         <Input
                             value={formData.salary}
-                            onChangeText={t => setFormData({ ...formData, salary: t })}
+                            onChangeText={t => setFormData({ ...formData, salary: formatCurrencyInput(t) })}
                             keyboardType="numeric"
                         />
                     </FormGroup>

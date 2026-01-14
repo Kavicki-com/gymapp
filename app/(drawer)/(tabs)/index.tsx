@@ -2,6 +2,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useState } from 'react';
@@ -154,7 +155,7 @@ export default function DashboardScreen() {
               <FontAwesome name="warning" size={32} color={theme.colors.primary} />
             </View>
             <View>
-              <StatValue>R$ {stats.expiringRevenue.toFixed(2)}</StatValue>
+              <StatValue>{formatCurrency(stats.expiringRevenue)}</StatValue>
               <StatLabel>A vencer (7 dias) - (Em Desenv.)</StatLabel>
             </View>
           </Row>

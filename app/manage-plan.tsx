@@ -1,6 +1,7 @@
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src/utils/masks';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -39,7 +40,7 @@ export default function ManagePlanScreen() {
                 if (plan) {
                     setFormData({
                         name: plan.name || '',
-                        price: plan.price ? String(plan.price) : '',
+                        price: formatCurrency(plan.price),
                         services: plan.services || '',
                     });
                 }
@@ -62,7 +63,7 @@ export default function ManagePlanScreen() {
         try {
             const payload = {
                 name: formData.name,
-                price: parseFloat(formData.price),
+                price: parseCurrencyToFloat(formData.price),
                 services: formData.services,
             };
 
@@ -109,7 +110,7 @@ export default function ManagePlanScreen() {
                         <Label>Valor (R$)</Label>
                         <Input
                             value={formData.price}
-                            onChangeText={t => setFormData({ ...formData, price: t })}
+                            onChangeText={t => setFormData({ ...formData, price: formatCurrencyInput(t) })}
                             keyboardType="numeric"
                         />
                     </FormGroup>

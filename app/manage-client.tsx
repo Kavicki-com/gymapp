@@ -1,6 +1,7 @@
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatPhone } from '@/src/utils/masks';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -82,7 +83,7 @@ export default function ManageClientScreen() {
                     setFormData({
                         name: client.name || '',
                         email: client.email || '',
-                        phone: client.phone || '',
+                        phone: formatPhone(client.phone || ''),
                         birth_date: formatISODateToDisplay(client.birth_date),
                         weight: client.weight ? String(client.weight) : '',
                         plan_id: client.plan_id || '',
@@ -170,7 +171,7 @@ export default function ManageClientScreen() {
                             <Label>Telefone</Label>
                             <Input
                                 value={formData.phone}
-                                onChangeText={t => setFormData({ ...formData, phone: t })}
+                                onChangeText={t => setFormData({ ...formData, phone: formatPhone(t) })}
                                 keyboardType="phone-pad"
                             />
                         </View>

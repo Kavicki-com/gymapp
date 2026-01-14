@@ -15,6 +15,7 @@ import {
     Title
 } from '../src/components/styled';
 import { theme } from '../src/styles/theme';
+import { formatCNPJ, formatCPF, formatPhone } from '../src/utils/masks';
 
 const LogoContainer = styled(TouchableOpacity)`
   width: 100px;
@@ -273,10 +274,14 @@ export default function RegisterScreen() {
         return formatted;
     };
 
+
     const updateForm = (key: string, value: string) => {
         if (key === 'birth_date') {
             value = formatDate(value);
         }
+        if (key === 'cpf') value = formatCPF(value);
+        if (key === 'cnpj') value = formatCNPJ(value);
+        if (key === 'phone') value = formatPhone(value);
         if (key === 'opening_time' || key === 'closing_time') {
             value = formatTime(value);
         }

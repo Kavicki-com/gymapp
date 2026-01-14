@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -111,7 +112,7 @@ export default function PlansScreen() {
                 <View style={{ flex: 1 }}>
                     <PlanName>{item.name}</PlanName>
                     <PriceText>
-                        R$ {item.price ? Number(item.price).toFixed(2) : '0.00'}<PerMonth>/mês</PerMonth>
+                        {formatCurrency(item.price || 0)}<PerMonth>/mês</PerMonth>
                     </PriceText>
                     <ServicesText>{item.services}</ServicesText>
                 </View>
