@@ -1,7 +1,18 @@
 import { supabase } from '@/src/services/supabase';
+import { theme } from '@/src/styles/theme';
+import { getCurrentGymId } from '@/src/utils/auth';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+    Button,
+    ButtonText,
+    Container,
+    FormGroup,
+    Input,
+    Label,
+    Title
+} from '../src/components/styled';
 
 export default function ManagePlanScreen() {
     const { id } = useLocalSearchParams();
@@ -59,7 +70,8 @@ export default function ManagePlanScreen() {
                 const { error } = await supabase.from('plans').update(payload).eq('id', id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('plans').insert(payload);
+                const gymId = await getCurrentGymId();
+                const { error } = await supabase.from('plans').insert({ ...payload, gym_id: gymId });
                 if (error) throw error;
             }
 
@@ -71,51 +83,53 @@ export default function ManagePlanScreen() {
         }
     };
 
-    if (fetching) return <View className="flex-1 bg-gray-900 justify-center items-center"><ActivityIndicator color="#EAB308" /></View>;
+    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
 
     return (
-        <View className="flex-1 bg-gray-900 p-4">
-            <ScrollView>
-                <Text className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Plano' : 'Novo Plano'}</Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+        >
+            <Container>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
+                    </View>
+                    <Title>{isEditing ? 'Editar Plano' : 'Novo Plano'}</Title>
 
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Nome do Plano</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.name}
-                        onChangeText={t => setFormData({ ...formData, name: t })}
-                    />
-                </View>
+                    <FormGroup>
+                        <Label>Nome do Plano</Label>
+                        <Input
+                            value={formData.name}
+                            onChangeText={t => setFormData({ ...formData, name: t })}
+                        />
+                    </FormGroup>
 
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Valor (R$)</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.price}
-                        onChangeText={t => setFormData({ ...formData, price: t })}
-                        keyboardType="numeric"
-                    />
-                </View>
+                    <FormGroup>
+                        <Label>Valor (R$)</Label>
+                        <Input
+                            value={formData.price}
+                            onChangeText={t => setFormData({ ...formData, price: t })}
+                            keyboardType="numeric"
+                        />
+                    </FormGroup>
 
-                <View className="mb-8">
-                    <Text className="text-gray-300 mb-2">Serviços Incluídos</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700 min-h-[100px]"
-                        value={formData.services}
-                        onChangeText={t => setFormData({ ...formData, services: t })}
-                        multiline
-                        textAlignVertical="top"
-                    />
-                </View>
+                    <FormGroup>
+                        <Label>Serviços Incluídos</Label>
+                        <Input
+                            value={formData.services}
+                            onChangeText={t => setFormData({ ...formData, services: t })}
+                            multiline
+                            textAlignVertical="top"
+                            style={{ minHeight: 100 }}
+                        />
+                    </FormGroup>
 
-                <Pressable
-                    onPress={handleSave}
-                    disabled={loading}
-                    className={`bg-yellow-500 p-4 rounded-lg items-center ${loading ? 'opacity-50' : ''}`}
-                >
-                    {loading ? <ActivityIndicator color="black" /> : <Text className="font-bold text-gray-900 text-lg">Salvar</Text>}
-                </Pressable>
-            </ScrollView>
-        </View>
+                    <Button onPress={handleSave} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}
+                    </Button>
+                </ScrollView>
+            </Container>
+        </KeyboardAvoidingView>
     );
 }

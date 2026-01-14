@@ -1,12 +1,46 @@
 import { supabase } from '@/src/services/supabase';
+import { theme } from '@/src/styles/theme';
+import { getCurrentGymId } from '@/src/utils/auth';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+    Button,
+    ButtonText,
+    Container,
+    FormGroup,
+    Input,
+    Label,
+    Row,
+    Title
+} from '../src/components/styled';
 
 export default function ManageEquipmentScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
+
+    const formatDate = (text: string) => {
+        const cleaned = text.replace(/\D/g, '');
+        let formatted = cleaned;
+        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
+        return formatted;
+    };
+
+    const convertDateToISO = (dateStr: string) => {
+        if (!dateStr) return null;
+        if (dateStr.includes('-')) return dateStr;
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatISODateToDisplay = (isoDate: string) => {
+        if (!isoDate) return '';
+        if (isoDate.includes('/')) return isoDate;
+        const [year, month, day] = isoDate.split('-');
+        return `${day}/${month}/${year}`;
+    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -30,7 +64,7 @@ export default function ManageEquipmentScreen() {
                     setFormData({
                         name: data.name || '',
                         cost: data.cost ? String(data.cost) : '',
-                        last_maintenance: data.last_maintenance || '',
+                        last_maintenance: formatISODateToDisplay(data.last_maintenance || ''),
                         maintenance_interval_days: data.maintenance_interval_days ? String(data.maintenance_interval_days) : '',
                     });
                 }
@@ -54,7 +88,7 @@ export default function ManageEquipmentScreen() {
             const payload = {
                 name: formData.name,
                 cost: formData.cost ? parseFloat(formData.cost) : null,
-                last_maintenance: formData.last_maintenance || null, // Format YYYY-MM-DD
+                last_maintenance: convertDateToISO(formData.last_maintenance),
                 maintenance_interval_days: formData.maintenance_interval_days ? parseInt(formData.maintenance_interval_days) : null,
             };
 
@@ -62,7 +96,8 @@ export default function ManageEquipmentScreen() {
                 const { error } = await supabase.from('equipment').update(payload).eq('id', id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('equipment').insert(payload);
+                const gymId = await getCurrentGymId();
+                const { error } = await supabase.from('equipment').insert({ ...payload, gym_id: gymId });
                 if (error) throw error;
             }
 
@@ -74,62 +109,64 @@ export default function ManageEquipmentScreen() {
         }
     };
 
-    if (fetching) return <View className="flex-1 bg-gray-900 justify-center items-center"><ActivityIndicator color="#EAB308" /></View>;
+    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
 
     return (
-        <View className="flex-1 bg-gray-900 p-4">
-            <ScrollView>
-                <Text className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Aparelho' : 'Novo Aparelho'}</Text>
-
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Nome do Aparelho</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.name}
-                        onChangeText={t => setFormData({ ...formData, name: t })}
-                    />
-                </View>
-
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Custo de Aquisição (R$)</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.cost}
-                        onChangeText={t => setFormData({ ...formData, cost: t })}
-                        keyboardType="numeric"
-                    />
-                </View>
-
-                <View className="flex-row justify-between mb-8">
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Última Manut. (YYYY-MM-DD)</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.last_maintenance}
-                            onChangeText={t => setFormData({ ...formData, last_maintenance: t })}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#6B7280"
-                        />
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+        >
+            <Container>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
                     </View>
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Intervalo (dias)</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.maintenance_interval_days}
-                            onChangeText={t => setFormData({ ...formData, maintenance_interval_days: t })}
+                    <Title>{isEditing ? 'Editar Aparelho' : 'Novo Aparelho'}</Title>
+
+                    <FormGroup>
+                        <Label>Nome do Aparelho</Label>
+                        <Input
+                            value={formData.name}
+                            onChangeText={t => setFormData({ ...formData, name: t })}
+                        />
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>Custo de Aquisição (R$)</Label>
+                        <Input
+                            value={formData.cost}
+                            onChangeText={t => setFormData({ ...formData, cost: t })}
                             keyboardType="numeric"
                         />
-                    </View>
-                </View>
+                    </FormGroup>
 
-                <Pressable
-                    onPress={handleSave}
-                    disabled={loading}
-                    className={`bg-yellow-500 p-4 rounded-lg items-center ${loading ? 'opacity-50' : ''}`}
-                >
-                    {loading ? <ActivityIndicator color="black" /> : <Text className="font-bold text-gray-900 text-lg">Salvar</Text>}
-                </Pressable>
-            </ScrollView>
-        </View>
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Última manutenção</Label>
+                            <Input
+                                value={formData.last_maintenance}
+                                onChangeText={t => setFormData({ ...formData, last_maintenance: formatDate(t) })}
+                                placeholder="DD/MM/YYYY"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={10}
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Intervalo (dias)</Label>
+                            <Input
+                                value={formData.maintenance_interval_days}
+                                onChangeText={t => setFormData({ ...formData, maintenance_interval_days: t })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                    </Row>
+
+                    <Button onPress={handleSave} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}
+                    </Button>
+                </ScrollView>
+            </Container>
+        </KeyboardAvoidingView>
     );
 }

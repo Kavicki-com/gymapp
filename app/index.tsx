@@ -1,7 +1,27 @@
+import { useIsFocused } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import styled from 'styled-components/native';
+import {
+    Button,
+    ButtonText,
+    Card,
+    CenteredContainer,
+    FormGroup,
+    HighlightText,
+    Input,
+    Label,
+    LinkText,
+    Title
+} from '../src/components/styled';
 import { useAuth } from '../src/contexts/AuthContext';
+import { supabase } from '../src/services/supabase';
+import { theme } from '../src/styles/theme';
+
+const FooterLink = styled(TouchableOpacity)`
+  margin-top: ${theme.spacing.lg}px;
+`;
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -9,13 +29,57 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const { signIn, session } = useAuth();
     const router = useRouter();
+    const isFocused = useIsFocused();
 
-    // If already logged in, redirect to dashboard
+    const [isChecking, setIsChecking] = useState(false);
+
     React.useEffect(() => {
-        if (session) {
-            router.replace('/(tabs)');
+        if (session && isFocused) {
+            checkSession();
         }
-    }, [session]);
+    }, [session, isFocused]);
+
+    const checkSession = async () => {
+        if (isChecking || !isFocused) return;
+        setIsChecking(true);
+
+        try {
+            // 1. Verify if session is valid on server
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+                // Session is stale or user deleted
+                await supabase.auth.signOut();
+                return;
+            }
+
+            // 2. Check if user has a profile
+            const { data: profile, error } = await supabase
+                .from('gym_profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+
+            if (profile) {
+                // router.replace works, but ensure we are not already navigating
+                router.replace('/(drawer)/(tabs)');
+            } else {
+                // Valid user but no profile (incomplete from previous attempt)
+                // Only redirect if we definitely have a valid user
+                Alert.alert(
+                    'Perfil Incompleto',
+                    'Sua conta não possui um perfil de academia associado. Se os dados foram perdidos, vá em "Cadastre-se" e preencha o formulário novamente com seu email e senha atuais para recriar o perfil.',
+                    [{ text: 'OK', onPress: () => supabase.auth.signOut() }]
+                );
+            }
+        } catch (error) {
+            console.error('Session check error:', error);
+            // If error, stay on login
+            await supabase.auth.signOut();
+        } finally {
+            setIsChecking(false);
+        }
+    };
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -24,64 +88,84 @@ export default function LoginScreen() {
         }
         setLoading(true);
         const { error } = await signIn(email, password);
-        setLoading(false);
 
         if (error) {
+            setLoading(false);
             Alert.alert('Erro no Login', error.message);
         } else {
-            // Router replace handled by useEffect on session change or here
-            router.replace('/(tabs)');
+            // Check for profile immediately to decide navigation
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('gym_profiles')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .single();
+
+                setLoading(false);
+                if (profile) {
+                    router.replace('/(drawer)/(tabs)');
+                } else {
+                    Alert.alert(
+                        'Perfil Incompleto',
+                        'Sua conta não possui um perfil de academia associado. Se os dados foram perdidos, vá em "Cadastre-se" e preencha o formulário novamente com seu email e senha atuais para recriar o perfil.',
+                        [{ text: 'OK', onPress: () => supabase.auth.signOut() }]
+                    );
+                }
+            } else {
+                setLoading(false);
+            }
         }
     };
 
     return (
-        <View className="flex-1 justify-center items-center bg-gray-900 p-4">
+        <CenteredContainer>
             <Stack.Screen options={{ headerShown: false }} />
-            <View className="flex-row items-center mb-8">
-                {/* Dumbbell Icon replacement (using Text/FontAwesome for now or Image) */}
-                <Text className="text-4xl font-bold text-white ml-2">WM Fitness</Text>
-            </View>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1, width: '100%', justifyContent: 'center' }}
+            >
+                <Card>
+                    <Title>Acesso do Administrador</Title>
 
-            <View className="w-full max-w-sm bg-gray-800 p-8 rounded-lg shadow-xl">
-                <Text className="text-2xl font-bold text-white text-center mb-6">Acesso do Administrador</Text>
+                    <FormGroup>
+                        <Label>Email</Label>
+                        <Input
+                            placeholder="admin@gym.com"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+                    </FormGroup>
 
-                <View className="mb-4">
-                    <Text className="text-gray-300 text-sm font-bold mb-2">Email</Text>
-                    <TextInput
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-3 text-white focus:border-yellow-500"
-                        placeholder="admin@gym.com"
-                        placeholderTextColor="#9ca3af"
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
-                </View>
+                    <FormGroup>
+                        <Label>Senha</Label>
+                        <Input
+                            placeholder="admin123"
+                            placeholderTextColor={theme.colors.textSecondary}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                        />
+                    </FormGroup>
 
-                <View className="mb-6">
-                    <Text className="text-gray-300 text-sm font-bold mb-2">Senha</Text>
-                    <TextInput
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-3 text-white focus:border-yellow-500"
-                        placeholder="admin123"
-                        placeholderTextColor="#9ca3af"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-                </View>
+                    <Button onPress={handleLogin} disabled={loading}>
+                        {loading ? (
+                            <ActivityIndicator color="#111827" />
+                        ) : (
+                            <ButtonText>Entrar</ButtonText>
+                        )}
+                    </Button>
 
-                <Pressable
-                    className={`w-full bg-yellow-500 py-3 rounded-lg items-center ${loading ? 'opacity-70' : ''}`}
-                    onPress={handleLogin}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#111827" />
-                    ) : (
-                        <Text className="text-gray-900 font-bold text-base">Entrar</Text>
-                    )}
-                </Pressable>
-            </View>
-        </View>
+                    <FooterLink onPress={() => router.push('/register')}>
+                        <LinkText>
+                            Não tem uma conta? <HighlightText>Cadastre-se</HighlightText>
+                        </LinkText>
+                    </FooterLink>
+                </Card>
+            </KeyboardAvoidingView>
+        </CenteredContainer>
     );
 }

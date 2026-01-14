@@ -4,8 +4,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import '../global.css'; // Import global styles
 import { AuthProvider } from '../src/contexts/AuthContext';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -17,7 +17,7 @@ export {
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: '(drawer)',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -53,14 +53,18 @@ function RootLayoutNav() {
   return (
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="manage-client" options={{ presentation: 'modal', title: 'Cliente' }} />
-          <Stack.Screen name="manage-plan" options={{ presentation: 'modal', title: 'Plano' }} />
-          <Stack.Screen name="manage-equipment" options={{ presentation: 'modal', title: 'Aparelho' }} />
-          <Stack.Screen name="manage-employee" options={{ presentation: 'modal', title: 'Colaborador' }} />
-        </Stack>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="register" options={{ headerShown: false }} />
+            <Stack.Screen name="confirm-email" options={{ headerShown: false }} />
+            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+            <Stack.Screen name="manage-client" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="manage-plan" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="manage-equipment" options={{ presentation: 'modal', headerShown: false }} />
+            <Stack.Screen name="manage-employee" options={{ presentation: 'modal', headerShown: false }} />
+          </Stack>
+        </GestureHandlerRootView>
       </ThemeProvider>
     </AuthProvider>
   );

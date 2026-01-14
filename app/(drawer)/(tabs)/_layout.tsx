@@ -1,6 +1,8 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Tabs } from 'expo-router';
+import { DrawerActions } from '@react-navigation/native';
+import { Tabs, useNavigation } from 'expo-router';
 import React from 'react';
+import { TouchableOpacity } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -31,6 +33,18 @@ export default function TabLayout() {
           color: '#F3F4F6', // gray-100
         },
         headerShown: useClientOnlyValue(false, true),
+        headerRight: () => {
+          const navigation = useNavigation();
+          return (
+            <TouchableOpacity
+              onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+              style={{ marginRight: 15 }}
+            >
+              <FontAwesome name="bars" size={24} color="#F3F4F6" />
+            </TouchableOpacity>
+          );
+        },
+        headerTitle: '',
       }}>
       <Tabs.Screen
         name="index"

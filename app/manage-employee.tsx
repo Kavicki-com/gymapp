@@ -1,12 +1,32 @@
 import { supabase } from '@/src/services/supabase';
+import { theme } from '@/src/styles/theme';
+import { getCurrentGymId } from '@/src/utils/auth';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+    Button,
+    ButtonText,
+    Container,
+    FormGroup,
+    Input,
+    Label,
+    Row,
+    Title
+} from '../src/components/styled';
 
 export default function ManageEmployeeScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
+
+    const formatDate = (text: string) => {
+        const cleaned = text.replace(/\D/g, '');
+        let formatted = cleaned;
+        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
+        return formatted;
+    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -16,6 +36,7 @@ export default function ManageEmployeeScreen() {
         cpf: '',
         rg: '',
         salary: '',
+        role: '',
     });
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -23,6 +44,20 @@ export default function ManageEmployeeScreen() {
     useEffect(() => {
         loadData();
     }, []);
+
+    const convertDateToISO = (dateStr: string) => {
+        if (!dateStr) return null;
+        if (dateStr.includes('-')) return dateStr;
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatISODateToDisplay = (isoDate: string) => {
+        if (!isoDate) return '';
+        if (isoDate.includes('/')) return isoDate;
+        const [year, month, day] = isoDate.split('-');
+        return `${day}/${month}/${year}`;
+    };
 
     const loadData = async () => {
         try {
@@ -34,10 +69,11 @@ export default function ManageEmployeeScreen() {
                         name: data.name || '',
                         email: data.email || '',
                         phone: data.phone || '',
-                        birth_date: data.birth_date || '',
+                        birth_date: formatISODateToDisplay(data.birth_date),
                         cpf: data.cpf || '',
                         rg: data.rg || '',
                         salary: data.salary ? String(data.salary) : '',
+                        role: data.role || '',
                     });
                 }
             }
@@ -61,17 +97,19 @@ export default function ManageEmployeeScreen() {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                birth_date: formData.birth_date || null,
+                birth_date: convertDateToISO(formData.birth_date),
                 cpf: formData.cpf,
                 rg: formData.rg,
                 salary: formData.salary ? parseFloat(formData.salary) : null,
+                role: formData.role,
             };
 
             if (isEditing) {
                 const { error } = await supabase.from('employees').update(payload).eq('id', id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('employees').insert(payload);
+                const gymId = await getCurrentGymId();
+                const { error } = await supabase.from('employees').insert({ ...payload, gym_id: gymId });
                 if (error) throw error;
             }
 
@@ -83,94 +121,104 @@ export default function ManageEmployeeScreen() {
         }
     };
 
-    if (fetching) return <View className="flex-1 bg-gray-900 justify-center items-center"><ActivityIndicator color="#EAB308" /></View>;
+    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
 
     return (
-        <View className="flex-1 bg-gray-900 p-4">
-            <ScrollView>
-                <Text className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}</Text>
-
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Nome Completo</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.name}
-                        onChangeText={t => setFormData({ ...formData, name: t })}
-                    />
-                </View>
-
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Email</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.email}
-                        onChangeText={t => setFormData({ ...formData, email: t })}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <View className="flex-row justify-between mb-4">
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Telefone</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.phone}
-                            onChangeText={t => setFormData({ ...formData, phone: t })}
-                            keyboardType="phone-pad"
-                        />
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+        >
+            <Container>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
                     </View>
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Nascimento (YYYY-MM-DD)</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.birth_date}
-                            onChangeText={t => setFormData({ ...formData, birth_date: t })}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#6B7280"
-                        />
-                    </View>
-                </View>
+                    <Title>{isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}</Title>
 
-                <View className="flex-row justify-between mb-4">
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">CPF</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.cpf}
-                            onChangeText={t => setFormData({ ...formData, cpf: t })}
+                    <FormGroup>
+                        <Label>Nome Completo</Label>
+                        <Input
+                            value={formData.name}
+                            onChangeText={t => setFormData({ ...formData, name: t })}
+                        />
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>Email</Label>
+                        <Input
+                            value={formData.email}
+                            onChangeText={t => setFormData({ ...formData, email: t })}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>Função</Label>
+                        <Input
+                            value={formData.role}
+                            onChangeText={t => setFormData({ ...formData, role: t })}
+                            placeholder="Ex: Recepcionista, Instrutor..."
+                            placeholderTextColor={theme.colors.textSecondary}
+                        />
+                    </FormGroup>
+
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Telefone</Label>
+                            <Input
+                                value={formData.phone}
+                                onChangeText={t => setFormData({ ...formData, phone: t })}
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Data de nascimento</Label>
+                            <Input
+                                value={formData.birth_date}
+                                onChangeText={t => setFormData({ ...formData, birth_date: formatDate(t) })}
+                                placeholder="DD/MM/YYYY"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={10}
+                            />
+                        </View>
+                    </Row>
+
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>CPF</Label>
+                            <Input
+                                value={formData.cpf}
+                                onChangeText={t => setFormData({ ...formData, cpf: t })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>RG</Label>
+                            <Input
+                                value={formData.rg}
+                                onChangeText={t => setFormData({ ...formData, rg: t })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                    </Row>
+
+                    <FormGroup>
+                        <Label>Salário (R$)</Label>
+                        <Input
+                            value={formData.salary}
+                            onChangeText={t => setFormData({ ...formData, salary: t })}
                             keyboardType="numeric"
                         />
-                    </View>
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">RG</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.rg}
-                            onChangeText={t => setFormData({ ...formData, rg: t })}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </View>
+                    </FormGroup>
 
-                <View className="mb-8">
-                    <Text className="text-gray-300 mb-2">Salário (R$)</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.salary}
-                        onChangeText={t => setFormData({ ...formData, salary: t })}
-                        keyboardType="numeric"
-                    />
-                </View>
-
-                <Pressable
-                    onPress={handleSave}
-                    disabled={loading}
-                    className={`bg-yellow-500 p-4 rounded-lg items-center ${loading ? 'opacity-50' : ''}`}
-                >
-                    {loading ? <ActivityIndicator color="black" /> : <Text className="font-bold text-gray-900 text-lg">Salvar</Text>}
-                </Pressable>
-            </ScrollView>
-        </View>
+                    <Button onPress={handleSave} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}
+                    </Button>
+                </ScrollView>
+            </Container>
+        </KeyboardAvoidingView>
     );
 }

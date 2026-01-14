@@ -1,13 +1,34 @@
 import { supabase } from '@/src/services/supabase';
+import { theme } from '@/src/styles/theme';
+import { getCurrentGymId } from '@/src/utils/auth';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+    Button,
+    ButtonText,
+    Container,
+    FormGroup,
+    Input,
+    Label,
+    PickerContainer,
+    Row,
+    Title
+} from '../src/components/styled';
 
 export default function ManageClientScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
+
+    const formatDate = (text: string) => {
+        const cleaned = text.replace(/\D/g, '');
+        let formatted = cleaned;
+        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
+        return formatted;
+    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -26,9 +47,27 @@ export default function ManageClientScreen() {
         loadData();
     }, []);
 
+    const convertDateToISO = (dateStr: string) => {
+        if (!dateStr) return null;
+        if (dateStr.includes('-')) return dateStr;
+        const [day, month, year] = dateStr.split('/');
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatISODateToDisplay = (isoDate: string) => {
+        if (!isoDate) return '';
+        if (isoDate.includes('/')) return isoDate;
+        const [year, month, day] = isoDate.split('-');
+        return `${day}/${month}/${year}`;
+    };
+
     const loadData = async () => {
         try {
-            const { data: plansData } = await supabase.from('plans').select('*');
+            const gymId = await getCurrentGymId();
+            const { data: plansData } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('gym_id', gymId);
             if (plansData) {
                 setPlans(plansData);
                 if (!isEditing && plansData.length > 0) {
@@ -44,7 +83,7 @@ export default function ManageClientScreen() {
                         name: client.name || '',
                         email: client.email || '',
                         phone: client.phone || '',
-                        birth_date: client.birth_date || '',
+                        birth_date: formatISODateToDisplay(client.birth_date),
                         weight: client.weight ? String(client.weight) : '',
                         plan_id: client.plan_id || '',
                         due_day: client.due_day ? String(client.due_day) : '',
@@ -71,7 +110,7 @@ export default function ManageClientScreen() {
                 name: formData.name,
                 email: formData.email,
                 phone: formData.phone,
-                birth_date: formData.birth_date || null, // Ensure valid date if used, Supabase date format is YYYY-MM-DD
+                birth_date: convertDateToISO(formData.birth_date),
                 weight: formData.weight ? parseFloat(formData.weight) : null,
                 plan_id: formData.plan_id || null,
                 due_day: formData.due_day ? parseInt(formData.due_day) : null,
@@ -81,7 +120,8 @@ export default function ManageClientScreen() {
                 const { error } = await supabase.from('clients').update(payload).eq('id', id);
                 if (error) throw error;
             } else {
-                const { error } = await supabase.from('clients').insert(payload);
+                const gymId = await getCurrentGymId();
+                const { error } = await supabase.from('clients').insert({ ...payload, gym_id: gymId });
                 if (error) throw error;
             }
 
@@ -93,101 +133,101 @@ export default function ManageClientScreen() {
         }
     };
 
-    if (fetching) return <View className="flex-1 bg-gray-900 justify-center items-center"><ActivityIndicator color="#EAB308" /></View>;
+    if (fetching) return <Container style={{ justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={theme.colors.primary} /></Container>;
 
     return (
-        <View className="flex-1 bg-gray-900 p-4">
-            <ScrollView>
-                <Text className="text-2xl font-bold text-white mb-6">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+        >
+            <Container>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
+                    </View>
+                    <Title>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</Title>
 
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Nome Completo</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.name}
-                        onChangeText={t => setFormData({ ...formData, name: t })}
-                    />
-                </View>
-
-                <View className="mb-4">
-                    <Text className="text-gray-300 mb-2">Email</Text>
-                    <TextInput
-                        className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                        value={formData.email}
-                        onChangeText={t => setFormData({ ...formData, email: t })}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <View className="flex-row justify-between mb-4">
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Telefone</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.phone}
-                            onChangeText={t => setFormData({ ...formData, phone: t })}
-                            keyboardType="phone-pad"
+                    <FormGroup>
+                        <Label>Nome Completo</Label>
+                        <Input
+                            value={formData.name}
+                            onChangeText={t => setFormData({ ...formData, name: t })}
                         />
-                    </View>
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Data Nasc. (YYYY-MM-DD)</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.birth_date}
-                            onChangeText={t => setFormData({ ...formData, birth_date: t })}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#6B7280"
-                        />
-                    </View>
-                </View>
+                    </FormGroup>
 
-                <View className="flex-row justify-between mb-4">
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Peso (kg)</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.weight}
-                            onChangeText={t => setFormData({ ...formData, weight: t })}
-                            keyboardType="numeric"
+                    <FormGroup>
+                        <Label>Email</Label>
+                        <Input
+                            value={formData.email}
+                            onChangeText={t => setFormData({ ...formData, email: t })}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
                         />
-                    </View>
-                    <View className="w-[48%]">
-                        <Text className="text-gray-300 mb-2">Dia do Vencimento</Text>
-                        <TextInput
-                            className="bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                            value={formData.due_day}
-                            onChangeText={t => setFormData({ ...formData, due_day: t })}
-                            keyboardType="numeric"
-                            placeholder="1-31"
-                            placeholderTextColor="#6B7280"
-                        />
-                    </View>
-                </View>
+                    </FormGroup>
 
-                <View className="mb-8">
-                    <Text className="text-gray-300 mb-2">Plano</Text>
-                    <View className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                        <Picker
-                            selectedValue={formData.plan_id}
-                            onValueChange={(itemValue) => setFormData({ ...formData, plan_id: itemValue })}
-                            style={{ color: 'white', backgroundColor: '#1F2937' }}
-                            dropdownIconColor="white"
-                        >
-                            <Picker.Item label="Selecione um plano" value="" />
-                            {plans.map(p => <Picker.Item key={p.id} label={`${p.name} - R$ ${p.price}`} value={p.id} color={Platform.OS === 'ios' ? 'black' : 'white'} />)}
-                        </Picker>
-                    </View>
-                </View>
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Telefone</Label>
+                            <Input
+                                value={formData.phone}
+                                onChangeText={t => setFormData({ ...formData, phone: t })}
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Data de nascimento</Label>
+                            <Input
+                                value={formData.birth_date}
+                                onChangeText={t => setFormData({ ...formData, birth_date: formatDate(t) })}
+                                placeholder="DD/MM/YYYY"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="number-pad"
+                                maxLength={10}
+                            />
+                        </View>
+                    </Row>
 
-                <Pressable
-                    onPress={handleSave}
-                    disabled={loading}
-                    className={`bg-yellow-500 p-4 rounded-lg items-center ${loading ? 'opacity-50' : ''}`}
-                >
-                    {loading ? <ActivityIndicator color="black" /> : <Text className="font-bold text-gray-900 text-lg">Salvar</Text>}
-                </Pressable>
-            </ScrollView>
-        </View>
+                    <Row style={{ marginBottom: 16 }}>
+                        <View style={{ width: '48%' }}>
+                            <Label>Peso (kg)</Label>
+                            <Input
+                                value={formData.weight}
+                                onChangeText={t => setFormData({ ...formData, weight: t })}
+                                keyboardType="numeric"
+                            />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                            <Label>Dia do Vencimento</Label>
+                            <Input
+                                value={formData.due_day}
+                                onChangeText={t => setFormData({ ...formData, due_day: t })}
+                                keyboardType="numeric"
+                                placeholder="1-31"
+                                placeholderTextColor={theme.colors.textSecondary}
+                            />
+                        </View>
+                    </Row>
+
+                    <FormGroup>
+                        <Label>Plano</Label>
+                        <PickerContainer>
+                            <Picker
+                                selectedValue={formData.plan_id}
+                                onValueChange={(itemValue) => setFormData({ ...formData, plan_id: itemValue })}
+                                style={{ color: 'white', backgroundColor: theme.colors.inputBackground }}
+                                dropdownIconColor="white"
+                            >
+                                <Picker.Item label="Selecione um plano" value="" color="white" />
+                                {plans.map(p => <Picker.Item key={p.id} label={`${p.name} - R$ ${p.price}`} value={p.id} color="white" />)}
+                            </Picker>
+                        </PickerContainer>
+                    </FormGroup>
+
+                    <Button onPress={handleSave} disabled={loading}>
+                        {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}
+                    </Button>
+                </ScrollView>
+            </Container>
+        </KeyboardAvoidingView>
     );
 }
