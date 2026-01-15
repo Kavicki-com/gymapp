@@ -367,7 +367,7 @@ export default function EditProfileScreen() {
 
             Alert.alert('Sucesso', 'Perfil atualizado!');
         } catch (error: any) {
-            Alert.alert('Erro ao salvar', error.message);
+            Alert.alert('Erro ao Salvar', 'Não foi possível salvar o perfil. Tente novamente.');
         } finally {
             setLoading(false);
         }

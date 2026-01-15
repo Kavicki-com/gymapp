@@ -114,7 +114,7 @@ export default function ManageEquipmentScreen() {
 
             router.back();
         } catch (error: any) {
-            Alert.alert('Erro ao salvar', error.message);
+            Alert.alert('Erro ao Salvar', 'Não foi possível salvar o aparelho. Tente novamente.');
         } finally {
             setLoading(false);
         }

@@ -155,7 +155,7 @@ export default function ResetPasswordScreen() {
             });
 
             if (error) {
-                Alert.alert('Erro', error.message);
+                Alert.alert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
             } else {
                 // Mark password as changed BEFORE any navigation
                 passwordChangedRef.current = true;
@@ -163,7 +163,7 @@ export default function ResetPasswordScreen() {
                 router.replace('/password-changed');
             }
         } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Erro ao atualizar a senha.');
+            Alert.alert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
         } finally {
             setLoading(false);
         }

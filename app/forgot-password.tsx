@@ -43,7 +43,7 @@ export default function ForgotPasswordScreen() {
             });
 
             if (error) {
-                Alert.alert('Erro', error.message);
+                Alert.alert('Erro', 'Não foi possível enviar o email. Verifique o email informado.');
             } else {
                 Alert.alert(
                     'Email Enviado',
@@ -52,7 +52,7 @@ export default function ForgotPasswordScreen() {
                 );
             }
         } catch (error: any) {
-            Alert.alert('Erro', error.message || 'Ocorreu um erro ao enviar o email.');
+            Alert.alert('Erro', 'Ocorreu um erro ao enviar o email. Tente novamente.');
         } finally {
             setLoading(false);
         }

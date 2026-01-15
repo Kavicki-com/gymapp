@@ -93,7 +93,7 @@ export default function ClientsScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.from('clients').delete().eq('id', id);
-                        if (error) Alert.alert('Erro', error.message);
+                        if (error) Alert.alert('Erro', 'Não foi possível excluir o cliente. Tente novamente.');
                         else fetchData();
                     }
                 }

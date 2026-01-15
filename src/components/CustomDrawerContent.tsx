@@ -91,7 +91,7 @@ export default function CustomDrawerContent(props: any) {
                 })
             );
         } catch (error: any) {
-            Alert.alert('Erro', 'Erro ao sair: ' + error.message);
+            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
         }
     };
 

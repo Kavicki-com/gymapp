@@ -86,7 +86,7 @@ export default function EquipmentScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.from('equipment').delete().eq('id', id);
-                        if (error) Alert.alert('Erro', error.message);
+                        if (error) Alert.alert('Erro', 'Não foi possível excluir o aparelho. Tente novamente.');
                         else fetchData();
                     }
                 }

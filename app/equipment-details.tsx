@@ -237,7 +237,7 @@ export default function EquipmentDetailsScreen() {
                             if (error) throw error;
                             router.back();
                         } catch (error: any) {
-                            Alert.alert('Erro', error.message);
+                            Alert.alert('Erro', 'Não foi possível excluir o aparelho. Tente novamente.');
                         }
                     }
                 }
@@ -345,7 +345,7 @@ export default function EquipmentDetailsScreen() {
             fetchEquipmentDetails();
             fetchMaintenanceHistory();
         } catch (error: any) {
-            Alert.alert('Erro', 'Falha ao registrar manutenção: ' + error.message);
+            Alert.alert('Erro', 'Não foi possível registrar a manutenção. Tente novamente.');
         } finally {
             setRegistering(false);
         }

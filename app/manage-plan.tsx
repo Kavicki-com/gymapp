@@ -79,7 +79,7 @@ export default function ManagePlanScreen() {
 
             router.back();
         } catch (error: any) {
-            Alert.alert('Erro ao salvar', error.message);
+            Alert.alert('Erro ao Salvar', 'Não foi possível salvar o plano. Tente novamente.');
         } finally {
             setLoading(false);
         }

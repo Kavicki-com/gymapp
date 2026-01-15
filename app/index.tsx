@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/services/supabase';
 import { theme } from '../src/styles/theme';
+import { translateError } from '../src/utils/errorMessages';
 
 const FooterLink = styled(TouchableOpacity)`
   margin-top: ${theme.spacing.lg}px;
@@ -100,7 +101,7 @@ export default function LoginScreen() {
 
         if (error) {
             setLoading(false);
-            Alert.alert('Erro no Login', error.message);
+            Alert.alert('Erro no Login', translateError(error));
         } else {
             // Check for profile immediately to decide navigation
             const { data: { user } } = await supabase.auth.getUser();

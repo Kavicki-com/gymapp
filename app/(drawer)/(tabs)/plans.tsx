@@ -103,7 +103,7 @@ export default function PlansScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.from('plans').delete().eq('id', id);
-                        if (error) Alert.alert('Erro', error.message);
+                        if (error) Alert.alert('Erro', 'Não foi possível excluir o plano. Tente novamente.');
                         else fetchData();
                     }
                 }
