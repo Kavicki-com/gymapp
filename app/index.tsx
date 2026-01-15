@@ -1,8 +1,9 @@
 import { useIsFocused } from '@react-navigation/native';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
+import { Logo } from '../src/components/Logo';
 import {
     Button,
     ButtonText,
@@ -22,29 +23,30 @@ const FooterLink = styled(TouchableOpacity)`
   margin-top: ${theme.spacing.lg}px;
 `;
 
-const LogoImage = styled.Image`
-  width: 100px;
-  height: 100px;
-  align-self: center;
-  margin-bottom: ${theme.spacing.xl}px;
-  resize-mode: contain;
-`;
+
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signIn, session, loading: authLoading } = useAuth();
+    const { signIn, session, loading: authLoading, isPasswordRecovery } = useAuth();
     const router = useRouter();
     const isFocused = useIsFocused();
 
     const [isChecking, setIsChecking] = useState(false);
 
     React.useEffect(() => {
-        if (session && isFocused) {
+        // If we're in password recovery mode, redirect to reset-password screen
+        if (isPasswordRecovery && isFocused) {
+            router.replace('/reset-password');
+            return;
+        }
+
+        // Skip session check if we're in password recovery mode
+        if (session && isFocused && !isPasswordRecovery) {
             checkSession();
         }
-    }, [session, isFocused]);
+    }, [session, isFocused, isPasswordRecovery]);
 
     const checkSession = async () => {
         if (isChecking || !isFocused) return;
@@ -140,14 +142,19 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, width: '100%', justifyContent: 'center' }}
             >
-                <LogoImage source={require('../assets/images/logoicon.png')} />
+                <Logo
+                    width={100}
+                    height={100}
+                    style={{ alignSelf: 'center', marginBottom: theme.spacing.xl }}
+                />
                 <Card>
+
 
 
                     <FormGroup>
                         <Label>Email</Label>
                         <Input
-                            placeholder="admin@gym.com"
+                            placeholder="your@email.com"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={email}
                             onChangeText={setEmail}
@@ -159,13 +166,19 @@ export default function LoginScreen() {
                     <FormGroup>
                         <Label>Senha</Label>
                         <Input
-                            placeholder="admin123"
+                            placeholder="*******"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
                         />
                     </FormGroup>
+
+                    <View style={{ alignItems: 'flex-end', marginBottom: 24 }}>
+                        <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+                            <LinkText style={{ textAlign: 'right' }}>Esqueceu a senha?</LinkText>
+                        </TouchableOpacity>
+                    </View>
 
                     <Button onPress={handleLogin} disabled={loading}>
                         {loading ? (

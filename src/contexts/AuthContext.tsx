@@ -6,16 +6,20 @@ type AuthContextType = {
     session: Session | null;
     loading: boolean;
     isAdmin: boolean;
+    isPasswordRecovery: boolean;
     signIn: (email: string, pass: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
+    clearPasswordRecovery: () => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
     session: null,
     loading: true,
     isAdmin: false,
+    isPasswordRecovery: false,
     signIn: async () => ({ error: null }),
     signOut: async () => { },
+    clearPasswordRecovery: () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -24,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -31,7 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false);
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('Auth event:', event);
+
+            // Handle PASSWORD_RECOVERY event specifically
+            if (event === 'PASSWORD_RECOVERY') {
+                setIsPasswordRecovery(true);
+            }
+
+            // Clear password recovery flag on sign out
+            if (event === 'SIGNED_OUT') {
+                setIsPasswordRecovery(false);
+            }
+
             setSession(session);
             setLoading(false);
         });
@@ -54,13 +71,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const signOut = async () => {
+        setIsPasswordRecovery(false);
         await supabase.auth.signOut();
         setSession(null); // Limpar sessão explicitamente
     };
 
+    const clearPasswordRecovery = () => {
+        setIsPasswordRecovery(false);
+    };
+
     return (
-        <AuthContext.Provider value={{ session, loading, isAdmin, signIn, signOut }}>
+        <AuthContext.Provider value={{ session, loading, isAdmin, isPasswordRecovery, signIn, signOut, clearPasswordRecovery }}>
             {children}
         </AuthContext.Provider>
     );
 }
+
