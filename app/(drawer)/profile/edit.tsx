@@ -115,9 +115,34 @@ const StyledImage = styled.Image`
   height: 100%;
 `;
 
+const Divider = styled.View`
+  height: 1px;
+  background-color: ${theme.colors.border};
+  margin-vertical: 30px;
+`;
+
+const DeleteButton = styled(TouchableOpacity)`
+  background-color: transparent;
+  border-width: 1px;
+  border-color: ${theme.colors.danger};
+  padding: 14px;
+  border-radius: 8px;
+  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+`;
+
+const DeleteButtonText = styled.Text`
+  color: ${theme.colors.danger};
+  font-weight: bold;
+  font-size: ${theme.fontSize.md}px;
+  margin-left: 8px;
+`;
+
 export default function EditProfileScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [fetching, setFetching] = useState(true);
 
     const [formData, setFormData] = useState({
@@ -373,6 +398,83 @@ export default function EditProfileScreen() {
         }
     };
 
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            'Excluir Conta',
+            'Tem certeza que deseja excluir sua conta? Esta ação irá apagar TODOS os seus dados (clientes, colaboradores, planos, equipamentos) e NÃO poderá ser desfeita.',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Sim, Excluir',
+                    style: 'destructive',
+                    onPress: () => confirmDeleteAccount()
+                }
+            ]
+        );
+    };
+
+    const confirmDeleteAccount = () => {
+        Alert.alert(
+            'Última Confirmação',
+            'Esta ação é IRREVERSÍVEL. Deseja realmente excluir sua conta e todos os dados?',
+            [
+                { text: 'Não, Manter Conta', style: 'cancel' },
+                {
+                    text: 'Excluir Permanentemente',
+                    style: 'destructive',
+                    onPress: () => executeDeleteAccount()
+                }
+            ]
+        );
+    };
+
+    const executeDeleteAccount = async () => {
+        if (!profileId || !userAuthId) {
+            Alert.alert('Erro', 'Não foi possível identificar sua conta.');
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            // Delete all related data in order (respecting foreign keys)
+            // 1. Payments
+            await supabase.from('payments').delete().eq('gym_id', profileId);
+
+            // 2. Equipment images and maintenances
+            await supabase.from('equipment_images').delete().eq('gym_id', profileId);
+            await supabase.from('equipment_maintenances').delete().eq('gym_id', profileId);
+
+            // 3. Client images
+            await supabase.from('client_images').delete().eq('gym_id', profileId);
+
+            // 4. Employee payments
+            await supabase.from('employee_payments').delete().eq('gym_id', profileId);
+
+            // 5. Main entities
+            await supabase.from('clients').delete().eq('gym_id', profileId);
+            await supabase.from('employees').delete().eq('gym_id', profileId);
+            await supabase.from('equipment').delete().eq('gym_id', profileId);
+            await supabase.from('plans').delete().eq('gym_id', profileId);
+
+            // 6. Gym profile
+            await supabase.from('gym_profiles').delete().eq('id', profileId);
+
+            // 7. Sign out and redirect
+            await supabase.auth.signOut();
+
+            Alert.alert(
+                'Conta Excluída',
+                'Sua conta e todos os dados foram excluídos com sucesso.',
+                [{ text: 'OK', onPress: () => router.replace('/') }]
+            );
+        } catch (error: any) {
+            console.error('Delete account error:', error);
+            Alert.alert('Erro', 'Não foi possível excluir a conta. Tente novamente.');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     if (fetching) return (
         <Container>
             <SkeletonLoader variant="profile" />
@@ -474,9 +576,22 @@ export default function EditProfileScreen() {
                     </TimeInputContainer>
                 </TimeRow>
 
-                <Button onPress={handleSave} disabled={loading} style={{ marginTop: 20 }}>
+                <Button onPress={handleSave} disabled={loading || deleting} style={{ marginTop: 20 }}>
                     {loading ? <ActivityIndicator color="black" /> : <ButtonText>Salvar Alterações</ButtonText>}
                 </Button>
+
+                <Divider />
+
+                <DeleteButton onPress={handleDeleteAccount} disabled={deleting}>
+                    {deleting ? (
+                        <ActivityIndicator color={theme.colors.danger} />
+                    ) : (
+                        <>
+                            <FontAwesome name="trash" size={18} color={theme.colors.danger} />
+                            <DeleteButtonText>Excluir Minha Conta</DeleteButtonText>
+                        </>
+                    )}
+                </DeleteButton>
             </ScrollView>
 
             <PickerModal

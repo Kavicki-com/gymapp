@@ -8,6 +8,7 @@ import { Alert, Linking, View } from 'react-native';
 import styled from 'styled-components/native';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 const ProfileHeader = styled.View`
   padding: 40px 20px 30px 20px;
@@ -52,6 +53,8 @@ export default function CustomDrawerContent(props: any) {
         logoUrl: null as string | null,
         sinceYear: '',
     });
+
+    const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -142,6 +145,13 @@ export default function CustomDrawerContent(props: any) {
                     onPress={handleSupport}
                 />
 
+                <DrawerItem
+                    label="Política de Privacidade"
+                    icon={({ color, size }) => <FontAwesome name="shield" size={size} color={color} />}
+                    labelStyle={{ color: theme.colors.text }}
+                    onPress={() => setShowPrivacyPolicy(true)}
+                />
+
                 <View style={{ marginTop: 20, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
                     <DrawerItem
                         label="Sair"
@@ -151,6 +161,11 @@ export default function CustomDrawerContent(props: any) {
                     />
                 </View>
             </DrawerContentScrollView>
+
+            <PrivacyPolicyModal
+                visible={showPrivacyPolicy}
+                onClose={() => setShowPrivacyPolicy(false)}
+            />
         </View>
     );
 }

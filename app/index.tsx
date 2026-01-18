@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { Logo } from '../src/components/Logo';
+import { PrivacyPolicyModal } from '../src/components/PrivacyPolicyModal';
 import {
     Button,
     ButtonText,
@@ -35,6 +36,7 @@ export default function LoginScreen() {
     const isFocused = useIsFocused();
 
     const [isChecking, setIsChecking] = useState(false);
+    const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
     React.useEffect(() => {
         // If we're in password recovery mode, redirect to reset-password screen
@@ -194,8 +196,17 @@ export default function LoginScreen() {
                             Não tem uma conta? <HighlightText>Cadastre-se</HighlightText>
                         </LinkText>
                     </FooterLink>
+
+                    <FooterLink onPress={() => setShowPrivacyPolicy(true)}>
+                        <LinkText style={{ fontSize: 12 }}>Política de Privacidade</LinkText>
+                    </FooterLink>
                 </Card>
             </KeyboardAvoidingView>
+
+            <PrivacyPolicyModal
+                visible={showPrivacyPolicy}
+                onClose={() => setShowPrivacyPolicy(false)}
+            />
         </CenteredContainer>
     );
 }
