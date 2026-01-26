@@ -6,6 +6,7 @@ import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import styled from 'styled-components/native';
 import {
     Button,
     ButtonText,
@@ -15,6 +16,13 @@ import {
     Label,
     Title
 } from '../src/components/styled';
+
+const DisclaimerText = styled.Text`
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSize.sm}px;
+  margin-top: ${theme.spacing.xs}px;
+  font-style: italic;
+`;
 
 export default function ManagePlanScreen() {
     const { id } = useLocalSearchParams();
@@ -79,7 +87,7 @@ export default function ManagePlanScreen() {
 
             router.back();
         } catch (error: any) {
-            Alert.alert('Erro ao Salvar', 'Não foi possível salvar o plano. Tente novamente.');
+            Alert.alert('Erro ao Salvar', 'Não foi possível salvar a modalidade. Tente novamente.');
         } finally {
             setLoading(false);
         }
@@ -101,10 +109,10 @@ export default function ManagePlanScreen() {
                     <View style={{ alignItems: 'center', marginBottom: 24 }}>
                         <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
                     </View>
-                    <Title>{isEditing ? 'Editar Plano' : 'Novo Plano'}</Title>
+                    <Title>{isEditing ? 'Editar Modalidade' : 'Nova Modalidade'}</Title>
 
                     <FormGroup>
-                        <Label>Nome do Plano</Label>
+                        <Label>Nome da Modalidade</Label>
                         <Input
                             value={formData.name}
                             onChangeText={t => setFormData({ ...formData, name: t })}
@@ -118,6 +126,9 @@ export default function ManagePlanScreen() {
                             onChangeText={t => setFormData({ ...formData, price: formatCurrencyInput(t) })}
                             keyboardType="numeric"
                         />
+                        <DisclaimerText>
+                            Estes valores são apenas para controle administrativo interno da sua unidade e não geram cobranças pelo aplicativo.
+                        </DisclaimerText>
                     </FormGroup>
 
                     <FormGroup>

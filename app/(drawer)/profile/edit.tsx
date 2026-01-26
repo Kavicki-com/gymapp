@@ -401,7 +401,7 @@ export default function EditProfileScreen() {
     const handleDeleteAccount = () => {
         Alert.alert(
             'Excluir Conta',
-            'Tem certeza que deseja excluir sua conta? Esta ação irá apagar TODOS os seus dados (clientes, colaboradores, planos, equipamentos) e NÃO poderá ser desfeita.',
+            'Tem certeza que deseja excluir sua conta? Esta ação irá apagar TODOS os seus dados (clientes, colaboradores, modalidades, equipamentos, pagamentos) e NÃO poderá ser desfeita.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -526,7 +526,7 @@ export default function EditProfileScreen() {
                     style={{ marginBottom: 12 }}
                 />
 
-                <SubTitle>Dados do Negócio</SubTitle>
+                <SubTitle>Dados da Academia</SubTitle>
                 <Input
                     placeholder="Nome da Academia"
                     value={formData.gym_name} onChangeText={t => updateForm('gym_name', t)}

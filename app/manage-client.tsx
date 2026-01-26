@@ -244,7 +244,7 @@ export default function ManageClientScreen() {
                     </Row>
 
                     <FormGroup>
-                        <Label>Plano</Label>
+                        <Label>Modalidade</Label>
                         <PickerContainer>
                             <Picker
                                 selectedValue={formData.plan_id}
@@ -252,7 +252,7 @@ export default function ManageClientScreen() {
                                 style={{ color: 'white', backgroundColor: theme.colors.inputBackground }}
                                 dropdownIconColor="white"
                             >
-                                <Picker.Item label="Selecione um plano" value="" color="white" />
+                                <Picker.Item label="Selecione uma modalidade" value="" color="white" />
                                 {plans.map(p => <Picker.Item key={p.id} label={`${p.name} - R$ ${p.price}`} value={p.id} color="white" />)}
                             </Picker>
                         </PickerContainer>

@@ -486,12 +486,12 @@ export default function DashboardScreen() {
             <StatCard title="Clientes Ativos" value={stats.clients} icon="users" />
             <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" />
             <StatCard title="Colaboradores" value={stats.employees} icon="id-card" />
-            <StatCard title="Planos" value={stats.plans} icon="money" />
+            <StatCard title="Modalidades" value={stats.plans} icon="money" />
           </StatsGrid>
 
           {/* Donut Chart - Clients by Plan */}
           {clientsByPlan.length > 0 && (
-            <DashboardSection title="Clientes por Plano" icon="pie-chart">
+            <DashboardSection title="Clientes por Modalidade" icon="pie-chart">
               <DonutChart data={clientsByPlan} />
             </DashboardSection>
           )}

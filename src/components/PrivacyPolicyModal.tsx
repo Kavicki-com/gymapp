@@ -135,8 +135,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
                         <BulletPoint>• Documentos: CPF e RG</BulletPoint>
                         <BulletPoint>• Informações financeiras: Salário</BulletPoint>
 
-                        <SubSection>1.4. Dados Financeiros e Planos</SubSection>
-                        <BulletPoint>• Informações sobre planos (preços e serviços)</BulletPoint>
+                        <SubSection>1.4. Dados Financeiros e Modalides</SubSection>
+                        <BulletPoint>• Informações sobre Modalidades (preços e serviços)</BulletPoint>
                         <BulletPoint>• Registro de custos de manutenção</BulletPoint>
 
                         <SectionTitle>2. Permissões do Dispositivo</SectionTitle>
@@ -147,7 +147,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
                         <BulletPoint>• Armazenamento Local: Para preferências e sessão ativa.</BulletPoint>
 
                         <SectionTitle>3. Como Usamos Suas Informações</SectionTitle>
-                        <BulletPoint>• Gerenciamento do Negócio: Cadastro e controle de alunos, funcionários e planos.</BulletPoint>
+                        <BulletPoint>• Gerenciamento do Negócio: Cadastro e controle de alunos, funcionários e Modalidades.</BulletPoint>
                         <BulletPoint>• Identificação: Vincular dados ao usuário autenticado.</BulletPoint>
                         <BulletPoint>• Personalização: Exibir informações específicas da sua academia.</BulletPoint>
 

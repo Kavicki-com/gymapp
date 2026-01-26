@@ -100,7 +100,7 @@ const HeaderTitle = styled(Title)`
   padding-right: 40px;
 `;
 
-const steps = ['Contato', 'Dados Pessoais', 'Dados do Negócio'];
+const steps = ['Contato', 'Dados Pessoais', 'Dados da Academia'];
 
 const ProgressBar = ({ currentStep }: { currentStep: number }) => (
     <View>
@@ -631,6 +631,13 @@ export default function RegisterScreen() {
                     </TimeRow>
                 </FormArea>
             </ScrollView>
+
+            <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+                <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', fontSize: 12 }}>
+                    O cadastro e o uso de todas as funcionalidades atuais do aplicativo são gratuitos.
+                </Text>
+            </View>
+
             <ButtonContainer>
                 <Button variant="success" onPress={handleRegister} disabled={loading}>
                     {loading ? <ActivityIndicator color="white" /> : <ButtonText variant="success">Finalizar</ButtonText>}
@@ -660,7 +667,7 @@ export default function RegisterScreen() {
                     </ModalContent>
                 </ModalOverlay>
             </PickerModal>
-        </StepContent>
+        </StepContent >
     );
 
     return (

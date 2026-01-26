@@ -33,12 +33,6 @@ const PriceText = styled.Text`
   margin-vertical: ${theme.spacing.sm}px;
 `;
 
-const PerMonth = styled.Text`
-  font-size: ${theme.fontSize.sm}px;
-  color: ${theme.colors.textSecondary};
-  font-weight: normal;
-`;
-
 const ServicesText = styled.Text`
   color: ${theme.colors.textSecondary};
   font-size: ${theme.fontSize.sm}px;
@@ -73,7 +67,7 @@ export default function PlansScreen() {
                 ]);
             } else {
                 console.error(error);
-                Alert.alert('Erro', 'Não foi possível carregar os planos.');
+                Alert.alert('Erro', 'Não foi possível carregar as modalidades.');
             }
         } finally {
             setRefreshing(false);
@@ -95,7 +89,7 @@ export default function PlansScreen() {
     const handleDelete = (id: string, name: string) => {
         Alert.alert(
             'Confirmar Exclusão',
-            `Deseja realmente excluir o plano ${name}?`,
+            `Deseja realmente excluir a modalidade ${name}?`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -103,7 +97,7 @@ export default function PlansScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.from('plans').delete().eq('id', id);
-                        if (error) Alert.alert('Erro', 'Não foi possível excluir o plano. Tente novamente.');
+                        if (error) Alert.alert('Erro', 'Não foi possível excluir a modalidade. Tente novamente.');
                         else fetchData();
                     }
                 }
@@ -122,7 +116,7 @@ export default function PlansScreen() {
                 <View style={{ flex: 1 }}>
                     <PlanName>{item.name}</PlanName>
                     <PriceText>
-                        {formatCurrency(item.price || 0)}<PerMonth>/mês</PerMonth>
+                        {formatCurrency(item.price || 0)}
                     </PriceText>
                     <ServicesText>{item.services}</ServicesText>
                 </View>
@@ -142,16 +136,16 @@ export default function PlansScreen() {
     return (
         <PageContainer>
             <PageHeader>
-                <PageTitle>Planos</PageTitle>
+                <PageTitle>Modalidades</PageTitle>
                 <AddButton onPress={() => router.push('/manage-plan')}>
-                    <AddButtonText>+ Criar Plano</AddButtonText>
+                    <AddButtonText>+ Criar Modalidade</AddButtonText>
                 </AddButton>
             </PageHeader>
 
             <SearchBar
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Buscar planos..."
+                placeholder="Buscar modalidades..."
             />
 
             {loading ? (
@@ -169,7 +163,7 @@ export default function PlansScreen() {
                     contentContainerStyle={{ paddingBottom: 20 }}
                     ListEmptyComponent={
                         <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
-                            {searchQuery ? 'Nenhum plano encontrado.' : 'Nenhum plano cadastrado.'}
+                            {searchQuery ? 'Nenhuma modalidade encontrada.' : 'Nenhuma modalidade cadastrada.'}
                         </ListItemSubtitle>
                     }
                     initialNumToRender={10}

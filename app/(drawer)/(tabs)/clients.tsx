@@ -162,7 +162,7 @@ export default function ClientsScreen() {
             <SearchBar
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Buscar clientes por nome, email ou plano..."
+                placeholder="Buscar clientes por nome, email ou modalidade..."
             />
 
             {loading ? (

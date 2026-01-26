@@ -401,8 +401,8 @@ export default function ClientDetailsScreen() {
                 </Section>
 
                 <Section>
-                    <DetailLabel>Plano Atual</DetailLabel>
-                    <DetailValue>{planName || 'Sem plano'}</DetailValue>
+                    <DetailLabel>Modalidade Atual</DetailLabel>
+                    <DetailValue>{planName || 'Sem Modalidade'}</DetailValue>
 
                     <DetailLabel>Dia de Vencimento</DetailLabel>
                     <DetailValue>{client.due_day ? `Dia ${client.due_day}` : 'Não definido'}</DetailValue>
