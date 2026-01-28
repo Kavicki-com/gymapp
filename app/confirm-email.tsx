@@ -136,8 +136,8 @@ export default function ConfirmEmailScreen() {
                 return;
             }
 
-            // Usuário está logado, redirecionar para dashboard
-            router.replace('/(drawer)/(tabs)');
+            // Usuário está logado, redirecionar para onboarding (configuração da academia)
+            router.replace('/onboarding');
         } catch (err) {
             console.error('Auto-login error:', err);
             router.replace('/');
@@ -193,7 +193,7 @@ export default function ConfirmEmailScreen() {
                 <Title>Cadastro Realizado!</Title>
 
                 <Message style={{ marginTop: 24 }}>
-                    Você será redirecionado para o painel em:
+                    Você será redirecionado para a configuração da academia em:
                 </Message>
 
                 <CountdownText>{countdown}s</CountdownText>

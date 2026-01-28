@@ -76,13 +76,9 @@ export default function LoginScreen() {
                 // router.replace works, but ensure we are not already navigating
                 router.replace('/(drawer)/(tabs)');
             } else {
-                // Valid user but no profile (incomplete from previous attempt)
-                // Only redirect if we definitely have a valid user
-                Alert.alert(
-                    'Perfil Incompleto',
-                    'Sua conta não possui um perfil de academia associado. Se os dados foram perdidos, vá em "Cadastre-se" e preencha o formulário novamente com seu email e senha atuais para recriar o perfil.',
-                    [{ text: 'OK', onPress: () => supabase.auth.signOut() }]
-                );
+                // Valid user but no profile (incomplete from previous attempt or new flow)
+                // Redirect to Onboarding
+                router.replace('/onboarding');
             }
         } catch (error) {
             console.error('Session check error:', error);
@@ -118,11 +114,8 @@ export default function LoginScreen() {
                 if (profile) {
                     router.replace('/(drawer)/(tabs)');
                 } else {
-                    Alert.alert(
-                        'Perfil Incompleto',
-                        'Sua conta não possui um perfil de academia associado. Se os dados foram perdidos, vá em "Cadastre-se" e preencha o formulário novamente com seu email e senha atuais para recriar o perfil.',
-                        [{ text: 'OK', onPress: () => supabase.auth.signOut() }]
-                    );
+                    // Redirect to Onboarding
+                    router.replace('/onboarding');
                 }
             } else {
                 setLoading(false);
