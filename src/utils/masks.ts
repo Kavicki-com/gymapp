@@ -56,3 +56,18 @@ export const formatPhone = (value: string) => {
         .replace(/^(\d{2})(\d)/g, '($1)$2')
         .replace(/(\d)(\d{4})$/, '$1-$2');
 };
+
+export const formatDate = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    return cleaned
+        .replace(/^(\d{2})(\d)/, '$1/$2')
+        .replace(/^(\d{2})\/(\d{2})(\d)/, '$1/$2/$3')
+        .replace(/(\d{2})\/(\d{2})\/(\d{4})\d+?$/, '$1/$2/$3');
+};
+
+export const formatCEP = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    return cleaned
+        .replace(/^(\d{5})(\d)/, '$1-$2')
+        .replace(/(-\d{3})\d+?$/, '$1');
+};
