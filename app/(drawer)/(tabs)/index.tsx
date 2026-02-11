@@ -11,7 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, RefreshControl, View } from 'react-native';
+import { Alert, FlatList, Modal, RefreshControl, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 const ScrollContainer = styled.ScrollView`
@@ -106,6 +106,47 @@ const MarginValue = styled.Text<{ positive: boolean }>`
   margin-top: ${theme.spacing.sm}px;
 `;
 
+const BottomSheetOverlay = styled.View`
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: flex-end;
+`;
+
+const BottomSheetContent = styled.View`
+  background-color: ${theme.colors.background};
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 20px;
+  max-height: 80%;
+`;
+
+const BottomSheetTitle = styled.Text`
+  font-size: ${theme.fontSize.lg}px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+  margin-bottom: 16px;
+  text-align: center;
+`;
+
+const BottomSheetSubtitle = styled.Text`
+  font-size: ${theme.fontSize.sm}px;
+  color: ${theme.colors.danger};
+  text-align: center;
+  margin-bottom: 12px;
+`;
+
+const ViewAllButton = styled(TouchableOpacity)`
+  padding: 12px;
+  align-items: center;
+  margin-top: 8px;
+`;
+
+const ViewAllText = styled.Text`
+  color: ${theme.colors.primary};
+  font-weight: bold;
+  font-size: ${theme.fontSize.md}px;
+`;
+
 interface DashboardStats {
   clients: number;
   equipment: number;
@@ -175,6 +216,7 @@ export default function DashboardScreen() {
   const [upcomingMaintenances, setUpcomingMaintenances] = useState<UpcomingMaintenance[]>([]);
   const [upcomingSalaries, setUpcomingSalaries] = useState<UpcomingSalary[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
 
   // Financial health
   const [totalSalaries, setTotalSalaries] = useState(0);
@@ -258,6 +300,9 @@ export default function DashboardScreen() {
       const overdueList: OverdueClient[] = [];
 
       clients.forEach(client => {
+        // Skip locked clients from overdue list
+        if (client.subscription_locked) return;
+
         const plan = plans.find(p => p.id === client.plan_id);
         const dueDay = client.due_day || 1;
 
@@ -442,8 +487,8 @@ export default function DashboardScreen() {
     return { status: 'info' as const, text: `Em ${daysUntil}d` };
   };
 
-  const StatCard = ({ title, value, icon }: { title: string; value: number; icon: string }) => (
-    <CardContainer>
+  const StatCard = ({ title, value, icon, onPress }: { title: string; value: number; icon: string; onPress?: () => void }) => (
+    <CardContainer as={onPress ? TouchableOpacity : View} onPress={onPress} activeOpacity={0.7}>
       <IconContainer>
         <FontAwesome name={icon as any} size={24} color={theme.colors.primary} />
       </IconContainer>
@@ -463,189 +508,231 @@ export default function DashboardScreen() {
     .reduce((sum, c) => sum + c.planPrice, 0);
 
   return (
-    <ScrollContainer
-      refreshControl={<RefreshControl refreshing={loading || refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-    >
-      <HeaderTitle>Bem vindo, {gymName || 'Academia'}!</HeaderTitle>
-      <HeaderSubtitle>Resumo geral da sua academia.</HeaderSubtitle>
+    <>
+      <ScrollContainer
+        refreshControl={<RefreshControl refreshing={loading || refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+      >
+        <HeaderTitle>Bem vindo, {gymName || 'Academia'}!</HeaderTitle>
+        <HeaderSubtitle>Resumo geral da sua academia.</HeaderSubtitle>
 
-      {loading ? (
-        <>
-          <StatsGrid>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <SkeletonLoader key={i} variant="card" />
-            ))}
-          </StatsGrid>
-          <SkeletonLoader variant="card" />
-          <SkeletonLoader variant="card" />
-        </>
-      ) : (
-        <>
-          {/* Basic Stats */}
-          <StatsGrid>
-            <StatCard title="Clientes Ativos" value={stats.clients} icon="users" />
-            <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" />
-            <StatCard title="Colaboradores" value={stats.employees} icon="id-card" />
-            <StatCard title="Modalidades" value={stats.plans} icon="money" />
-          </StatsGrid>
+        {loading ? (
+          <>
+            <StatsGrid>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonLoader key={i} variant="card" />
+              ))}
+            </StatsGrid>
+            <SkeletonLoader variant="card" />
+            <SkeletonLoader variant="card" />
+          </>
+        ) : (
+          <>
+            {/* Basic Stats */}
+            <StatsGrid>
+              <StatCard title="Clientes Ativos" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
+              <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" onPress={() => router.push('/(drawer)/(tabs)/equipment')} />
+              <StatCard title="Colaboradores" value={stats.employees} icon="id-card" onPress={() => router.push('/(drawer)/(tabs)/employees')} />
+              <StatCard title="Modalidades" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
+            </StatsGrid>
 
-          {/* Donut Chart - Clients by Plan */}
-          {clientsByPlan.length > 0 && (
-            <DashboardSection title="Clientes por Modalidade" icon="pie-chart">
-              <DonutChart data={clientsByPlan} />
+            {/* Donut Chart - Clients by Plan */}
+            {clientsByPlan.length > 0 && (
+              <DashboardSection title="Clientes por Modalidade" icon="pie-chart">
+                <DonutChart data={clientsByPlan} />
+              </DashboardSection>
+            )}
+
+            {/* Monthly Revenue */}
+            <DashboardSection title="Receita do Mês" icon="bar-chart">
+              <Row style={{ justifyContent: 'space-between' }}>
+                <StatLabel>Recebido</StatLabel>
+                <StatValue>{formatCurrency(monthlyRevenue.received)}</StatValue>
+              </Row>
+              <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
+                <StatLabel>Esperado</StatLabel>
+                <StatLabel>{formatCurrency(monthlyRevenue.expected)}</StatLabel>
+              </Row>
+              <ProgressContainer>
+                <ProgressBar
+                  width={revenuePercentage}
+                  color={revenuePercentage >= 70 ? theme.colors.success : theme.colors.primary}
+                />
+              </ProgressContainer>
+              <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>{revenuePercentage}% da meta</StatLabel>
             </DashboardSection>
-          )}
 
-          {/* Monthly Revenue */}
-          <DashboardSection title="Receita do Mês" icon="bar-chart">
-            <Row style={{ justifyContent: 'space-between' }}>
-              <StatLabel>Recebido</StatLabel>
-              <StatValue>{formatCurrency(monthlyRevenue.received)}</StatValue>
-            </Row>
-            <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
-              <StatLabel>Esperado</StatLabel>
-              <StatLabel>{formatCurrency(monthlyRevenue.expected)}</StatLabel>
-            </Row>
-            <ProgressContainer>
-              <ProgressBar
-                width={revenuePercentage}
-                color={revenuePercentage >= 70 ? theme.colors.success : theme.colors.primary}
-              />
-            </ProgressContainer>
-            <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>{revenuePercentage}% da meta</StatLabel>
-          </DashboardSection>
-
-          {/* Financial Health */}
-          <DashboardSection title="Saúde Financeira" icon="heartbeat">
-            <HealthRow>
-              <HealthLabel>Receita Esperada</HealthLabel>
-              <HealthValue>{formatCurrency(monthlyRevenue.expected)}</HealthValue>
-            </HealthRow>
-            <HealthRow>
-              <HealthLabel>Total de Salários</HealthLabel>
-              <HealthValue color={theme.colors.danger}>- {formatCurrency(totalSalaries)}</HealthValue>
-            </HealthRow>
-            <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }}>
-              <HealthLabel style={{ textAlign: 'center' }}>Margem</HealthLabel>
-              <MarginValue positive={margin >= 0}>
-                {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
-              </MarginValue>
-            </View>
-          </DashboardSection>
-
-          {/* Overdue Payments */}
-          <DashboardSection
-            title="Vencimentos"
-            icon="exclamation-triangle"
-            count={overdueCount}
-            actionLabel="Cobrar"
-            actionIcon="whatsapp"
-            onAction={handleBulkWhatsApp}
-            isEmpty={overdueClients.length === 0}
-            emptyText="Todos os pagamentos em dia! 🎉"
-          >
-            {overdueCount > 0 && (
-              <View style={{ marginBottom: 8 }}>
-                <StatLabel style={{ color: theme.colors.danger }}>
-                  R$ {formatCurrency(totalOverdueValue)} em atraso
-                </StatLabel>
+            {/* Financial Health */}
+            <DashboardSection title="Saúde Financeira" icon="heartbeat">
+              <HealthRow>
+                <HealthLabel>Receita Esperada</HealthLabel>
+                <HealthValue>{formatCurrency(monthlyRevenue.expected)}</HealthValue>
+              </HealthRow>
+              <HealthRow>
+                <HealthLabel>Total de Salários</HealthLabel>
+                <HealthValue color={theme.colors.danger}>- {formatCurrency(totalSalaries)}</HealthValue>
+              </HealthRow>
+              <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }}>
+                <HealthLabel style={{ textAlign: 'center' }}>Margem</HealthLabel>
+                <MarginValue positive={margin >= 0}>
+                  {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
+                </MarginValue>
               </View>
-            )}
-            {overdueClients.slice(0, 5).map(client => {
-              const { status, text } = getOverdueStatus(client.daysOverdue);
-              return (
-                <AlertItem
-                  key={client.id}
-                  title={client.name}
-                  subtitle={client.planName}
-                  statusText={text}
-                  status={status}
-                  onPress={() => router.push({ pathname: '/client-details', params: { id: client.id } })}
-                />
-              );
-            })}
-            {overdueClients.length > 5 && (
-              <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>
-                + {overdueClients.length - 5} clientes...
-              </StatLabel>
-            )}
-          </DashboardSection>
+            </DashboardSection>
 
-          {/* Equipment Maintenance */}
-          <DashboardSection
-            title="Manutenções"
-            icon="wrench"
-            count={upcomingMaintenances.length}
-            isEmpty={upcomingMaintenances.length === 0}
-            emptyText="Nenhuma manutenção pendente"
-          >
-            {upcomingMaintenances.map(eq => {
-              const { status, text } = getMaintenanceStatus(eq.daysUntil);
-              return (
-                <AlertItem
-                  key={eq.id}
-                  title={eq.name}
-                  statusText={text}
-                  status={status}
-                  onPress={() => router.push({ pathname: '/equipment-details', params: { id: eq.id } })}
-                />
-              );
-            })}
-          </DashboardSection>
-
-          {/* Employee Salaries */}
-          <DashboardSection
-            title="Salários a Pagar"
-            icon="credit-card"
-            count={upcomingSalaries.length}
-            isEmpty={upcomingSalaries.length === 0}
-            emptyText="Nenhum pagamento próximo"
-          >
-            {upcomingSalaries.length > 0 && (
-              <View style={{ marginBottom: 8 }}>
-                <StatLabel>
-                  Total: {formatCurrency(upcomingSalaries.reduce((sum, s) => sum + s.salary, 0))}
-                </StatLabel>
-              </View>
-            )}
-            {upcomingSalaries.map(emp => (
-              <AlertItem
-                key={emp.id}
-                title={emp.name}
-                subtitle={`Dia ${emp.paymentDay}`}
-                value={formatCurrency(emp.salary)}
-                statusText={emp.daysUntil === 0 ? 'Hoje' : `Em ${emp.daysUntil}d`}
-                status={emp.daysUntil <= 3 ? 'warning' : 'info'}
-                onPress={() => router.push({ pathname: '/employee-details', params: { id: emp.id } })}
-              />
-            ))}
-          </DashboardSection>
-
-          {/* Birthdays */}
-          {birthdays.length > 0 && (
+            {/* Overdue Payments */}
             <DashboardSection
-              title="Aniversariantes"
-              icon="birthday-cake"
-              count={birthdays.length}
+              title="Vencimentos"
+              icon="exclamation-triangle"
+              count={overdueCount}
+              actionLabel="Cobrar"
+              actionIcon="whatsapp"
+              onAction={handleBulkWhatsApp}
+              isEmpty={overdueClients.length === 0}
+              emptyText="Todos os pagamentos em dia! 🎉"
             >
-              {birthdays.map(bday => (
+              {overdueCount > 0 && (
+                <View style={{ marginBottom: 8 }}>
+                  <StatLabel style={{ color: theme.colors.danger }}>
+                    R$ {formatCurrency(totalOverdueValue)} em atraso
+                  </StatLabel>
+                </View>
+              )}
+              {overdueClients.slice(0, 5).map(client => {
+                const { status, text } = getOverdueStatus(client.daysOverdue);
+                return (
+                  <AlertItem
+                    key={client.id}
+                    title={client.name}
+                    subtitle={client.planName}
+                    statusText={text}
+                    status={status}
+                    onPress={() => router.push({ pathname: '/client-details', params: { id: client.id } })}
+                  />
+                );
+              })}
+              {overdueClients.length > 5 && (
+                <ViewAllButton onPress={() => setShowOverdueModal(true)}>
+                  <ViewAllText>Ver todos ({overdueClients.length})</ViewAllText>
+                </ViewAllButton>
+              )}
+            </DashboardSection>
+
+            {/* Equipment Maintenance */}
+            <DashboardSection
+              title="Manutenções"
+              icon="wrench"
+              count={upcomingMaintenances.length}
+              isEmpty={upcomingMaintenances.length === 0}
+              emptyText="Nenhuma manutenção pendente"
+            >
+              {upcomingMaintenances.map(eq => {
+                const { status, text } = getMaintenanceStatus(eq.daysUntil);
+                return (
+                  <AlertItem
+                    key={eq.id}
+                    title={eq.name}
+                    statusText={text}
+                    status={status}
+                    onPress={() => router.push({ pathname: '/equipment-details', params: { id: eq.id } })}
+                  />
+                );
+              })}
+            </DashboardSection>
+
+            {/* Employee Salaries */}
+            <DashboardSection
+              title="Salários a Pagar"
+              icon="credit-card"
+              count={upcomingSalaries.length}
+              isEmpty={upcomingSalaries.length === 0}
+              emptyText="Nenhum pagamento próximo"
+            >
+              {upcomingSalaries.length > 0 && (
+                <View style={{ marginBottom: 8 }}>
+                  <StatLabel>
+                    Total: {formatCurrency(upcomingSalaries.reduce((sum, s) => sum + s.salary, 0))}
+                  </StatLabel>
+                </View>
+              )}
+              {upcomingSalaries.map(emp => (
                 <AlertItem
-                  key={`${bday.type}-${bday.id}`}
-                  title={bday.name}
-                  subtitle={bday.type === 'client' ? 'Cliente' : 'Colaborador'}
-                  statusText={bday.daysUntil === 0 ? 'Hoje! 🎉' : `Em ${bday.daysUntil}d`}
-                  status={bday.daysUntil === 0 ? 'success' : 'info'}
-                  icon="birthday-cake"
-                  onPress={() => router.push({
-                    pathname: bday.type === 'client' ? '/client-details' : '/employee-details',
-                    params: { id: bday.id }
-                  })}
+                  key={emp.id}
+                  title={emp.name}
+                  subtitle={`Dia ${emp.paymentDay}`}
+                  value={formatCurrency(emp.salary)}
+                  statusText={emp.daysUntil === 0 ? 'Hoje' : `Em ${emp.daysUntil}d`}
+                  status={emp.daysUntil <= 3 ? 'warning' : 'info'}
+                  onPress={() => router.push({ pathname: '/employee-details', params: { id: emp.id } })}
                 />
               ))}
             </DashboardSection>
-          )}
-        </>
-      )}
-    </ScrollContainer>
+
+            {/* Birthdays */}
+            {birthdays.length > 0 && (
+              <DashboardSection
+                title="Aniversariantes"
+                icon="birthday-cake"
+                count={birthdays.length}
+              >
+                {birthdays.map(bday => (
+                  <AlertItem
+                    key={`${bday.type}-${bday.id}`}
+                    title={bday.name}
+                    subtitle={bday.type === 'client' ? 'Cliente' : 'Colaborador'}
+                    statusText={bday.daysUntil === 0 ? 'Hoje! 🎉' : `Em ${bday.daysUntil}d`}
+                    status={bday.daysUntil === 0 ? 'success' : 'info'}
+                    icon="birthday-cake"
+                    onPress={() => router.push({
+                      pathname: bday.type === 'client' ? '/client-details' : '/employee-details',
+                      params: { id: bday.id }
+                    })}
+                  />
+                ))}
+              </DashboardSection>
+            )}
+          </>
+        )}
+      </ScrollContainer>
+
+      {/* Overdue Bottom Sheet */}
+      <Modal
+        transparent={true}
+        visible={showOverdueModal}
+        animationType="slide"
+        onRequestClose={() => setShowOverdueModal(false)}
+      >
+        <BottomSheetOverlay>
+          <BottomSheetContent>
+            <BottomSheetTitle>Todos os Vencimentos</BottomSheetTitle>
+            <BottomSheetSubtitle>
+              {overdueCount} clientes em atraso — {formatCurrency(totalOverdueValue)} pendente
+            </BottomSheetSubtitle>
+            <FlatList
+              data={overdueClients}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const { status, text } = getOverdueStatus(item.daysOverdue);
+                return (
+                  <AlertItem
+                    title={item.name}
+                    subtitle={`${item.planName} — ${formatCurrency(item.planPrice)}`}
+                    statusText={text}
+                    status={status}
+                    onPress={() => {
+                      setShowOverdueModal(false);
+                      router.push({ pathname: '/client-details', params: { id: item.id } });
+                    }}
+                  />
+                );
+              }}
+              showsVerticalScrollIndicator={false}
+            />
+            <ViewAllButton onPress={() => setShowOverdueModal(false)}>
+              <ViewAllText>Fechar</ViewAllText>
+            </ViewAllButton>
+          </BottomSheetContent>
+        </BottomSheetOverlay>
+      </Modal>
+    </>
   );
 }
