@@ -16,8 +16,10 @@ import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Modal, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ContentContainer = styled.ScrollView`
   flex: 1;
@@ -55,6 +57,11 @@ const ImageThumbnail = styled.Image`
   margin-right: ${theme.spacing.sm}px;
 `;
 
+const ImageThumbnailButton = styled(TouchableOpacity)`
+  position: relative;
+  margin-right: ${theme.spacing.sm}px;
+`;
+
 const AddImageButton = styled(TouchableOpacity)`
   width: 80px;
   height: 80px;
@@ -64,6 +71,38 @@ const AddImageButton = styled(TouchableOpacity)`
   justify-content: center;
   align-items: center;
   margin-right: 8px;
+`;
+
+const FullScreenOverlay = styled.View`
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.92);
+  justify-content: center;
+  align-items: center;
+`;
+
+const FullScreenCloseButton = styled(TouchableOpacity)`
+  position: absolute;
+  top: 50px;
+  right: 20px;
+  z-index: 10;
+  padding: 10px;
+`;
+
+const FullScreenDeleteButton = styled(TouchableOpacity)`
+  position: absolute;
+  bottom: 60px;
+  background-color: ${theme.colors.danger};
+  flex-direction: row;
+  align-items: center;
+  padding: 14px 28px;
+  border-radius: ${theme.borderRadius.md}px;
+`;
+
+const FullScreenDeleteText = styled.Text`
+  color: #fff;
+  font-weight: bold;
+  margin-left: 8px;
+  font-size: ${theme.fontSize.md}px;
 `;
 
 // Modal Styled Components
@@ -151,6 +190,8 @@ export default function EquipmentDetailsScreen() {
     // Image Gallery State
     const [images, setImages] = useState<any[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<any>(null);
+    const [showImageViewer, setShowImageViewer] = useState(false);
 
     // Maintenance Modal State
     const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
@@ -294,6 +335,48 @@ export default function EquipmentDetailsScreen() {
         }
     };
 
+    const handleDeleteImage = (img: any) => {
+        Alert.alert(
+            'Excluir Imagem',
+            'Deseja realmente excluir esta imagem?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Extract file name from URL
+                            const urlParts = img.image_url.split('/');
+                            const fileName = urlParts[urlParts.length - 1];
+
+                            // Delete from storage
+                            await supabase.storage
+                                .from('equipment-images')
+                                .remove([fileName]);
+
+                            // Delete from database
+                            const { error } = await supabase
+                                .from('equipment_images')
+                                .delete()
+                                .eq('id', img.id);
+
+                            if (error) throw error;
+
+                            setShowImageViewer(false);
+                            setSelectedImage(null);
+                            Alert.alert('Sucesso', 'Imagem excluída!');
+                            fetchEquipmentImages();
+                        } catch (error: any) {
+                            console.error(error);
+                            Alert.alert('Erro', 'Não foi possível excluir a imagem.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const formatDate = (text: string) => {
         const cleaned = text.replace(/\D/g, '');
         let formatted = cleaned;
@@ -418,7 +501,9 @@ export default function EquipmentDetailsScreen() {
                         )}
                     </AddImageButton>
                     {images.map((img) => (
-                        <ImageThumbnail key={img.id} source={{ uri: img.image_url }} />
+                        <ImageThumbnailButton key={img.id} onPress={() => { setSelectedImage(img); setShowImageViewer(true); }}>
+                            <ImageThumbnail source={{ uri: img.image_url }} />
+                        </ImageThumbnailButton>
                     ))}
                 </ImageGalleryContainer>
 
@@ -529,6 +614,33 @@ export default function EquipmentDetailsScreen() {
                         </ModalButtons>
                     </ModalContent>
                 </ModalOverlay>
+            </Modal>
+
+            {/* Image Viewer Modal */}
+            <Modal
+                transparent={true}
+                visible={showImageViewer}
+                animationType="fade"
+                onRequestClose={() => { setShowImageViewer(false); setSelectedImage(null); }}
+            >
+                <FullScreenOverlay>
+                    <FullScreenCloseButton onPress={() => { setShowImageViewer(false); setSelectedImage(null); }}>
+                        <FontAwesome name="close" size={28} color="#fff" />
+                    </FullScreenCloseButton>
+
+                    {selectedImage && (
+                        <Image
+                            source={{ uri: selectedImage.image_url }}
+                            style={{ width: SCREEN_WIDTH - 40, height: SCREEN_WIDTH - 40, borderRadius: 12 }}
+                            resizeMode="contain"
+                        />
+                    )}
+
+                    <FullScreenDeleteButton onPress={() => selectedImage && handleDeleteImage(selectedImage)}>
+                        <FontAwesome name="trash" size={20} color="#fff" />
+                        <FullScreenDeleteText>Excluir Imagem</FullScreenDeleteText>
+                    </FullScreenDeleteButton>
+                </FullScreenOverlay>
             </Modal>
         </Container>
     );

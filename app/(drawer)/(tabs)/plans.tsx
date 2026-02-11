@@ -38,6 +38,20 @@ const ServicesText = styled.Text`
   font-size: ${theme.fontSize.sm}px;
 `;
 
+const BillingBadge = styled.View<{ annual?: boolean }>`
+  background-color: ${({ annual }) => annual ? theme.colors.primary + '20' : theme.colors.success + '20'};
+  padding: 4px 10px;
+  border-radius: 12px;
+  align-self: flex-start;
+  margin-top: 4px;
+`;
+
+const BillingBadgeText = styled.Text<{ annual?: boolean }>`
+  color: ${({ annual }) => annual ? theme.colors.primary : theme.colors.success};
+  font-size: ${theme.fontSize.xs}px;
+  font-weight: bold;
+`;
+
 const ActionButton = styled(TouchableOpacity)`
   padding: ${theme.spacing.sm}px;
   margin-bottom: ${theme.spacing.sm}px;
@@ -118,6 +132,11 @@ export default function PlansScreen() {
                     <PriceText>
                         {formatCurrency(item.price || 0)}
                     </PriceText>
+                    <BillingBadge annual={item.billing_type === 'annual'}>
+                        <BillingBadgeText annual={item.billing_type === 'annual'}>
+                            {item.billing_type === 'annual' ? 'Anual' : 'Mensal'}
+                        </BillingBadgeText>
+                    </BillingBadge>
                     <ServicesText>{item.services}</ServicesText>
                 </View>
 

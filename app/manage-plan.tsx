@@ -5,7 +5,7 @@ import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src/utils/masks';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
     Button,
@@ -24,6 +24,27 @@ const DisclaimerText = styled.Text`
   font-style: italic;
 `;
 
+const BillingTypeContainer = styled.View`
+  flex-direction: row;
+  gap: 12px;
+  margin-bottom: ${theme.spacing.sm}px;
+`;
+
+const BillingTypeButton = styled(TouchableOpacity) <{ selected: boolean }>`
+  flex: 1;
+  padding: 14px;
+  border-radius: ${theme.borderRadius.md}px;
+  background-color: ${({ selected }) => selected ? theme.colors.primary : theme.colors.surface};
+  border: 1px solid ${({ selected }) => selected ? theme.colors.primary : theme.colors.border};
+  align-items: center;
+`;
+
+const BillingTypeText = styled.Text<{ selected: boolean }>`
+  color: ${({ selected }) => selected ? theme.colors.background : theme.colors.text};
+  font-weight: ${({ selected }) => selected ? 'bold' : 'normal'};
+  font-size: ${theme.fontSize.md}px;
+`;
+
 export default function ManagePlanScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
@@ -33,6 +54,7 @@ export default function ManagePlanScreen() {
         name: '',
         price: '',
         services: '',
+        billing_type: 'monthly',
     });
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -51,6 +73,7 @@ export default function ManagePlanScreen() {
                         name: plan.name || '',
                         price: formatCurrency(plan.price),
                         services: plan.services || '',
+                        billing_type: plan.billing_type || 'monthly',
                     });
                 }
             }
@@ -74,6 +97,7 @@ export default function ManagePlanScreen() {
                 name: formData.name,
                 price: parseCurrencyToFloat(formData.price),
                 services: formData.services,
+                billing_type: formData.billing_type,
             };
 
             if (isEditing) {
@@ -120,7 +144,25 @@ export default function ManagePlanScreen() {
                     </FormGroup>
 
                     <FormGroup>
-                        <Label>Valor (R$)</Label>
+                        <Label>Tipo de Cobrança</Label>
+                        <BillingTypeContainer>
+                            <BillingTypeButton
+                                selected={formData.billing_type === 'monthly'}
+                                onPress={() => setFormData({ ...formData, billing_type: 'monthly' })}
+                            >
+                                <BillingTypeText selected={formData.billing_type === 'monthly'}>Mensal</BillingTypeText>
+                            </BillingTypeButton>
+                            <BillingTypeButton
+                                selected={formData.billing_type === 'annual'}
+                                onPress={() => setFormData({ ...formData, billing_type: 'annual' })}
+                            >
+                                <BillingTypeText selected={formData.billing_type === 'annual'}>Anual</BillingTypeText>
+                            </BillingTypeButton>
+                        </BillingTypeContainer>
+                    </FormGroup>
+
+                    <FormGroup>
+                        <Label>Valor (R$) {formData.billing_type === 'annual' ? '- Cobrança Única' : '- Mensal'}</Label>
                         <Input
                             value={formData.price}
                             onChangeText={t => setFormData({ ...formData, price: formatCurrencyInput(t) })}

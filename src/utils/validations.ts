@@ -49,3 +49,51 @@ export const validatePassword = (password: string): boolean => {
 
     return hasLetter && hasNumber && hasSpecial;
 };
+
+export const validateBirthDate = (dateStr: string): { valid: boolean; message: string } => {
+    if (!dateStr || dateStr.length < 10) return { valid: false, message: 'Data de nascimento incompleta.' };
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return { valid: false, message: 'Formato inválido. Use DD/MM/AAAA.' };
+
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]);
+    const year = parseInt(parts[2]);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return { valid: false, message: 'Data inválida.' };
+
+    const currentYear = new Date().getFullYear();
+    const minYear = 1900;
+    const maxYear = currentYear - 10;
+
+    if (year < minYear || year > maxYear) {
+        return { valid: false, message: `Ano deve ser entre ${minYear} e ${maxYear}.` };
+    }
+    if (month < 1 || month > 12) return { valid: false, message: 'Mês deve ser entre 01 e 12.' };
+    if (day < 1 || day > 31) return { valid: false, message: 'Dia deve ser entre 01 e 31.' };
+
+    // Check valid date
+    const testDate = new Date(year, month - 1, day);
+    if (testDate.getDate() !== day || testDate.getMonth() !== month - 1) {
+        return { valid: false, message: 'Data inválida para o mês informado.' };
+    }
+
+    return { valid: true, message: '' };
+};
+
+export const validateDueDay = (day: string): { valid: boolean; message: string } => {
+    if (!day) return { valid: true, message: '' }; // Optional field
+    const num = parseInt(day);
+    if (isNaN(num) || num < 1 || num > 31) {
+        return { valid: false, message: 'Dia de vencimento deve ser entre 1 e 31.' };
+    }
+    return { valid: true, message: '' };
+};
+
+export const validateWeight = (weight: string): { valid: boolean; message: string } => {
+    if (!weight) return { valid: true, message: '' }; // Optional field
+    const num = parseFloat(weight);
+    if (isNaN(num) || num < 1 || num > 500) {
+        return { valid: false, message: 'Peso deve ser entre 1 e 500 kg.' };
+    }
+    return { valid: true, message: '' };
+};

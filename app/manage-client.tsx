@@ -3,11 +3,12 @@ import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCPF, formatPhone } from '@/src/utils/masks';
-import { validateCPF, validateEmail, validatePhone } from '@/src/utils/validations';
+import { validateBirthDate, validateCPF, validateDueDay, validateEmail, validatePhone, validateWeight } from '@/src/utils/validations';
 import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import styled from 'styled-components/native';
 import {
     Button,
     ButtonText,
@@ -19,6 +20,13 @@ import {
     Row,
     Title
 } from '../src/components/styled';
+
+const ErrorText = styled.Text`
+  color: ${theme.colors.danger};
+  font-size: ${theme.fontSize.xs}px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+`;
 
 export default function ManageClientScreen() {
     const { id } = useLocalSearchParams();
@@ -43,6 +51,7 @@ export default function ManageClientScreen() {
         plan_id: '',
         due_day: '',
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [plans, setPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -50,6 +59,21 @@ export default function ManageClientScreen() {
     useEffect(() => {
         loadData();
     }, []);
+
+    const clearError = (field: string) => {
+        if (errors[field]) {
+            setErrors(prev => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
+    };
+
+    const updateField = (field: string, value: string) => {
+        clearError(field);
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
     const convertDateToISO = (dateStr: string) => {
         if (!dateStr) return null;
@@ -104,26 +128,43 @@ export default function ManageClientScreen() {
     };
 
     const handleSave = async () => {
-        if (!formData.name || !formData.email) {
-            Alert.alert('Erro', 'Nome e Email são obrigatórios');
-            return;
-        }
+        const newErrors: Record<string, string> = {};
 
-        if (!validateEmail(formData.email)) {
-            Alert.alert('Erro', 'Email inválido.');
-            return;
-        }
+        // Required fields
+        if (!formData.name) newErrors.name = 'Nome é obrigatório.';
+        if (!formData.email) newErrors.email = 'Email é obrigatório.';
+        else if (!validateEmail(formData.email)) newErrors.email = 'Email inválido.';
 
+        // Optional fields with validation
         if (formData.cpf && !validateCPF(formData.cpf)) {
-            Alert.alert('Erro', 'CPF inválido.');
-            return;
+            newErrors.cpf = 'CPF inválido.';
         }
 
         if (formData.phone && !validatePhone(formData.phone)) {
-            Alert.alert('Erro', 'Telefone deve ter 11 dígitos.');
+            newErrors.phone = 'Telefone deve ter 11 dígitos (DD + número).';
+        }
+
+        if (formData.birth_date) {
+            const birthResult = validateBirthDate(formData.birth_date);
+            if (!birthResult.valid) newErrors.birth_date = birthResult.message;
+        }
+
+        if (formData.weight) {
+            const weightResult = validateWeight(formData.weight);
+            if (!weightResult.valid) newErrors.weight = weightResult.message;
+        }
+
+        if (formData.due_day) {
+            const dueDayResult = validateDueDay(formData.due_day);
+            if (!dueDayResult.valid) newErrors.due_day = dueDayResult.message;
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
             return;
         }
 
+        setErrors({});
         setLoading(true);
         try {
             const payload = {
@@ -176,28 +217,34 @@ export default function ManageClientScreen() {
                         <Label>Nome Completo</Label>
                         <Input
                             value={formData.name}
-                            onChangeText={t => setFormData({ ...formData, name: t })}
+                            onChangeText={t => updateField('name', t)}
+                            style={errors.name ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                         />
+                        {errors.name && <ErrorText>{errors.name}</ErrorText>}
                     </FormGroup>
 
                     <FormGroup>
                         <Label>Email</Label>
                         <Input
                             value={formData.email}
-                            onChangeText={t => setFormData({ ...formData, email: t })}
+                            onChangeText={t => updateField('email', t)}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            style={errors.email ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                         />
+                        {errors.email && <ErrorText>{errors.email}</ErrorText>}
                     </FormGroup>
 
                     <FormGroup>
                         <Label>CPF</Label>
                         <Input
                             value={formData.cpf}
-                            onChangeText={t => setFormData({ ...formData, cpf: formatCPF(t) })}
+                            onChangeText={t => updateField('cpf', formatCPF(t))}
                             keyboardType="number-pad"
                             maxLength={14}
+                            style={errors.cpf ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                         />
+                        {errors.cpf && <ErrorText>{errors.cpf}</ErrorText>}
                     </FormGroup>
 
                     <Row style={{ marginBottom: 16 }}>
@@ -205,20 +252,24 @@ export default function ManageClientScreen() {
                             <Label>Telefone</Label>
                             <Input
                                 value={formData.phone}
-                                onChangeText={t => setFormData({ ...formData, phone: formatPhone(t) })}
+                                onChangeText={t => updateField('phone', formatPhone(t))}
                                 keyboardType="phone-pad"
+                                style={errors.phone ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                             />
+                            {errors.phone && <ErrorText>{errors.phone}</ErrorText>}
                         </View>
                         <View style={{ width: '48%' }}>
                             <Label>Data de nascimento</Label>
                             <Input
                                 value={formData.birth_date}
-                                onChangeText={t => setFormData({ ...formData, birth_date: formatDate(t) })}
-                                placeholder="DD/MM/YYYY"
+                                onChangeText={t => updateField('birth_date', formatDate(t))}
+                                placeholder="DD/MM/AAAA"
                                 placeholderTextColor={theme.colors.textSecondary}
                                 keyboardType="number-pad"
                                 maxLength={10}
+                                style={errors.birth_date ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                             />
+                            {errors.birth_date && <ErrorText>{errors.birth_date}</ErrorText>}
                         </View>
                     </Row>
 
@@ -227,19 +278,30 @@ export default function ManageClientScreen() {
                             <Label>Peso (kg)</Label>
                             <Input
                                 value={formData.weight}
-                                onChangeText={t => setFormData({ ...formData, weight: t })}
+                                onChangeText={t => updateField('weight', t)}
                                 keyboardType="numeric"
+                                style={errors.weight ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                             />
+                            {errors.weight && <ErrorText>{errors.weight}</ErrorText>}
                         </View>
                         <View style={{ width: '48%' }}>
                             <Label>Dia do Vencimento</Label>
                             <Input
                                 value={formData.due_day}
-                                onChangeText={t => setFormData({ ...formData, due_day: t })}
+                                onChangeText={t => {
+                                    // Only allow numbers and limit to 31
+                                    const cleaned = t.replace(/\D/g, '');
+                                    if (cleaned === '' || (parseInt(cleaned) >= 0 && parseInt(cleaned) <= 31)) {
+                                        updateField('due_day', cleaned);
+                                    }
+                                }}
                                 keyboardType="numeric"
                                 placeholder="1-31"
                                 placeholderTextColor={theme.colors.textSecondary}
+                                maxLength={2}
+                                style={errors.due_day ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
                             />
+                            {errors.due_day && <ErrorText>{errors.due_day}</ErrorText>}
                         </View>
                     </Row>
 

@@ -91,6 +91,7 @@ const ModalContent = styled.View`
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     padding: 20px;
+    padding-bottom: 40px;
     max-height: 50%;
 `;
 
