@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import styled from 'styled-components/native';
 import { Button, ButtonText, Container, Title } from '../src/components/styled';
+import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/services/supabase';
 import { theme } from '../src/styles/theme';
 
@@ -56,15 +57,46 @@ const ErrorText = styled.Text`
 
 export default function ConfirmEmailScreen() {
     const router = useRouter();
+    const { session } = useAuth();
     const params = useLocalSearchParams();
     const [countdown, setCountdown] = useState(5);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [confirmed, setConfirmed] = useState(false);
 
+    // Initial check for tokens in URL
     useEffect(() => {
-        verifyEmail();
+        const hasTokenInUrl = params.access_token || params.token_hash || params.type === 'signup' || params.type === 'invite';
+        console.log('ConfirmEmail: Initial check - params:', Object.keys(params).join(', '), 'hasToken:', hasTokenInUrl);
+
+        if (!hasTokenInUrl) {
+            // If no token, we might already have a session if user just signed up
+            if (session) {
+                console.log('ConfirmEmail: No token but session exists, confirming...');
+                setConfirmed(true);
+                setLoading(false);
+            } else {
+                // Wait a bit longer for session to appear on cold starts
+                const timer = setTimeout(() => {
+                    if (!session && !confirmed) {
+                        console.log('ConfirmEmail: No token and no session after 10s wait, redirecting to login');
+                        router.replace('/');
+                    }
+                }, 10000);
+                return () => clearTimeout(timer);
+            }
+        }
     }, []);
+
+    // Reactive check based on session
+    useEffect(() => {
+        if (session && !confirmed) {
+            console.log('ConfirmEmail: Session detected, marking as confirmed');
+            setConfirmed(true);
+            setLoading(false);
+            setError(null);
+        }
+    }, [session]);
 
     useEffect(() => {
         if (confirmed && countdown > 0) {
@@ -77,65 +109,9 @@ export default function ConfirmEmailScreen() {
         }
     }, [countdown, confirmed]);
 
-    const verifyEmail = async () => {
-        try {
-            setLoading(true);
-
-            // Verificar se há tokens na URL (acesso via link de email)
-            // Params do expo-router captura parâmetros da URL e fragment
-            const hasTokenInUrl = params.access_token || params.token_hash || params.type === 'recovery';
-
-            if (hasTokenInUrl) {
-                // Modo: Confirmação via link de email
-                // O Supabase processa automaticamente os tokens da URL quando detectSessionInUrl: true
-                // Aguardar um pouco para garantir que o processamento terminou
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Verificar se há uma sessão ativa após o processamento
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-                if (sessionError) {
-                    throw sessionError;
-                }
-
-                if (session) {
-                    // Email confirmado com sucesso - sessão ativa
-                    setConfirmed(true);
-                    setLoading(false);
-                } else {
-                    // Nenhuma sessão encontrada - pode ser token inválido ou expirado
-                    throw new Error('Não foi possível confirmar o email. O link pode ter expirado ou já foi usado.');
-                }
-            } else {
-                // Modo: Acesso direto após cadastro (sem token na URL)
-                // Verificar se há uma sessão ativa (usuário acabou de se cadastrar)
-                const { data: { session } } = await supabase.auth.getSession();
-
-                if (session) {
-                    // Usuário logado - mostrar tela de confirmação de conta
-                    setConfirmed(true);
-                    setLoading(false);
-                } else {
-                    // Sem sessão - redirecionar para login
-                    router.replace('/');
-                }
-            }
-        } catch (err: any) {
-            console.error('Email verification error:', err);
-            setError(err.message || 'Erro ao confirmar email.');
-            setLoading(false);
-        }
-    };
-
     const performAutoLogin = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                router.replace('/');
-                return;
-            }
-
+            console.log('ConfirmEmail: Performing redirect to onboarding...');
             // Usuário está logado, redirecionar para onboarding (configuração da academia)
             router.replace('/onboarding');
         } catch (err) {

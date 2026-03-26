@@ -1,5 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { registerForPushNotificationsAsync, unregisterPushToken } from '../services/pushNotifications';
 import { supabase } from '../services/supabase';
 
 type AuthContextType = {
@@ -10,6 +11,7 @@ type AuthContextType = {
     signIn: (email: string, pass: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
     clearPasswordRecovery: () => void;
+    setRecoveryMode: (value: boolean) => void;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
     signIn: async () => ({ error: null }),
     signOut: async () => { },
     clearPasswordRecovery: () => { },
+    setRecoveryMode: () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -37,16 +40,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log('Auth event:', event);
+            console.log('AuthContext: onAuthStateChange event:', event);
+            if (session) {
+                console.log('AuthContext: Session user:', session.user.email);
+            } else {
+                console.log('AuthContext: No session');
+            }
 
             // Handle PASSWORD_RECOVERY event specifically
             if (event === 'PASSWORD_RECOVERY') {
+                console.log('AuthContext: PASSWORD_RECOVERY detected - setting flag');
                 setIsPasswordRecovery(true);
             }
 
-            // Clear password recovery flag on sign out
+            // Register push token on sign in
+            if (event === 'SIGNED_IN') {
+                console.log('AuthContext: SIGNED_IN - registering push token');
+                registerForPushNotificationsAsync().catch(console.error);
+            }
+
+            // Clear push token and recovery flag on sign out
             if (event === 'SIGNED_OUT') {
+                console.log('AuthContext: SIGNED_OUT detected - clearing recovery flag');
                 setIsPasswordRecovery(false);
+                unregisterPushToken().catch(console.error);
             }
 
             setSession(session);
@@ -80,8 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsPasswordRecovery(false);
     };
 
+    const setRecoveryMode = (value: boolean) => {
+        setIsPasswordRecovery(value);
+    };
+
     return (
-        <AuthContext.Provider value={{ session, loading, isAdmin, isPasswordRecovery, signIn, signOut, clearPasswordRecovery }}>
+        <AuthContext.Provider value={{ session, loading, isAdmin, isPasswordRecovery, signIn, signOut, clearPasswordRecovery, setRecoveryMode }}>
             {children}
         </AuthContext.Provider>
     );

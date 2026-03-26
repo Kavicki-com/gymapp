@@ -2,6 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
+import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -58,6 +59,7 @@ function RootLayoutNav() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <DeepLinkHandler />
+          <NotificationHandler />
           <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -80,12 +82,39 @@ function RootLayoutNav() {
   );
 }
 
+// Handles incoming notifications and user taps in foreground and background
+function NotificationHandler() {
+  const notificationListener = useRef<Notifications.EventSubscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.EventSubscription | undefined>(undefined);
+
+  useEffect(() => {
+    // Fired when a notification is received while app is in foreground
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      console.log('[Notification] Received in foreground:', notification.request.content.title);
+    });
+
+    // Fired when the user taps a notification (background or closed app)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as any;
+      console.log('[Notification] User tapped:', data?.type);
+    });
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, []);
+
+  return null;
+}
+
 // Component to handle deep links and auth state changes at root level
 function DeepLinkHandler() {
   const router = useRouter();
   const segments = useSegments();
-  const { isPasswordRecovery } = useAuth();
+  const { isPasswordRecovery, setRecoveryMode } = useAuth();
   const hasHandledRecovery = useRef(false);
+  const lastProcessedUrl = useRef<string | null>(null);
 
   useEffect(() => {
     // Handle PASSWORD_RECOVERY from AuthContext
@@ -99,7 +128,14 @@ function DeepLinkHandler() {
   useEffect(() => {
     // Handle deep links with recovery codes or tokens
     const handleUrl = async (url: string) => {
-      console.log('DeepLinkHandler: Received URL:', url);
+      // Prevent processing the same URL twice in a short period
+      if (lastProcessedUrl.current === url) {
+        console.log('DeepLinkHandler: URL already processed, skipping:', url);
+        return;
+      }
+      
+      console.log('DeepLinkHandler: Processing URL:', url);
+      lastProcessedUrl.current = url;
 
       const parsed = Linking.parse(url);
       const code = parsed.queryParams?.code as string | undefined;
@@ -123,25 +159,30 @@ function DeepLinkHandler() {
       const refreshToken = hashParams.refresh_token;
       const type = hashParams.type;
 
-      console.log('DeepLinkHandler: accessToken:', accessToken ? 'yes' : 'no', 'refreshToken:', refreshToken ? 'yes' : 'no', 'type:', type);
+      console.log('DeepLinkHandler: Found metadata - type:', type, 'token:', accessToken ? 'present' : 'absent');
 
       // Handle implicit flow (tokens in hash)
       if (accessToken && refreshToken) {
         console.log('DeepLinkHandler: Found tokens in hash, setting session...');
         try {
-          const { data, error } = await supabase.auth.setSession({
+          const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
 
           if (error) {
-            console.error('DeepLinkHandler: Set session error:', error);
+            console.error('DeepLinkHandler: setSession ERROR:', error.message);
           } else {
-            console.log('DeepLinkHandler: Session set successfully');
-            // Navigate to reset-password if this is a recovery flow
+            console.log('DeepLinkHandler: setSession SUCCESS');
+            // Force orientation to recovery if type is recovery
             if (type === 'recovery' || path?.includes('reset-password')) {
-              console.log('DeepLinkHandler: Recovery flow, navigating to reset-password');
+              console.log('DeepLinkHandler: Recovery flow detected - setting recovery mode');
+              setRecoveryMode(true);
+              console.log('DeepLinkHandler: Navigating to reset-password');
               router.replace('/reset-password');
+            } else if (type === 'signup' || path?.includes('confirm-email')) {
+              console.log('DeepLinkHandler: Signup confirmation flow, navigating to confirm-email');
+              router.replace('/confirm-email');
             }
           }
         } catch (e) {
@@ -167,20 +208,23 @@ function DeepLinkHandler() {
         }
         return;
       }
-      // If just a path without tokens/code, ignore it
-      // This prevents stale deep links from causing navigation after logout
+
       console.log('DeepLinkHandler: No tokens or code in URL, ignoring');
     };
 
-    // Listen for incoming URLs (only fires for fresh deep links)
+    // Listen for incoming URLs
     const subscription = Linking.addEventListener('url', (event) => {
-      console.log('DeepLinkHandler: Fresh URL event received');
+      console.log('DeepLinkHandler: Incoming URL event:', event.url);
       handleUrl(event.url);
     });
 
-    // NOTE: We intentionally do NOT use Linking.getInitialURL() here because
-    // it returns cached/stale URLs from previous app opens, causing unwanted
-    // recovery attempts. We only process fresh URL events.
+    // Handle initial URL (cold start)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('DeepLinkHandler: Initial URL detected:', url);
+        handleUrl(url);
+      }
+    });
 
     return () => {
       subscription.remove();

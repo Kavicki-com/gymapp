@@ -41,12 +41,14 @@ export default function LoginScreen() {
     React.useEffect(() => {
         // If we're in password recovery mode, redirect to reset-password screen
         if (isPasswordRecovery && isFocused) {
+            console.log('LoginScreen: Password recovery active, forcing redirect');
             router.replace('/reset-password');
             return;
         }
 
-        // Skip session check if we're in password recovery mode
+        // Skip session check if we're in password recovery mode or if there's no session
         if (session && isFocused && !isPasswordRecovery) {
+            console.log('LoginScreen: Valid session found, checking profile...');
             checkSession();
         }
     }, [session, isFocused, isPasswordRecovery]);

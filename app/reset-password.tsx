@@ -1,7 +1,7 @@
 
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import {
     Button,
     ButtonText,
@@ -10,6 +10,7 @@ import {
     FormGroup,
     Input,
     Label,
+    LinkText,
     Title
 } from '../src/components/styled';
 import { useAuth } from '../src/contexts/AuthContext';
@@ -18,7 +19,7 @@ import { theme } from '../src/styles/theme';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
-    const { clearPasswordRecovery, isPasswordRecovery, signOut } = useAuth();
+    const { clearPasswordRecovery, isPasswordRecovery, session, signOut, setRecoveryMode } = useAuth();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -46,6 +47,7 @@ export default function ResetPasswordScreen() {
                             text: 'Cancelar Recuperação',
                             style: 'destructive',
                             onPress: async () => {
+                                console.log('ResetPassword: User cancelled recovery, signing out');
                                 await signOut();
                                 clearPasswordRecovery();
                                 router.replace('/');
@@ -61,75 +63,35 @@ export default function ResetPasswordScreen() {
         return () => backHandler.remove();
     }, []);
 
-    // Sign out if user navigates away without changing password (iOS swipe gesture)
+    // Handled via explicit signOut on cancel or back to login
     useEffect(() => {
         return () => {
-            // Only sign out if we had a valid session and password wasn't changed
-            if (hasValidSessionRef.current && !passwordChangedRef.current) {
-                console.log('ResetPassword: Unmounting without password change, signing out');
-                supabase.auth.signOut();
-            }
+            console.log('ResetPassword: Unmounting');
         };
     }, []);
 
+    // Reactive session check
     useEffect(() => {
-        let isMounted = true;
+        console.log('ResetPassword: Recovery state check:', { session: !!session, isPasswordRecovery });
 
-        const checkSession = async () => {
-            console.log('ResetPassword: Starting session check...');
-
-            // First, wait a short moment for any pending session to be set
-            // This handles the case where DeepLinkHandler just called setSession
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            if (!isMounted) return;
-
-            // Check for session
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            console.log('ResetPassword: Session check result:', currentSession ? 'yes' : 'no');
-            console.log('ResetPassword: isPasswordRecovery:', isPasswordRecovery);
-
-            // If we have a session or recovery flag, we're in a valid recovery flow
-            if (currentSession || isPasswordRecovery) {
-                console.log('ResetPassword: Valid recovery context found');
-                if (isMounted) {
-                    setHasValidSession(true);
-                    hasValidSessionRef.current = true;
-                    setIsVerifying(false);
-                }
-                return;
-            }
-
-            // No session yet - wait a bit more in case auth is still processing
-            console.log('ResetPassword: No session, waiting for auth...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (!isMounted) return;
-
-            // Final check
-            const { data: { session: retrySession } } = await supabase.auth.getSession();
-            if (retrySession) {
-                console.log('ResetPassword: Session found on retry');
-                if (isMounted) {
-                    setHasValidSession(true);
-                    hasValidSessionRef.current = true;
-                    setIsVerifying(false);
-                }
-            } else {
-                // No valid recovery context - redirect to login
-                console.log('ResetPassword: No session after waiting - redirecting to login');
-                if (isMounted) {
+        if (session || isPasswordRecovery) {
+            console.log('ResetPassword: Valid recovery context found (session:', !!session, 'recovery flag:', isPasswordRecovery, ')');
+            setHasValidSession(true);
+            hasValidSessionRef.current = true;
+            setIsVerifying(false);
+            setLinkError(false);
+        } else if (!hasValidSession) {
+            // Only start the "redirect to login" timer if we haven't found a valid session yet
+            console.log('ResetPassword: No session yet, starting 10s grace period...');
+            const timer = setTimeout(() => {
+                if (!session && !isPasswordRecovery && !hasValidSessionRef.current) {
+                    console.log('ResetPassword: No session after 10s grace period, redirecting to login');
                     router.replace('/');
                 }
-            }
-        };
-
-        checkSession();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [isPasswordRecovery]);
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [session, isPasswordRecovery]);
 
     const handleUpdatePassword = async () => {
         if (!password || !confirmPassword) {
@@ -169,8 +131,10 @@ export default function ResetPasswordScreen() {
         }
     };
 
-    const handleBackToLogin = () => {
+    const handleBackToLogin = async () => {
         // Don't sign out if there's a link error (no session to sign out)
+        console.log('ResetPassword: Going back to login, signing out');
+        await signOut();
         clearPasswordRecovery();
         router.replace('/');
     };
@@ -240,6 +204,13 @@ export default function ResetPasswordScreen() {
                             <ButtonText>Alterar Senha</ButtonText>
                         )}
                     </Button>
+
+                    <TouchableOpacity 
+                        onPress={handleBackToLogin}
+                        style={{ marginTop: 24, alignSelf: 'center' }}
+                    >
+                        <LinkText>Cancelar e Voltar ao Login</LinkText>
+                    </TouchableOpacity>
                 </Card>
             </KeyboardAvoidingView>
         </CenteredContainer>
