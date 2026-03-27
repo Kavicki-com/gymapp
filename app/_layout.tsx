@@ -84,6 +84,7 @@ function RootLayoutNav() {
 
 // Handles incoming notifications and user taps in foreground and background
 function NotificationHandler() {
+  const router = useRouter();
   const notificationListener = useRef<Notifications.EventSubscription | undefined>(undefined);
   const responseListener = useRef<Notifications.EventSubscription | undefined>(undefined);
 
@@ -97,6 +98,14 @@ function NotificationHandler() {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as any;
       console.log('[Notification] User tapped:', data?.type);
+
+      if (data?.type === 'maintenance' && data?.equipmentId) {
+        router.push({ pathname: '/equipment-details', params: { id: data.equipmentId } });
+      } else if (data?.type === 'client_payment' && data?.clientId) {
+        router.push({ pathname: '/client-details', params: { id: data.clientId } });
+      } else if (data?.type === 'employee_payment' && data?.employeeId) {
+        router.push({ pathname: '/employee-details', params: { id: data.employeeId } });
+      }
     });
 
     return () => {

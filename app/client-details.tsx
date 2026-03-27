@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Switch, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 const ContentContainer = styled.ScrollView`
@@ -159,6 +159,39 @@ const LockedBadgeText = styled.Text`
     margin-left: 8px;
 `;
 
+const OverdueBadge = styled.View`
+    background-color: ${theme.colors.danger}20;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: ${theme.spacing.md}px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+`;
+
+const OverdueBadgeText = styled.Text`
+    color: ${theme.colors.danger};
+    font-weight: bold;
+    margin-left: 8px;
+    flex: 1;
+`;
+
+const OverdueCount = styled.View`
+    background-color: ${theme.colors.danger};
+    border-radius: 12px;
+    min-width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+`;
+
+const OverdueCountText = styled.Text`
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+`;
+
 const formatDate = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
     let formatted = cleaned;
@@ -181,6 +214,13 @@ const getCurrentMonthYear = () => {
     return `${month}/${year}`;
 };
 
+const getPreviousMonthYear = () => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${month}/${d.getFullYear()}`;
+};
+
 export default function ClientDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -200,6 +240,8 @@ export default function ClientDetailsScreen() {
     const [isAdvancePayment, setIsAdvancePayment] = useState(false);
     const [advanceMonths, setAdvanceMonths] = useState(1);
     const [registeringPayment, setRegisteringPayment] = useState(false);
+    const [overdueMonthsCount, setOverdueMonthsCount] = useState(0);
+    const [overdueMonths, setOverdueMonths] = useState<string[]>([]);
 
     // Lock Modal State
     const [showLockModal, setShowLockModal] = useState(false);
@@ -261,6 +303,51 @@ export default function ClientDetailsScreen() {
         } catch (e) {
             console.log(e);
         }
+    };
+
+    // Recalculate whenever both client and payments are loaded
+    useEffect(() => {
+        if (client !== null) {
+            computeOverdueCount(payments, client);
+        }
+    }, [client, payments]);
+
+    const computeOverdueCount = (paidPayments: any[], clientData?: any) => {
+        const resolvedClient = clientData ?? client;
+        if (!resolvedClient) return;
+
+        const paidMonths = new Set(paidPayments.map(p => p.reference_month).filter(Boolean));
+        const now = new Date();
+        const dueDay = resolvedClient.due_day || 1;
+
+        // Start from the month the client was created (or 12 months ago as fallback)
+        const createdAt = resolvedClient.created_at
+            ? new Date(resolvedClient.created_at)
+            : new Date(now.getFullYear(), now.getMonth() - 12, 1);
+        const start = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
+
+        // End: if due_day hasn't passed this month yet, don't count current month
+        const dueDayPassedThisMonth = now.getDate() >= dueDay;
+        const end = new Date(
+            now.getFullYear(),
+            dueDayPassedThisMonth ? now.getMonth() : now.getMonth() - 1,
+            1
+        );
+
+        let count = 0;
+        const missingMonths: string[] = [];
+        const cursor = new Date(start);
+        while (cursor <= end) {
+            const key = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${cursor.getFullYear()}`;
+            if (!paidMonths.has(key)) {
+                count++;
+                missingMonths.push(key);
+            }
+            cursor.setMonth(cursor.getMonth() + 1);
+        }
+
+        setOverdueMonthsCount(count);
+        setOverdueMonths(missingMonths);
     };
 
     const handleDelete = () => {
@@ -342,6 +429,17 @@ export default function ClientDetailsScreen() {
         setPaymentAmount(planPrice ? planPrice.toString() : '');
         setPaymentDiscount('');
         setReferenceMonth(getCurrentMonthYear());
+        setIsAdvancePayment(false);
+        setAdvanceMonths(1);
+        setPaymentDate('');
+        setShowPaymentModal(true);
+    };
+
+    // Quick shortcut to pre-fill with the previous month
+    const openPaymentModalRetroactive = () => {
+        setPaymentAmount(planPrice ? planPrice.toString() : '');
+        setPaymentDiscount('');
+        setReferenceMonth(getPreviousMonthYear());
         setIsAdvancePayment(false);
         setAdvanceMonths(1);
         setPaymentDate('');
@@ -584,6 +682,20 @@ export default function ClientDetailsScreen() {
                     </LockedBadge>
                 )}
 
+                {!isLocked && overdueMonthsCount > 0 && (
+                    <OverdueBadge>
+                        <FontAwesome name="exclamation-circle" size={16} color={theme.colors.danger} />
+                        <OverdueBadgeText>
+                            {overdueMonthsCount === 1
+                                ? '1 mensalidade em atraso'
+                                : `${overdueMonthsCount} mensalidades em atraso`}
+                        </OverdueBadgeText>
+                        <OverdueCount>
+                            <OverdueCountText>{overdueMonthsCount}</OverdueCountText>
+                        </OverdueCount>
+                    </OverdueBadge>
+                )}
+
                 <Section>
                     <DetailLabel>Nome Completo</DetailLabel>
                     <DetailValue>{client.name}</DetailValue>
@@ -623,7 +735,12 @@ export default function ClientDetailsScreen() {
                     <DetailTitle style={{ fontSize: 18, marginBottom: 10 }}>Ações</DetailTitle>
                     <ActionButton onPress={openPaymentModal}>
                         <FontAwesome name="money" size={20} color={theme.colors.background} />
-                        <ActionButtonText>Lançar Pagamento</ActionButtonText>
+                        <ActionButtonText>Lançar Pagamento (Mês Atual)</ActionButtonText>
+                    </ActionButton>
+
+                    <ActionButton bgColor={theme.colors.surface} onPress={openPaymentModalRetroactive} style={{ borderWidth: 1, borderColor: theme.colors.border }}>
+                        <FontAwesome name="history" size={18} color={theme.colors.textSecondary} />
+                        <ActionButtonText style={{ color: theme.colors.text }}>Lançar Retroativo (Mês Anterior)</ActionButtonText>
                     </ActionButton>
 
                     {isLocked ? (
@@ -699,102 +816,157 @@ export default function ClientDetailsScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowPaymentModal(false)}
             >
-                <ModalOverlay>
-                    <ModalContent>
-                        <ModalTitle>Registrar Pagamento</ModalTitle>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <ModalOverlay>
+                        <ModalContent>
+                            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                                <ModalTitle>Registrar Pagamento</ModalTitle>
 
-                        <DetailLabel>Valor (R$)</DetailLabel>
-                        <StyledInput
-                            value={paymentAmount}
-                            onChangeText={setPaymentAmount}
-                            keyboardType="numeric"
-                            placeholder="0.00"
-                            placeholderTextColor={theme.colors.textSecondary}
-                        />
+                                <DetailLabel>Valor (R$)</DetailLabel>
+                                <StyledInput
+                                    value={paymentAmount}
+                                    onChangeText={setPaymentAmount}
+                                    keyboardType="numeric"
+                                    placeholder="0.00"
+                                    placeholderTextColor={theme.colors.textSecondary}
+                                />
 
-                        <DetailLabel>Desconto (R$)</DetailLabel>
-                        <StyledInput
-                            value={paymentDiscount}
-                            onChangeText={setPaymentDiscount}
-                            keyboardType="numeric"
-                            placeholder="0.00"
-                            placeholderTextColor={theme.colors.textSecondary}
-                        />
+                                <DetailLabel>Desconto (R$)</DetailLabel>
+                                <StyledInput
+                                    value={paymentDiscount}
+                                    onChangeText={setPaymentDiscount}
+                                    keyboardType="numeric"
+                                    placeholder="0.00"
+                                    placeholderTextColor={theme.colors.textSecondary}
+                                />
 
-                        <DetailLabel>Mês de Referência (MM/AAAA)</DetailLabel>
-                        <StyledInput
-                            value={referenceMonth}
-                            onChangeText={t => setReferenceMonth(formatMonthYear(t))}
-                            placeholder="MM/AAAA"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            keyboardType="number-pad"
-                            maxLength={7}
-                        />
+                                <DetailLabel>Mês de Referência (MM/AAAA)</DetailLabel>
+                                {overdueMonths.length > 0 && (
+                                    <View style={{ marginBottom: 10 }}>
+                                        <DetailLabel style={{ fontSize: 12, opacity: 0.7 }}>Selecionar mês em atraso:</DetailLabel>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 5 }}>
+                                            {overdueMonths.map(month => (
+                                                <TouchableOpacity
+                                                    key={month}
+                                                    onPress={() => setReferenceMonth(month)}
+                                                    style={{
+                                                        paddingHorizontal: 12,
+                                                        paddingVertical: 6,
+                                                        borderRadius: 15,
+                                                        backgroundColor: referenceMonth === month ? theme.colors.danger : theme.colors.border,
+                                                        marginRight: 8,
+                                                        borderWidth: 1,
+                                                        borderColor: referenceMonth === month ? theme.colors.danger : theme.colors.border
+                                                    }}
+                                                >
+                                                    <DetailValue style={{
+                                                        fontSize: 12,
+                                                        color: referenceMonth === month ? '#fff' : theme.colors.text,
+                                                        fontWeight: referenceMonth === month ? 'bold' : 'normal',
+                                                        marginBottom: 0
+                                                    }}>{month}</DetailValue>
+                                                </TouchableOpacity>
+                                            ))}
+                                            <TouchableOpacity
+                                                onPress={() => setReferenceMonth(getCurrentMonthYear())}
+                                                style={{
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 15,
+                                                    backgroundColor: referenceMonth === getCurrentMonthYear() ? theme.colors.primary : theme.colors.border,
+                                                    marginRight: 8,
+                                                    borderWidth: 1,
+                                                    borderColor: referenceMonth === getCurrentMonthYear() ? theme.colors.primary : theme.colors.border
+                                                }}
+                                            >
+                                                <DetailValue style={{
+                                                    fontSize: 12,
+                                                    color: referenceMonth === getCurrentMonthYear() ? '#fff' : theme.colors.text,
+                                                    fontWeight: referenceMonth === getCurrentMonthYear() ? 'bold' : 'normal',
+                                                    marginBottom: 0
+                                                }}>{getCurrentMonthYear()} (Atual)</DetailValue>
+                                            </TouchableOpacity>
+                                        </ScrollView>
+                                    </View>
+                                )}
+                                <StyledInput
+                                    value={referenceMonth}
+                                    onChangeText={t => setReferenceMonth(formatMonthYear(t))}
+                                    placeholder="MM/AAAA"
+                                    placeholderTextColor={theme.colors.textSecondary}
+                                    keyboardType="number-pad"
+                                    maxLength={7}
+                                />
 
-                        <DetailLabel>Data do Pagamento (DD/MM/AAAA)</DetailLabel>
-                        <StyledInput
-                            value={paymentDate}
-                            onChangeText={t => setPaymentDate(formatDate(t))}
-                            placeholder={new Date().toLocaleDateString('pt-BR')}
-                            placeholderTextColor={theme.colors.textSecondary}
-                            keyboardType="number-pad"
-                            maxLength={10}
-                        />
+                                <DetailLabel>Data do Pagamento (DD/MM/AAAA)</DetailLabel>
+                                <StyledInput
+                                    value={paymentDate}
+                                    onChangeText={t => setPaymentDate(formatDate(t))}
+                                    placeholder={new Date().toLocaleDateString('pt-BR')}
+                                    placeholderTextColor={theme.colors.textSecondary}
+                                    keyboardType="number-pad"
+                                    maxLength={10}
+                                />
 
-                        <SwitchRow>
-                            <SwitchLabel>Pagamento adiantado?</SwitchLabel>
-                            <Switch
-                                value={isAdvancePayment}
-                                onValueChange={setIsAdvancePayment}
-                                trackColor={{ false: theme.colors.border, true: theme.colors.primary + '80' }}
-                                thumbColor={isAdvancePayment ? theme.colors.primary : '#f4f3f4'}
-                            />
-                        </SwitchRow>
+                                <SwitchRow>
+                                    <SwitchLabel>Pagamento adiantado?</SwitchLabel>
+                                    <Switch
+                                        value={isAdvancePayment}
+                                        onValueChange={setIsAdvancePayment}
+                                        trackColor={{ false: theme.colors.border, true: theme.colors.primary + '80' }}
+                                        thumbColor={isAdvancePayment ? theme.colors.primary : '#f4f3f4'}
+                                    />
+                                </SwitchRow>
 
-                        {isAdvancePayment && (
-                            <View style={{ marginBottom: 15 }}>
-                                <DetailLabel>Quantos meses?</DetailLabel>
-                                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                    {[2, 3].map(num => (
-                                        <TouchableOpacity
-                                            key={num}
-                                            onPress={() => setAdvanceMonths(num)}
-                                            style={{
-                                                flex: 1,
-                                                padding: 10,
-                                                borderRadius: 8,
-                                                backgroundColor: advanceMonths === num ? theme.colors.primary : theme.colors.inputBackground,
-                                                alignItems: 'center',
-                                            }}
-                                        >
-                                            <SwitchLabel style={{
-                                                color: advanceMonths === num ? theme.colors.background : theme.colors.text,
-                                                fontWeight: advanceMonths === num ? 'bold' : 'normal'
-                                            }}>
-                                                {num} meses
-                                            </SwitchLabel>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
+                                {isAdvancePayment && (
+                                    <View style={{ marginBottom: 15 }}>
+                                        <DetailLabel>Quantos meses?</DetailLabel>
+                                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                            {[2, 3].map(num => (
+                                                <TouchableOpacity
+                                                    key={num}
+                                                    onPress={() => setAdvanceMonths(num)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: 10,
+                                                        borderRadius: 8,
+                                                        backgroundColor: advanceMonths === num ? theme.colors.primary : theme.colors.inputBackground,
+                                                        alignItems: 'center',
+                                                    }}
+                                                >
+                                                    <SwitchLabel style={{
+                                                        color: advanceMonths === num ? theme.colors.background : theme.colors.text,
+                                                        fontWeight: advanceMonths === num ? 'bold' : 'normal'
+                                                    }}>
+                                                        {num} meses
+                                                    </SwitchLabel>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
 
-                        <DiscountSummary>
-                            Total: R$ {calculateFinalAmount().toFixed(2)}
-                            {isAdvancePayment ? ` (${advanceMonths}x)` : ''}
-                            {parseFloat(paymentDiscount) > 0 ? ` (desc. R$ ${paymentDiscount})` : ''}
-                        </DiscountSummary>
+                                <DiscountSummary>
+                                    Total: R$ {calculateFinalAmount().toFixed(2)}
+                                    {isAdvancePayment ? ` (${advanceMonths}x)` : ''}
+                                    {parseFloat(paymentDiscount) > 0 ? ` (desc. R$ ${paymentDiscount})` : ''}
+                                </DiscountSummary>
 
-                        <ModalButtons>
-                            <ModalButton variant="cancel" onPress={() => setShowPaymentModal(false)}>
-                                <ModalButtonText>Cancelar</ModalButtonText>
-                            </ModalButton>
-                            <ModalButton variant="primary" onPress={handleRegisterPayment} disabled={registeringPayment}>
-                                {registeringPayment ? <ActivityIndicator color="#fff" /> : <ModalButtonText>Confirmar</ModalButtonText>}
-                            </ModalButton>
-                        </ModalButtons>
-                    </ModalContent>
-                </ModalOverlay>
+                                <ModalButtons>
+                                    <ModalButton variant="cancel" onPress={() => setShowPaymentModal(false)}>
+                                        <ModalButtonText>Cancelar</ModalButtonText>
+                                    </ModalButton>
+                                    <ModalButton variant="primary" onPress={handleRegisterPayment} disabled={registeringPayment}>
+                                        {registeringPayment ? <ActivityIndicator color="#fff" /> : <ModalButtonText>Confirmar</ModalButtonText>}
+                                    </ModalButton>
+                                </ModalButtons>
+                            </ScrollView>
+                        </ModalContent>
+                    </ModalOverlay>
+                </KeyboardAvoidingView>
             </Modal>
 
             {/* Lock Subscription Modal */}

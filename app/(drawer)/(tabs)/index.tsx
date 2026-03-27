@@ -165,6 +165,7 @@ interface OverdueClient {
   name: string;
   phone: string;
   daysOverdue: number;
+  overdueMonthsCount: number;
   planName: string;
   planPrice: number;
 }
@@ -297,29 +298,59 @@ export default function DashboardScreen() {
       setMonthlyRevenue({ received, expected });
 
       // Overdue and upcoming payments
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('client_id, reference_month')
+        .eq('gym_id', gymId);
+
+      const paymentsMap: Record<string, Set<string>> = {};
+      (allPayments || []).forEach(p => {
+        if (!paymentsMap[p.client_id]) paymentsMap[p.client_id] = new Set();
+        if (p.reference_month) paymentsMap[p.client_id].add(p.reference_month);
+      });
+
       const overdueList: OverdueClient[] = [];
 
       clients.forEach(client => {
-        // Skip locked clients from overdue list
         if (client.subscription_locked) return;
 
         const plan = plans.find(p => p.id === client.plan_id);
         const dueDay = client.due_day || 1;
+        const paidMonths = paymentsMap[client.id] || new Set();
 
-        // Calculate days overdue or until due
+        // 1. Calculate Overdue Months (same logic as client-details)
+        const createdAt = client.created_at
+          ? new Date(client.created_at)
+          : new Date(currentYear, currentMonth - 12, 1);
+        const start = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
+
+        const dueDayPassedThisMonth = currentDay >= dueDay;
+        const end = new Date(
+          currentYear,
+          dueDayPassedThisMonth ? currentMonth : currentMonth - 1,
+          1
+        );
+
+        let overdueMonthsCount = 0;
+        const cursor = new Date(start);
+        while (cursor <= end) {
+          const key = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${cursor.getFullYear()}`;
+          if (!paidMonths.has(key)) overdueMonthsCount++;
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+
+        // 2. Original daysOverdue logic (for sorting and "due soon" alerts)
         let daysOverdue = 0;
-
-        if (client.payment_status !== 'paid') {
-          // Already marked as overdue
+        if (overdueMonthsCount > 0) {
           daysOverdue = currentDay - dueDay;
-          if (daysOverdue < 0) daysOverdue += 30; // Previous month
+          if (daysOverdue < 0) daysOverdue += 30;
         } else {
           // Check if due soon (next 5 days)
           let daysUntilDue = dueDay - currentDay;
           if (daysUntilDue < 0) daysUntilDue += 30;
 
           if (daysUntilDue <= 5 && daysUntilDue >= 0) {
-            daysOverdue = -daysUntilDue; // Negative means upcoming
+            daysOverdue = -daysUntilDue;
           } else {
             return; // Not relevant
           }
@@ -330,13 +361,14 @@ export default function DashboardScreen() {
           name: client.name,
           phone: client.phone || '',
           daysOverdue,
+          overdueMonthsCount,
           planName: plan?.name || 'N/A',
           planPrice: plan?.price || 0,
         });
       });
 
-      // Sort: most overdue first, then upcoming
-      overdueList.sort((a, b) => b.daysOverdue - a.daysOverdue);
+      // Sort: most overdue first (highest month count), then by daysOverdue
+      overdueList.sort((a, b) => b.overdueMonthsCount - a.overdueMonthsCount || b.daysOverdue - a.daysOverdue);
       setOverdueClients(overdueList);
 
       // Equipment Maintenance (next 15 days)
@@ -475,8 +507,13 @@ export default function DashboardScreen() {
     );
   };
 
-  const getOverdueStatus = (daysOverdue: number) => {
-    if (daysOverdue > 0) return { status: 'danger' as const, text: `Vencido há ${daysOverdue}d` };
+  const getOverdueStatus = (daysOverdue: number, count: number) => {
+    if (count > 0) {
+      return {
+        status: 'danger' as const,
+        text: count === 1 ? '1 mensalidade em atraso' : `${count} mensalidades em atraso`
+      };
+    }
     if (daysOverdue >= -3) return { status: 'warning' as const, text: `Vence em ${-daysOverdue}d` };
     return { status: 'success' as const, text: `Vence em ${-daysOverdue}d` };
   };
@@ -598,7 +635,7 @@ export default function DashboardScreen() {
                 </View>
               )}
               {overdueClients.slice(0, 5).map(client => {
-                const { status, text } = getOverdueStatus(client.daysOverdue);
+                const { status, text } = getOverdueStatus(client.daysOverdue, client.overdueMonthsCount);
                 return (
                   <AlertItem
                     key={client.id}
@@ -711,7 +748,7 @@ export default function DashboardScreen() {
               data={overdueClients}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => {
-                const { status, text } = getOverdueStatus(item.daysOverdue);
+                const { status, text } = getOverdueStatus(item.daysOverdue, item.overdueMonthsCount);
                 return (
                   <AlertItem
                     title={item.name}
