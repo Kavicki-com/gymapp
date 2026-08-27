@@ -42,3 +42,8 @@ yarn-error.*
 
 
 .agents
+.claude/skills/supabase
+.claude/skills/supabase-postgres-best-practices
+.mcp.json
+package-lock.json
+skills-lock.json
