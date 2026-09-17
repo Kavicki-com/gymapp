@@ -25,15 +25,13 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     // Check/request permissions
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    let { granted } = await Notifications.getPermissionsAsync();
 
-    if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+    if (!granted) {
+        granted = (await Notifications.requestPermissionsAsync()).granted;
     }
 
-    if (finalStatus !== 'granted') {
+    if (!granted) {
         console.log('[PushNotifications] Permission denied');
         return null;
     }
