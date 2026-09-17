@@ -1,7 +1,8 @@
 
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, KeyboardAvoidingView, Platform, Text, TouchableOpacity } from 'react-native';
+import { PASSWORD_RULE, PasswordInput } from '../src/components/PasswordInput';
 import {
     Button,
     ButtonText,
@@ -177,23 +178,24 @@ export default function ResetPasswordScreen() {
 
                     <FormGroup>
                         <Label>Nova Senha</Label>
-                        <Input
+                        <PasswordInput
                             placeholder="Nova senha"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={password}
                             onChangeText={setPassword}
-                            secureTextEntry
                         />
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 6 }}>
+                            {PASSWORD_RULE}
+                        </Text>
                     </FormGroup>
 
                     <FormGroup>
                         <Label>Confirmar Senha</Label>
-                        <Input
+                        <PasswordInput
                             placeholder="Confirme a nova senha"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
-                            secureTextEntry
                         />
                     </FormGroup>
 

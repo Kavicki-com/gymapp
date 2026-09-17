@@ -6,6 +6,7 @@ import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import styled from 'styled-components/native';
+import { PASSWORD_RULE, PasswordInput } from '../src/components/PasswordInput';
 import {
     Button,
     ButtonText,
@@ -139,7 +140,7 @@ export default function RegisterScreen() {
         }
 
         if (!validatePassword(formData.password)) {
-            Alert.alert('Erro', 'A senha deve ter mais de 6 caracteres, incluir letras, números e um caractere especial.');
+            Alert.alert('Senha fraca', PASSWORD_RULE);
             return false;
         }
 
@@ -231,19 +232,20 @@ export default function RegisterScreen() {
                             keyboardType="phone-pad"
                             style={{ marginBottom: 12 }}
                         />
-                        <Input
+                        <PasswordInput
                             placeholder="Senha"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={formData.password} onChangeText={t => updateForm('password', t)}
-                            secureTextEntry
-                            style={{ marginBottom: 12 }}
+                            containerStyle={{ marginBottom: 6 }}
                         />
-                        <Input
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: 12 }}>
+                            {PASSWORD_RULE}
+                        </Text>
+                        <PasswordInput
                             placeholder="Confirmar Senha"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={formData.confirm_password} onChangeText={t => updateForm('confirm_password', t)}
-                            secureTextEntry
-                            style={{ marginBottom: 12 }}
+                            containerStyle={{ marginBottom: 12 }}
                         />
                     </FormArea>
                 </ScrollView>

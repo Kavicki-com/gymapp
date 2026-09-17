@@ -401,7 +401,7 @@ export default function EditProfileScreen() {
     const handleDeleteAccount = () => {
         Alert.alert(
             'Excluir Conta',
-            'Tem certeza que deseja excluir sua conta? Esta ação irá apagar TODOS os seus dados (clientes, colaboradores, modalidades, equipamentos, pagamentos) e NÃO poderá ser desfeita.',
+            'Tem certeza que deseja excluir sua conta? Esta ação irá apagar TODOS os seus dados (clientes, colaboradores, planos, equipamentos, pagamentos) e NÃO poderá ser desfeita.',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {

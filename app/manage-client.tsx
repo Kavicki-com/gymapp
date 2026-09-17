@@ -1,5 +1,6 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
+import { ModalHandle } from '@/src/components/ModalHandle';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCPF, formatPhone } from '@/src/utils/masks';
@@ -208,9 +209,7 @@ export default function ManageClientScreen() {
         >
             <Container>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 50 }}>
-                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
-                    </View>
+                    <ModalHandle />
                     <Title>{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</Title>
 
                     <FormGroup>
@@ -306,7 +305,7 @@ export default function ManageClientScreen() {
                     </Row>
 
                     <FormGroup>
-                        <Label>Modalidade</Label>
+                        <Label>Plano</Label>
                         <PickerContainer>
                             <Picker
                                 selectedValue={formData.plan_id}
@@ -314,7 +313,7 @@ export default function ManageClientScreen() {
                                 style={{ color: 'white', backgroundColor: theme.colors.inputBackground }}
                                 dropdownIconColor="white"
                             >
-                                <Picker.Item label="Selecione uma modalidade" value="" color="white" />
+                                <Picker.Item label="Selecione um plano" value="" color="white" />
                                 {plans.map(p => <Picker.Item key={p.id} label={`${p.name} - R$ ${p.price}`} value={p.id} color="white" />)}
                             </Picker>
                         </PickerContainer>

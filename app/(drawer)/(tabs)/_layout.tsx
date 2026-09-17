@@ -77,7 +77,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="plans"
         options={{
-          title: 'Modalidades',
+          title: 'Planos',
           tabBarIcon: ({ color }) => <TabBarIcon name="money" color={color} />,
         }}
       />

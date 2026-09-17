@@ -101,11 +101,30 @@ export default function ClientsScreen() {
         );
     };
 
+    // Cor do badge por hash estável do nome do plano (C7).
+    //
+    // A regra anterior casava a string: um plano chamado "Básico" saía
+    // vermelho — a mesma cor que o app usa para inadimplência — e qualquer
+    // outro nome caía no verde de "em dia". A cor passava um julgamento que
+    // ninguém pediu. Vermelho e verde ficam de fora da paleta justamente por
+    // já terem significado em outras telas.
+    const BADGE_PALETTE = [
+        { bg: '#1E3A8A', text: '#93C5FD' }, // blue
+        { bg: '#4C1D95', text: '#C4B5FD' }, // violet
+        { bg: '#134E4A', text: '#5EEAD4' }, // teal
+        { bg: '#713F12', text: '#FDE047' }, // amber
+        { bg: '#831843', text: '#F9A8D4' }, // pink
+        { bg: '#374151', text: '#D1D5DB' }, // gray
+    ];
+
     const getBadgeColor = (planName: string) => {
-        const lower = planName.toLowerCase();
-        if (lower.includes('básico')) return { bg: '#7F1D1D', text: '#FCA5A5' }; // red-900, red-300
-        if (lower.includes('super')) return { bg: '#713F12', text: '#FDE047' }; // yellow-900, yellow-300
-        return { bg: '#14532D', text: '#86EFAC' }; // green-900, green-300
+        const name = (planName || '').trim();
+        if (!name) return BADGE_PALETTE[BADGE_PALETTE.length - 1];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = (hash * 31 + name.charCodeAt(i)) | 0;
+        }
+        return BADGE_PALETTE[Math.abs(hash) % BADGE_PALETTE.length];
     };
 
     const filteredClients = clients.filter(client =>
@@ -162,7 +181,7 @@ export default function ClientsScreen() {
             <SearchBar
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Buscar clientes por nome, email ou modalidade..."
+                placeholder="Buscar clientes por nome, email ou plano..."
             />
 
             {loading ? (

@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
@@ -711,8 +712,8 @@ export default function ClientDetailsScreen() {
                 </Section>
 
                 <Section>
-                    <DetailLabel>Modalidade Atual</DetailLabel>
-                    <DetailValue>{planName || 'Sem Modalidade'}</DetailValue>
+                    <DetailLabel>Plano Atual</DetailLabel>
+                    <DetailValue>{planName || 'Sem plano'}</DetailValue>
 
                     <DetailLabel>Dia de Vencimento</DetailLabel>
                     <DetailValue>{client.due_day ? `Dia ${client.due_day}` : 'Não definido'}</DetailValue>
@@ -782,7 +783,7 @@ export default function ClientDetailsScreen() {
                             }}>
                                 <Row>
                                     <DetailValue>{new Date(p.payment_date).toLocaleDateString('pt-BR')}</DetailValue>
-                                    <DetailValue style={{ fontWeight: 'bold' }}>R$ {p.amount}</DetailValue>
+                                    <DetailValue style={{ fontWeight: 'bold' }}>{formatCurrency(p.amount || 0)}</DetailValue>
                                 </Row>
                                 <Row style={{ justifyContent: 'space-between' }}>
                                     <DetailLabel>{p.plan_name || 'Pagamento avulso'}</DetailLabel>
@@ -791,7 +792,7 @@ export default function ClientDetailsScreen() {
                                     )}
                                 </Row>
                                 {p.discount > 0 && (
-                                    <DetailLabel style={{ color: theme.colors.success }}>Desconto: R$ {p.discount}</DetailLabel>
+                                    <DetailLabel style={{ color: theme.colors.success }}>Desconto: {formatCurrency(p.discount || 0)}</DetailLabel>
                                 )}
                                 {p.is_advance && (
                                     <DetailLabel style={{ color: theme.colors.primary }}>⚡ Adiantado</DetailLabel>
@@ -950,7 +951,7 @@ export default function ClientDetailsScreen() {
                                 )}
 
                                 <DiscountSummary>
-                                    Total: R$ {calculateFinalAmount().toFixed(2)}
+                                    Total: {formatCurrency(calculateFinalAmount())}
                                     {isAdvancePayment ? ` (${advanceMonths}x)` : ''}
                                     {parseFloat(paymentDiscount) > 0 ? ` (desc. R$ ${paymentDiscount})` : ''}
                                 </DiscountSummary>

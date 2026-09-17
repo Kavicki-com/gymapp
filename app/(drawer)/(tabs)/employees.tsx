@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -114,7 +115,7 @@ export default function EmployeesScreen() {
                         <ListItemTitle>{item.name}</ListItemTitle>
                         <ListItemSubtitle>{item.email}</ListItemSubtitle>
                         <SalaryText>
-                            Salário: <SalaryValue>R$ {item.salary ? Number(item.salary).toFixed(2) : '0.00'}</SalaryValue>
+                            Salário: <SalaryValue>{formatCurrency(item.salary || 0)}</SalaryValue>
                         </SalaryText>
                     </View>
 

@@ -1,5 +1,6 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
+import { ModalHandle } from '@/src/components/ModalHandle';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src/utils/masks';
@@ -133,9 +134,7 @@ export default function ManageEquipmentScreen() {
         >
             <Container>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
-                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
-                    </View>
+                    <ModalHandle />
                     <Title>{isEditing ? 'Editar Aparelho' : 'Novo Aparelho'}</Title>
 
                     <FormGroup>

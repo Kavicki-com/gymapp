@@ -81,7 +81,7 @@ export default function PlansScreen() {
                 ]);
             } else {
                 console.error(error);
-                Alert.alert('Erro', 'Não foi possível carregar as modalidades.');
+                Alert.alert('Erro', 'Não foi possível carregar os planos.');
             }
         } finally {
             setRefreshing(false);
@@ -103,7 +103,7 @@ export default function PlansScreen() {
     const handleDelete = (id: string, name: string) => {
         Alert.alert(
             'Confirmar Exclusão',
-            `Deseja realmente excluir a modalidade ${name}?`,
+            `Deseja realmente excluir o plano ${name}?`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -111,7 +111,7 @@ export default function PlansScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         const { error } = await supabase.from('plans').delete().eq('id', id);
-                        if (error) Alert.alert('Erro', 'Não foi possível excluir a modalidade. Tente novamente.');
+                        if (error) Alert.alert('Erro', 'Não foi possível excluir o plano. Tente novamente.');
                         else fetchData();
                     }
                 }
@@ -155,16 +155,16 @@ export default function PlansScreen() {
     return (
         <PageContainer>
             <PageHeader>
-                <PageTitle>Modalidades</PageTitle>
+                <PageTitle>Planos</PageTitle>
                 <AddButton onPress={() => router.push('/manage-plan')}>
-                    <AddButtonText>+ Criar Modalidade</AddButtonText>
+                    <AddButtonText>+ Criar Plano</AddButtonText>
                 </AddButton>
             </PageHeader>
 
             <SearchBar
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Buscar modalidades..."
+                placeholder="Buscar planos..."
             />
 
             {loading ? (
@@ -182,7 +182,7 @@ export default function PlansScreen() {
                     contentContainerStyle={{ paddingBottom: 20 }}
                     ListEmptyComponent={
                         <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
-                            {searchQuery ? 'Nenhuma modalidade encontrada.' : 'Nenhuma modalidade cadastrada.'}
+                            {searchQuery ? 'Nenhum plano encontrado.' : 'Nenhum plano cadastrado.'}
                         </ListItemSubtitle>
                     }
                     initialNumToRender={10}

@@ -566,15 +566,15 @@ export default function DashboardScreen() {
           <>
             {/* Basic Stats */}
             <StatsGrid>
-              <StatCard title="Clientes Ativos" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
+              <StatCard title="Clientes cadastrados" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
               <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" onPress={() => router.push('/(drawer)/(tabs)/equipment')} />
               <StatCard title="Colaboradores" value={stats.employees} icon="id-card" onPress={() => router.push('/(drawer)/(tabs)/employees')} />
-              <StatCard title="Modalidades" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
+              <StatCard title="Planos" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
             </StatsGrid>
 
             {/* Donut Chart - Clients by Plan */}
             {clientsByPlan.length > 0 && (
-              <DashboardSection title="Clientes por Modalidade" icon="pie-chart">
+              <DashboardSection title="Clientes por Plano" icon="pie-chart">
                 <DonutChart data={clientsByPlan} />
               </DashboardSection>
             )}
@@ -595,7 +595,7 @@ export default function DashboardScreen() {
                   color={revenuePercentage >= 70 ? theme.colors.success : theme.colors.primary}
                 />
               </ProgressContainer>
-              <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>{revenuePercentage}% da meta</StatLabel>
+              <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>{revenuePercentage}% recebido</StatLabel>
             </DashboardSection>
 
             {/* Financial Health */}
@@ -630,7 +630,7 @@ export default function DashboardScreen() {
               {overdueCount > 0 && (
                 <View style={{ marginBottom: 8 }}>
                   <StatLabel style={{ color: theme.colors.danger }}>
-                    R$ {formatCurrency(totalOverdueValue)} em atraso
+                    {formatCurrency(totalOverdueValue)} em atraso
                   </StatLabel>
                 </View>
               )}

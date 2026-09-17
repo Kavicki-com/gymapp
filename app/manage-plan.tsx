@@ -1,5 +1,6 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
+import { ModalHandle } from '@/src/components/ModalHandle';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToFloat } from '@/src/utils/masks';
@@ -111,7 +112,7 @@ export default function ManagePlanScreen() {
 
             router.back();
         } catch (error: any) {
-            Alert.alert('Erro ao Salvar', 'Não foi possível salvar a modalidade. Tente novamente.');
+            Alert.alert('Erro ao Salvar', 'Não foi possível salvar o plano. Tente novamente.');
         } finally {
             setLoading(false);
         }
@@ -130,13 +131,11 @@ export default function ManagePlanScreen() {
         >
             <Container>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32 }}>
-                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                        <View style={{ width: 40, height: 4, backgroundColor: theme.colors.textSecondary, borderRadius: 2, opacity: 0.3 }} />
-                    </View>
-                    <Title>{isEditing ? 'Editar Modalidade' : 'Nova Modalidade'}</Title>
+                    <ModalHandle />
+                    <Title>{isEditing ? 'Editar Plano' : 'Novo Plano'}</Title>
 
                     <FormGroup>
-                        <Label>Nome da Modalidade</Label>
+                        <Label>Nome do Plano</Label>
                         <Input
                             value={formData.name}
                             onChangeText={t => setFormData({ ...formData, name: t })}

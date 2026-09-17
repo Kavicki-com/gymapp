@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
@@ -383,7 +384,7 @@ export default function EmployeeDetailsScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                             <DetailLabel>Salário</DetailLabel>
-                            <DetailValue>R$ {employee.salary ? Number(employee.salary).toFixed(2) : '0.00'}</DetailValue>
+                            <DetailValue>{formatCurrency(employee.salary || 0)}</DetailValue>
                         </View>
                     </Row>
                 </Section>
@@ -425,7 +426,7 @@ export default function EmployeeDetailsScreen() {
                             }}>
                                 <Row>
                                     <DetailValue>{new Date(p.payment_date).toLocaleDateString('pt-BR')}</DetailValue>
-                                    <DetailValue style={{ fontWeight: 'bold' }}>R$ {Number(p.amount).toFixed(2)}</DetailValue>
+                                    <DetailValue style={{ fontWeight: 'bold' }}>{formatCurrency(p.amount || 0)}</DetailValue>
                                 </Row>
                                 <DetailLabel>{p.description || 'Pagamento de salário'}</DetailLabel>
                             </View>

@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
+import { formatISODate } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -126,7 +127,7 @@ export default function EquipmentScreen() {
                     <Row style={{ alignItems: 'flex-start' }}>
                         <View style={{ flex: 1 }}>
                             <ListItemTitle>{item.name}</ListItemTitle>
-                            <ListItemSubtitle>Última: {item.last_maintenance}</ListItemSubtitle>
+                            <ListItemSubtitle>Última: {formatISODate(item.last_maintenance, 'sem registro')}</ListItemSubtitle>
                             <StatusText color={status.color}>{status.label}</StatusText>
                         </View>
 

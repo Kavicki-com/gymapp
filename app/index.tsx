@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import { Logo } from '../src/components/Logo';
+import { PasswordInput } from '../src/components/PasswordInput';
 import { PrivacyPolicyModal } from '../src/components/PrivacyPolicyModal';
 import {
     Button,
@@ -53,6 +54,15 @@ export default function LoginScreen() {
         }
     }, [session, isFocused, isPasswordRecovery]);
 
+    // Falha de conexão não é sessão inválida. Deslogar por causa de wifi ruim
+    // obriga o dono da academia a lembrar a senha no meio do atendimento.
+    const isNetworkError = (err: any) => {
+        if (!err) return false;
+        if (err.name === 'AuthRetryableFetchError') return true;
+        if (err.status === undefined || err.status === 0 || err.status >= 500) return true;
+        return /network|fetch|timeout|offline/i.test(String(err.message || ''));
+    };
+
     const checkSession = async () => {
         if (isChecking || !isFocused) return;
         setIsChecking(true);
@@ -60,6 +70,12 @@ export default function LoginScreen() {
         try {
             // 1. Verify if session is valid on server
             const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError && isNetworkError(userError)) {
+                console.warn('LoginScreen: sem conexão para validar a sessão', userError);
+                Alert.alert('Sem conexão', 'Não foi possível confirmar seu login agora. Verifique sua internet e tente de novo.');
+                return;
+            }
 
             if (userError || !user) {
                 // Session is stale or user deleted
@@ -74,6 +90,15 @@ export default function LoginScreen() {
                 .eq('user_id', user.id)
                 .single();
 
+            // PGRST116 = nenhuma linha, ou seja, perfil realmente não existe.
+            // Qualquer outro erro é falha de consulta: mandar para o onboarding
+            // faria uma academia já cadastrada recomeçar o cadastro.
+            if (error && error.code !== 'PGRST116') {
+                console.warn('LoginScreen: falha ao buscar perfil', error);
+                Alert.alert('Sem conexão', 'Não foi possível carregar seus dados agora. Verifique sua internet e tente de novo.');
+                return;
+            }
+
             if (profile) {
                 // router.replace works, but ensure we are not already navigating
                 router.replace('/(drawer)/(tabs)');
@@ -84,8 +109,10 @@ export default function LoginScreen() {
             }
         } catch (error) {
             console.error('Session check error:', error);
-            // If error, stay on login
-            await supabase.auth.signOut();
+            // Só desloga se a sessão for de fato inválida; erro de rede mantém.
+            if (!isNetworkError(error)) {
+                await supabase.auth.signOut();
+            }
         } finally {
             setIsChecking(false);
         }
@@ -163,12 +190,11 @@ export default function LoginScreen() {
 
                     <FormGroup>
                         <Label>Senha</Label>
-                        <Input
+                        <PasswordInput
                             placeholder="*******"
                             placeholderTextColor={theme.colors.textSecondary}
                             value={password}
                             onChangeText={setPassword}
-                            secureTextEntry
                         />
                     </FormGroup>
 

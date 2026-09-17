@@ -71,3 +71,13 @@ export const formatCEP = (value: string) => {
         .replace(/^(\d{5})(\d)/, '$1-$2')
         .replace(/(-\d{3})\d+?$/, '$1');
 };
+
+// Converte 'YYYY-MM-DD' (ou ISO completo) para 'DD/MM/YYYY' sem passar por
+// `new Date`: em fuso negativo, `new Date('2026-09-17').toLocaleDateString`
+// devolve 16/09/2026, porque a string date-only é lida como UTC.
+export const formatISODate = (value?: string | null, fallback = '') => {
+    if (!value) return fallback;
+    const [y, m, d] = String(value).split('T')[0].split('-');
+    if (!y || !m || !d) return fallback;
+    return `${d}/${m}/${y}`;
+};
