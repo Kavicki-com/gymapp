@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "gymapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#151B23"
-    },
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/images/icon.png",
@@ -44,7 +39,16 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#151B23"
+        }
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

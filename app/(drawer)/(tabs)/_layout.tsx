@@ -1,15 +1,15 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DrawerActions } from '@react-navigation/native';
+import { DrawerActions } from "expo-router/react-navigation";
 import { Tabs, useNavigation } from 'expo-router';
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { ColorValue, TouchableOpacity } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useColorScheme } from '@/components/useColorScheme';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
+  color: ColorValue;
 }) {
   return <FontAwesome size={24} style={{ marginBottom: -3 }} {...props} />;
 }

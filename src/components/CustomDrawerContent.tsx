@@ -1,7 +1,7 @@
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
-import { DrawerContentScrollView, DrawerItem, useDrawerStatus } from '@react-navigation/drawer';
-import { CommonActions, useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from 'expo-router/react-navigation';
+import { DrawerContentScrollView, DrawerItem, useDrawerStatus } from 'expo-router/drawer';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
