@@ -2,14 +2,15 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-navigation";
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
-import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
+import type * as NotificationsTypes from 'expo-notifications';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { getNotifications } from '../src/services/notificationsModule';
 import { supabase } from '../src/services/supabase';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -85,10 +86,14 @@ function RootLayoutNav() {
 // Handles incoming notifications and user taps in foreground and background
 function NotificationHandler() {
   const router = useRouter();
-  const notificationListener = useRef<Notifications.EventSubscription | undefined>(undefined);
-  const responseListener = useRef<Notifications.EventSubscription | undefined>(undefined);
+  const notificationListener = useRef<NotificationsTypes.EventSubscription | undefined>(undefined);
+  const responseListener = useRef<NotificationsTypes.EventSubscription | undefined>(undefined);
 
   useEffect(() => {
+    // Sem o módulo (Expo Go), simplesmente não há listener para registrar.
+    const Notifications = getNotifications();
+    if (!Notifications) return;
+
     // Fired when a notification is received while app is in foreground
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('[Notification] Received in foreground:', notification.request.content.title);
