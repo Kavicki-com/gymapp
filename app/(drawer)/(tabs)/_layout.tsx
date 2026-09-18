@@ -6,6 +6,42 @@ import { ColorValue, TouchableOpacity } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { useColorScheme } from '@/components/useColorScheme';
+import { supabase } from '@/src/services/supabase';
+
+/**
+ * A aba Cobranças só existe para quem tem a flag ligada — marcada à mão por
+ * quem opera o produto, nunca pelo dono da academia (há um trigger no banco
+ * impedindo). Quem não tem não vê NADA: nem aba, nem cadeado, nem preço.
+ *
+ * Isso não é timidez de produto: é a regra 3.1.3 da Apple. Qualquer superfície
+ * de compra dentro do app iOS — preço, botão, "saiba mais" — obrigaria a
+ * oferecer o IAP com igual destaque. A conversa de assinatura acontece fora
+ * do app. Ver a memória gymapp-regras-apple-brasil.
+ */
+function useCollectionsEnabled() {
+  const [habilitado, setHabilitado] = React.useState(false);
+
+  React.useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('gym_profiles')
+          .select('collections_enabled')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (vivo) setHabilitado(!!data?.collections_enabled);
+      } catch {
+        // Sem resposta, a aba simplesmente não aparece.
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  return habilitado;
+}
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -16,6 +52,7 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const cobrancasHabilitada = useCollectionsEnabled();
 
   return (
     <Tabs
@@ -64,6 +101,14 @@ export default function TabLayout() {
           da tab bar sem remover a rota. Aparelhos foi removido por inteiro:
           nenhuma academia real jamais cadastrou um. */}
       <Tabs.Screen name="employees" options={{ href: null, title: 'Colaboradores' }} />
+      <Tabs.Screen
+        name="collections"
+        options={{
+          href: cobrancasHabilitada ? undefined : null,
+          title: 'Cobranças',
+          tabBarIcon: ({ color }) => <TabBarIcon name="exclamation-circle" color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="plans"
         options={{

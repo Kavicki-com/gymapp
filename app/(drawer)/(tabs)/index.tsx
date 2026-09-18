@@ -3,6 +3,7 @@ import { DashboardSection } from '@/components/DashboardSection';
 import { CHART_COLORS, DonutChart } from '@/components/DonutChart';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
+import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
@@ -293,11 +294,7 @@ export default function DashboardScreen() {
         .eq('gym_id', gymId)
         .is('deleted_at', null);
 
-      const paymentsMap: Record<string, Set<string>> = {};
-      (allPayments || []).forEach(p => {
-        if (!paymentsMap[p.client_id]) paymentsMap[p.client_id] = new Set();
-        if (p.reference_month) paymentsMap[p.client_id].add(p.reference_month);
-      });
+      const paymentsMap = agruparCompetencias(allPayments || []);
 
       const overdueList: OverdueClient[] = [];
 
@@ -306,28 +303,14 @@ export default function DashboardScreen() {
 
         const plan = plans.find(p => p.id === client.plan_id);
         const dueDay = client.due_day || 1;
-        const paidMonths = paymentsMap[client.id] || new Set();
+        const paidMonths = paymentsMap[client.id] || new Set<string>();
 
-        // 1. Calculate Overdue Months (same logic as client-details)
-        const createdAt = client.created_at
-          ? new Date(client.created_at)
-          : new Date(currentYear, currentMonth - 12, 1);
-        const start = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
-
-        const dueDayPassedThisMonth = currentDay >= dueDay;
-        const end = new Date(
-          currentYear,
-          dueDayPassedThisMonth ? currentMonth : currentMonth - 1,
-          1
-        );
-
-        let overdueMonthsCount = 0;
-        const cursor = new Date(start);
-        while (cursor <= end) {
-          const key = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${cursor.getFullYear()}`;
-          if (!paidMonths.has(key)) overdueMonthsCount++;
-          cursor.setMonth(cursor.getMonth() + 1);
-        }
+        // Regra única (src/utils/overdue). Só conta atraso de quem está ativo,
+        // com teto de 3 meses — cadastro nunca usado e aluno que saiu param de
+        // somar dívida em vez de acumular para sempre.
+        const resumo = resumirCobranca(client, paidMonths);
+        if (resumo.coorte !== 'ativo') return;
+        const overdueMonthsCount = resumo.mesesEmAtraso;
 
         // 2. Original daysOverdue logic (for sorting and "due soon" alerts)
         let daysOverdue = 0;

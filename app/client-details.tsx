@@ -1,3 +1,4 @@
+import { resumirCobranca } from '@/src/utils/overdue';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import {
@@ -307,42 +308,20 @@ export default function ClientDetailsScreen() {
         }
     }, [client, payments]);
 
+    // Regra única (src/utils/overdue). Antes havia uma cópia aqui e outra no
+    // dashboard, e elas já tinham divergido: uma pulava aluno trancado, a
+    // outra não.
     const computeOverdueCount = (paidPayments: any[], clientData?: any) => {
         const resolvedClient = clientData ?? client;
         if (!resolvedClient) return;
 
-        const paidMonths = new Set(paidPayments.map(p => p.reference_month).filter(Boolean));
-        const now = new Date();
-        const dueDay = resolvedClient.due_day || 1;
-
-        // Start from the month the client was created (or 12 months ago as fallback)
-        const createdAt = resolvedClient.created_at
-            ? new Date(resolvedClient.created_at)
-            : new Date(now.getFullYear(), now.getMonth() - 12, 1);
-        const start = new Date(createdAt.getFullYear(), createdAt.getMonth(), 1);
-
-        // End: if due_day hasn't passed this month yet, don't count current month
-        const dueDayPassedThisMonth = now.getDate() >= dueDay;
-        const end = new Date(
-            now.getFullYear(),
-            dueDayPassedThisMonth ? now.getMonth() : now.getMonth() - 1,
-            1
+        const competencias = new Set<string>(
+            paidPayments.map(p => p.reference_month).filter(Boolean)
         );
+        const resumo = resumirCobranca(resolvedClient, competencias);
 
-        let count = 0;
-        const missingMonths: string[] = [];
-        const cursor = new Date(start);
-        while (cursor <= end) {
-            const key = `${String(cursor.getMonth() + 1).padStart(2, '0')}/${cursor.getFullYear()}`;
-            if (!paidMonths.has(key)) {
-                count++;
-                missingMonths.push(key);
-            }
-            cursor.setMonth(cursor.getMonth() + 1);
-        }
-
-        setOverdueMonthsCount(count);
-        setOverdueMonths(missingMonths);
+        setOverdueMonthsCount(resumo.mesesEmAtraso);
+        setOverdueMonths(resumo.mesesAbertos);
     };
 
     const handleDelete = () => {
