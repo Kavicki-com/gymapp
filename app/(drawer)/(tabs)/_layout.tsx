@@ -60,20 +60,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="users" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="equipment"
-        options={{
-          title: 'Aparelhos',
-          tabBarIcon: ({ color }) => <TabBarIcon name="codepen" color={color} />, // using codepen (dumbbell not avail in FA4 easily?) or 'cogs'
-        }}
-      />
-      <Tabs.Screen
-        name="employees"
-        options={{
-          title: 'Colaboradores',
-          tabBarIcon: ({ color }) => <TabBarIcon name="id-card" color={color} />,
-        }}
-      />
+      {/* Aparelhos e Colaboradores saíram da barra e vivem no drawer.
+          `href: null` esconde da tab bar sem remover a rota: os links
+          existentes continuam funcionando e os dados seguem intactos.
+          Motivo: nenhuma academia real jamais cadastrou um aparelho, e
+          colaboradores têm 1 registro em uma das quatro ativas. */}
+      <Tabs.Screen name="equipment" options={{ href: null, title: 'Aparelhos' }} />
+      <Tabs.Screen name="employees" options={{ href: null, title: 'Colaboradores' }} />
       <Tabs.Screen
         name="plans"
         options={{
