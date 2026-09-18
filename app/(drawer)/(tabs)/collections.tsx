@@ -14,13 +14,23 @@ import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
+import { Input } from '@/src/components/styled';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
 import { gerarPixBrCode } from '@/src/utils/pixBrCode';
-import { FontAwesome } from '@expo/vector-icons';
+import {
+    TIPOS_CHAVE_PIX,
+    TipoChavePix,
+    detectarTipo,
+    mascararChave,
+    normalizarChave,
+    teclado,
+    validarChave,
+} from '@/src/utils/pixKey';
+import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, RefreshControl, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 /**
@@ -102,6 +112,66 @@ const Marca = styled.Text<{ recente?: boolean }>`
     margin-top: 3px;
 `;
 
+const CartaoPix = styled.View`
+    background-color: ${theme.colors.surface};
+    border-radius: 12px;
+    border-left-width: 3px;
+    border-left-color: ${theme.colors.primary};
+    padding: ${theme.spacing.md}px;
+    margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
+`;
+
+const PixTitulo = styled.Text`
+    color: ${theme.colors.text};
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+`;
+
+const PixTexto = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 13px;
+    line-height: 19px;
+    margin-bottom: 12px;
+`;
+
+const PixCabecalho = styled.View`
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+`;
+
+const TipoLinha = styled.View`
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+`;
+
+const TipoChip = styled(TouchableOpacity)<{ ativo: boolean }>`
+    padding: 7px 12px;
+    border-radius: 16px;
+    background-color: ${p => (p.ativo ? theme.colors.primary : theme.colors.inputBackground)};
+    border-width: 1px;
+    border-color: ${p => (p.ativo ? theme.colors.primary : theme.colors.border)};
+`;
+
+const TipoChipTexto = styled.Text<{ ativo: boolean }>`
+    color: ${p => (p.ativo ? theme.colors.background : theme.colors.text)};
+    font-size: 13px;
+    font-weight: ${p => (p.ativo ? '700' : '400')};
+`;
+
+const PixRodape = styled(TouchableOpacity)`
+    padding: 10px ${theme.spacing.lg}px 0;
+`;
+
+const PixRodapeTexto = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 12px;
+`;
+
 const Vazio = styled.Text`
     color: ${theme.colors.textSecondary};
     text-align: center;
@@ -170,6 +240,11 @@ export default function CollectionsScreen() {
     const [filaIdx, setFilaIdx] = useState(0);
     const habilitado = useCollectionsEnabled();
     const [academia, setAcademia] = useState<{ nome: string; pixKey: string | null; pixCity: string | null } | null>(null);
+    const [editandoPix, setEditandoPix] = useState(false);
+    const [pixTipo, setPixTipo] = useState<TipoChavePix>('cpf');
+    const [pixChave, setPixChave] = useState('');
+    const [pixCidade, setPixCidade] = useState('');
+    const [salvandoPix, setSalvandoPix] = useState(false);
     const router = useRouter();
 
     const carregar = async () => {
@@ -269,6 +344,40 @@ export default function CollectionsScreen() {
     };
 
     useFocusEffect(useCallback(() => { carregar(); }, []));
+
+    const salvarPix = async () => {
+        const problema = validarChave(pixTipo, pixChave);
+        if (problema) {
+            Alert.alert('Chave inválida', problema);
+            return;
+        }
+        // Grava na forma canônica: é ela que entra no BR Code. CPF e CNPJ só
+        // com dígitos, celular em E.164 — com máscara o banco do aluno recusa.
+        const chave = normalizarChave(pixTipo, pixChave);
+
+        setSalvandoPix(true);
+        try {
+            const gymId = await getCurrentGymId();
+            const { error } = await supabase.from('gym_profiles')
+                .update({ pix_key: chave, pix_city: pixCidade.trim() || null })
+                .eq('id', gymId);
+            if (error) throw error;
+            setEditandoPix(false);
+            carregar();
+        } catch (e: any) {
+            Alert.alert('Erro', 'Não foi possível salvar a chave: ' + e.message);
+        } finally {
+            setSalvandoPix(false);
+        }
+    };
+
+    const abrirEdicaoPix = () => {
+        const tipo = detectarTipo(academia?.pixKey);
+        setPixTipo(tipo);
+        setPixChave(academia?.pixKey ? mascararChave(tipo, academia.pixKey) : '');
+        setPixCidade(academia?.pixCity || '');
+        setEditandoPix(true);
+    };
 
     const registrarContato = async (d: Devedor) => {
         try {
@@ -468,6 +577,84 @@ export default function CollectionsScreen() {
                 </Resumo>
             )}
 
+            {/* A chave Pix mora aqui, e não no perfil: é aqui que ela é usada,
+                e é aqui que o dono descobre que a cobrança pode sair com o
+                valor já preenchido. */}
+            {(editandoPix || !academia?.pixKey) && (
+                <CartaoPix>
+                    <PixCabecalho>
+                        <MaterialCommunityIcons name="qrcode" size={20} color={theme.colors.primary} />
+                        <PixTitulo style={{ marginBottom: 0 }}>Cobrança com Pix</PixTitulo>
+                    </PixCabecalho>
+                    <PixTexto>
+                        Com a chave cadastrada, cada cobrança sai com um Pix copia e cola
+                        e o valor já preenchido — o aluno só cola no banco. O dinheiro vai
+                        direto para você; o app não recebe nada no meio.
+                    </PixTexto>
+
+                    <TipoLinha>
+                        {TIPOS_CHAVE_PIX.map(t => (
+                            <TipoChip
+                                key={t.valor}
+                                ativo={pixTipo === t.valor}
+                                onPress={() => { setPixTipo(t.valor); setPixChave(''); }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Tipo de chave: ${t.rotulo}`}
+                            >
+                                <TipoChipTexto ativo={pixTipo === t.valor}>{t.rotulo}</TipoChipTexto>
+                            </TipoChip>
+                        ))}
+                    </TipoLinha>
+
+                    <Input
+                        placeholder={
+                            pixTipo === 'cpf' ? '000.000.000-00'
+                                : pixTipo === 'cnpj' ? '00.000.000/0000-00'
+                                    : pixTipo === 'celular' ? '(00)00000-0000'
+                                        : pixTipo === 'email' ? 'voce@academia.com.br'
+                                            : 'chave aleatória do banco'
+                        }
+                        value={pixChave}
+                        onChangeText={t => setPixChave(mascararChave(pixTipo, t))}
+                        keyboardType={teclado(pixTipo)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        style={{ marginBottom: 10 }}
+                    />
+                    <Input
+                        placeholder="Cidade da conta (opcional)"
+                        value={pixCidade}
+                        onChangeText={setPixCidade}
+                        style={{ marginBottom: 12 }}
+                    />
+
+                    <Row style={{ gap: 8 }}>
+                        <AcaoLinha
+                            bg={theme.colors.primary}
+                            onPress={salvarPix}
+                            disabled={salvandoPix}
+                            accessibilityRole="button"
+                            accessibilityLabel="Salvar chave Pix"
+                        >
+                            {salvandoPix
+                                ? <ActivityIndicator size="small" color={theme.colors.background} />
+                                : <AcaoTexto>Salvar chave</AcaoTexto>}
+                        </AcaoLinha>
+
+                        {academia?.pixKey && (
+                            <TouchableOpacity
+                                onPress={() => setEditandoPix(false)}
+                                style={{ paddingHorizontal: 12, justifyContent: 'center' }}
+                                accessibilityRole="button"
+                                accessibilityLabel="Cancelar edição da chave Pix"
+                            >
+                                <ListItemSubtitle>Cancelar</ListItemSubtitle>
+                            </TouchableOpacity>
+                        )}
+                    </Row>
+                </CartaoPix>
+            )}
+
             {naFila.length > 1 && (
                 <BotaoFila onPress={() => { setFila(naFila); setFilaIdx(0); }}
                     accessibilityRole="button"
@@ -493,6 +680,19 @@ export default function CollectionsScreen() {
                         Ninguém em atraso.{'\n\n'}
                         Alunos sem cobrança e desligados não entram nesta lista.
                     </Vazio>
+                }
+                ListFooterComponent={
+                    academia?.pixKey && !editandoPix ? (
+                        <PixRodape
+                            onPress={abrirEdicaoPix}
+                            accessibilityRole="button"
+                            accessibilityLabel="Alterar a chave Pix da academia"
+                        >
+                            <PixRodapeTexto>
+                                Pix das cobranças: {academia.pixKey} · alterar
+                            </PixRodapeTexto>
+                        </PixRodape>
+                    ) : null
                 }
                 renderItem={({ item }) => (
                     <ListItem>

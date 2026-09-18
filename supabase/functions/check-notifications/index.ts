@@ -171,7 +171,12 @@ Deno.serve(async (_req: Request) => {
     ]);
 
     const clientes = clientesRes.data || [];
-    const planos = new Map((planosRes.data || []).map((p) => [p.id, Number(p.price) || 0]));
+    // Tipado explicitamente: sem isso o Map vira Map<unknown, unknown> e o
+    // preço sai como `unknown`, que não multiplica.
+    const planos = new Map<string, number>(
+      (planosRes.data || []).map((p: { id: string; price: unknown }) =>
+        [p.id, Number(p.price) || 0] as [string, number]),
+    );
 
     const pagasPorCliente: Record<string, Set<string>> = {};
     for (const p of pagamentosRes.data || []) {
