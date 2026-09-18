@@ -1,4 +1,6 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { CollectionsLocked } from '@/src/components/CollectionsLocked';
+import { useCollectionsEnabled } from '@/src/hooks/useCollectionsEnabled';
 import {
     ListItem,
     ListItemSubtitle,
@@ -165,6 +167,7 @@ export default function CollectionsScreen() {
     const [efetividade, setEfetividade] = useState<{ cobrados: number; pagaram: number; valor: number } | null>(null);
     const [fila, setFila] = useState<Devedor[] | null>(null);
     const [filaIdx, setFilaIdx] = useState(0);
+    const habilitado = useCollectionsEnabled();
     const router = useRouter();
 
     const carregar = async () => {
@@ -329,6 +332,21 @@ export default function CollectionsScreen() {
     const totalDevido = devedores.reduce((s, d) => s + d.total, 0);
     const naFila = devedores.filter(d => d.telefone &&
         (d.diasDesdeCobranca === null || d.diasDesdeCobranca >= DIAS_PARA_RECOBRAR));
+
+    // Enquanto não se sabe, mostra o esqueleto: piscar a tela travada para
+    // quem tem a função seria pior que esperar meio segundo.
+    if (habilitado === null) {
+        return (
+            <PageContainer>
+                <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
+                <View style={{ padding: 16 }}>
+                    <SkeletonLoader variant="card" />
+                </View>
+            </PageContainer>
+        );
+    }
+
+    if (!habilitado) return <CollectionsLocked />;
 
     /* ---------------- modo fila ---------------- */
     if (fila) {
