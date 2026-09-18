@@ -223,10 +223,13 @@ export default function CollectionsScreen() {
                 </Resumo>
             )}
 
+            {/* Sem paddingHorizontal no contentContainerStyle: o ListItem já
+                traz margin-horizontal, e somar os dois estreitaria os cards em
+                relação às outras listas do app. */}
             <FlatList
                 data={devedores}
                 keyExtractor={item => item.id}
-                contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingBottom: 24 }}
+                contentContainerStyle={{ paddingBottom: 24 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
