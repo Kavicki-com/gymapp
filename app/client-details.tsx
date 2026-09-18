@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import styled from 'styled-components/native';
 
 const ContentContainer = styled.ScrollView`
@@ -57,6 +57,11 @@ const ClientPhoto = styled.Image`
   height: 100%;
 `;
 
+// Teclado numérico no iOS não tem tecla de confirmar: sem uma barra de
+// acessório, quem toca num campo de valor fica preso — o teclado cobre os
+// botões do modal e não há como fechá-lo.
+const ACESSORIO_TECLADO = 'gymapp-acessorio-teclado';
+
 const ModalOverlay = styled.View`
     flex: 1;
     background-color: rgba(0, 0, 0, 0.5);
@@ -69,7 +74,7 @@ const ModalContent = styled.View`
     background-color: ${theme.colors.surface};
     padding: 20px;
     border-radius: 10px;
-    max-height: 90%;
+    max-height: 80%;
 `;
 
 const ModalTitle = styled.Text`
@@ -1015,15 +1020,24 @@ export default function ClientDetailsScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
                 >
+                    {/* Tocar fora do cartão fecha o teclado. Os toques dentro
+                        são tratados pelos próprios campos e botões. */}
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                     <ModalOverlay>
                         <ModalContent>
-                            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                                automaticallyAdjustKeyboardInsets
+                                contentContainerStyle={{ paddingBottom: 12 }}
+                            >
                                 <ModalTitle>{editingPayment ? 'Editar Pagamento' : 'Registrar Pagamento'}</ModalTitle>
 
                                 <DetailLabel>Valor (R$)</DetailLabel>
                                 <StyledInput
                                     value={paymentAmount}
                                     onChangeText={setPaymentAmount}
+                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
                                     keyboardType="numeric"
                                     placeholder="0.00"
                                     placeholderTextColor={theme.colors.textSecondary}
@@ -1033,6 +1047,7 @@ export default function ClientDetailsScreen() {
                                 <StyledInput
                                     value={paymentDiscount}
                                     onChangeText={setPaymentDiscount}
+                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
                                     keyboardType="numeric"
                                     placeholder="0.00"
                                     placeholderTextColor={theme.colors.textSecondary}
@@ -1092,6 +1107,7 @@ export default function ClientDetailsScreen() {
                                     onChangeText={t => setReferenceMonth(formatMonthYear(t))}
                                     placeholder="MM/AAAA"
                                     placeholderTextColor={theme.colors.textSecondary}
+                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
                                     keyboardType="number-pad"
                                     maxLength={7}
                                 />
@@ -1164,6 +1180,32 @@ export default function ClientDetailsScreen() {
                             </ScrollView>
                         </ModalContent>
                     </ModalOverlay>
+                    </TouchableWithoutFeedback>
+
+                    {Platform.OS === 'ios' && (
+                        <InputAccessoryView nativeID={ACESSORIO_TECLADO}>
+                            <View style={{
+                                backgroundColor: theme.colors.surface,
+                                borderTopWidth: 1,
+                                borderTopColor: theme.colors.border,
+                                alignItems: 'flex-end',
+                                paddingHorizontal: 16,
+                            }}>
+                                <TouchableOpacity
+                                    onPress={Keyboard.dismiss}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Fechar teclado"
+                                    style={{ paddingVertical: 10, paddingHorizontal: 8 }}
+                                >
+                                    <DetailValue style={{
+                                        marginBottom: 0,
+                                        color: theme.colors.primary,
+                                        fontWeight: 'bold',
+                                    }}>Concluído</DetailValue>
+                                </TouchableOpacity>
+                            </View>
+                        </InputAccessoryView>
+                    )}
                 </KeyboardAvoidingView>
             </Modal>
 

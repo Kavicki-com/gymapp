@@ -18,7 +18,7 @@ import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import styled from 'styled-components/native';
 
 const ContentContainer = styled.ScrollView`
@@ -55,6 +55,10 @@ const EmployeePhoto = styled.Image`
   width: 100%;
   height: 100%;
 `;
+
+// Ver a nota em client-details: teclado numérico no iOS não tem tecla de
+// sair, e sem isto ele cobre os botões do modal.
+const ACESSORIO_TECLADO = 'gymapp-acessorio-teclado-salario';
 
 const ModalOverlay = styled.View`
     flex: 1;
@@ -449,6 +453,11 @@ export default function EmployeeDetailsScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowPaymentModal(false)}
             >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <ModalOverlay>
                     <ModalContent>
                         <ModalTitle>Registrar Pagamento de Salário</ModalTitle>
@@ -457,6 +466,7 @@ export default function EmployeeDetailsScreen() {
                         <StyledInput
                             value={paymentAmount}
                             onChangeText={setPaymentAmount}
+                            inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
                             keyboardType="numeric"
                             placeholder="0.00"
                             placeholderTextColor={theme.colors.textSecondary}
@@ -489,6 +499,33 @@ export default function EmployeeDetailsScreen() {
                         </ModalButtons>
                     </ModalContent>
                 </ModalOverlay>
+                </TouchableWithoutFeedback>
+
+                {Platform.OS === 'ios' && (
+                    <InputAccessoryView nativeID={ACESSORIO_TECLADO}>
+                        <View style={{
+                            backgroundColor: theme.colors.surface,
+                            borderTopWidth: 1,
+                            borderTopColor: theme.colors.border,
+                            alignItems: 'flex-end',
+                            paddingHorizontal: 16,
+                        }}>
+                            <TouchableOpacity
+                                onPress={Keyboard.dismiss}
+                                accessibilityRole="button"
+                                accessibilityLabel="Fechar teclado"
+                                style={{ paddingVertical: 10, paddingHorizontal: 8 }}
+                            >
+                                <DetailValue style={{
+                                    marginBottom: 0,
+                                    color: theme.colors.primary,
+                                    fontWeight: 'bold',
+                                }}>Concluído</DetailValue>
+                            </TouchableOpacity>
+                        </View>
+                    </InputAccessoryView>
+                )}
+                </KeyboardAvoidingView>
             </Modal>
         </Container>
     );
