@@ -1,3 +1,4 @@
+import { linkWhatsApp } from '@/src/config/contato';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
 import { CommonActions, useNavigation } from 'expo-router/react-navigation';
@@ -99,7 +100,7 @@ export default function CustomDrawerContent(props: any) {
     };
 
     const handleSupport = () => {
-        Linking.openURL('https://wa.me/5521966087421');
+        Linking.openURL(linkWhatsApp());
     };
 
     return (

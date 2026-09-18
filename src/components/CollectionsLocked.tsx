@@ -1,8 +1,10 @@
 import { PageContainer, PageHeader, PageTitle } from '@/src/components/styled';
+import { WHATSAPP_SUPORTE_EXIBICAO, linkWhatsApp } from '@/src/config/contato';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Alert, ScrollView, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 /**
@@ -19,6 +21,12 @@ import styled from 'styled-components/native';
  *
  * Ou seja: descrever aqui é de graça; qualquer coisa tocável fica cara.
  * Ver a memória gymapp-regras-apple-brasil.
+ *
+ * RESSALVA, a pedido do Kavicki em 18/09/2026: o botão de WhatsApp abaixo É
+ * tocável e diz "para ativar". Isso é uma chamada para compra, e portanto sai
+ * da faixa de 0%. Foi decisão consciente dele, ciente do risco de rejeição na
+ * revisão. Se a Apple reclamar, a volta atrás é trocar o TouchableOpacity por
+ * <Texto> com o número escrito — o resto da tela já está conforme.
  */
 
 const Corpo = styled.View`
@@ -56,6 +64,30 @@ const ItemTexto = styled.Text`
     font-size: 15px;
     line-height: 21px;
     flex: 1;
+`;
+
+const BotaoContato = styled(TouchableOpacity)`
+    background-color: #25D366;
+    border-radius: 10px;
+    padding: 13px;
+    margin-top: ${theme.spacing.md}px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+`;
+
+const BotaoContatoTexto = styled.Text`
+    color: ${theme.colors.background};
+    font-weight: bold;
+    font-size: 15px;
+`;
+
+const Numero = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 13px;
+    text-align: center;
+    margin-top: 8px;
 `;
 
 const Rodape = styled.Text`
@@ -102,9 +134,23 @@ export function CollectionsLocked() {
                         ))}
 
                         <Rodape>
-                            Faz parte de um plano pago, ativado individualmente. Para liberar na
-                            sua academia, fale com quem te atende.
+                            Faz parte de um plano pago, ativado individualmente na sua academia.
                         </Rodape>
+
+                        <BotaoContato
+                            onPress={() => {
+                                Linking.openURL(linkWhatsApp(
+                                    'Olá! Quero ativar a Cobranças na minha academia.'
+                                )).catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Falar no WhatsApp para ativar a Cobranças"
+                        >
+                            <FontAwesome name="whatsapp" size={18} color={theme.colors.background} />
+                            <BotaoContatoTexto>Ativar pelo WhatsApp</BotaoContatoTexto>
+                        </BotaoContato>
+
+                        <Numero>{WHATSAPP_SUPORTE_EXIBICAO}</Numero>
                     </Cartao>
                     <View style={{ height: 32 }} />
                 </Corpo>
