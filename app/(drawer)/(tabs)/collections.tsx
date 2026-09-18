@@ -162,13 +162,28 @@ const TipoChipTexto = styled.Text<{ ativo: boolean }>`
     font-weight: ${p => (p.ativo ? '700' : '400')};
 `;
 
-const PixRodape = styled(TouchableOpacity)`
-    padding: 10px ${theme.spacing.lg}px 0;
+const MenuLinha = styled.View`
+    flex-direction: row;
+    gap: 8px;
+    margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
 `;
 
-const PixRodapeTexto = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 12px;
+const MenuItem = styled(TouchableOpacity)<{ ativo?: boolean }>`
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background-color: ${theme.colors.surface};
+    border-width: 1px;
+    border-color: ${p => (p.ativo ? theme.colors.primary : 'transparent')};
+`;
+
+const MenuTexto = styled.Text`
+    color: ${theme.colors.text};
+    font-size: 13px;
 `;
 
 const Vazio = styled.Text`
@@ -595,6 +610,30 @@ export default function CollectionsScreen() {
     // foco a cada tecla.
     const cabecalho = (
         <>
+                <MenuLinha>
+                    <MenuItem
+                        ativo={editandoPix}
+                        onPress={() => (editandoPix ? setEditandoPix(false) : abrirEdicaoPix())}
+                        accessibilityRole="button"
+                        accessibilityLabel={academia?.pixKey ? 'Alterar a chave Pix' : 'Cadastrar a chave Pix'}
+                    >
+                        <MaterialCommunityIcons name="qrcode" size={17} color={theme.colors.primary} />
+                        <MenuTexto numberOfLines={1}>
+                            {academia?.pixKey ? 'Alterar chave Pix' : 'Cadastrar chave Pix'}
+                        </MenuTexto>
+                    </MenuItem>
+
+                    <MenuItem
+                        ativo={editandoMsg}
+                        onPress={() => (editandoMsg ? setEditandoMsg(false) : abrirEdicaoMensagem())}
+                        accessibilityRole="button"
+                        accessibilityLabel="Editar a mensagem de cobrança"
+                    >
+                        <MaterialCommunityIcons name="message-text-outline" size={17} color={theme.colors.primary} />
+                        <MenuTexto numberOfLines={1}>Mensagem</MenuTexto>
+                    </MenuItem>
+                </MenuLinha>
+
                 {devedores.length > 0 && (
                     <Resumo>
                         <ResumoValor>{formatCurrency(totalDevido)}</ResumoValor>
@@ -771,32 +810,6 @@ export default function CollectionsScreen() {
                         Ninguém em atraso.{'\n\n'}
                         Alunos sem cobrança e desligados não entram nesta lista.
                     </Vazio>
-                }
-                ListFooterComponent={
-                    <>
-                        {academia?.pixKey && !editandoPix && (
-                            <PixRodape
-                                onPress={abrirEdicaoPix}
-                                accessibilityRole="button"
-                                accessibilityLabel="Alterar a chave Pix da academia"
-                            >
-                                <PixRodapeTexto>
-                                    Pix das cobranças: {academia.pixKey} · alterar
-                                </PixRodapeTexto>
-                            </PixRodape>
-                        )}
-                        {!editandoMsg && (
-                            <PixRodape
-                                onPress={abrirEdicaoMensagem}
-                                accessibilityRole="button"
-                                accessibilityLabel="Editar a mensagem de cobrança"
-                            >
-                                <PixRodapeTexto>
-                                    Mensagem de cobrança · editar
-                                </PixRodapeTexto>
-                            </PixRodape>
-                        )}
-                    </>
                 }
                 renderItem={({ item }) => (
                     <ListItem>
