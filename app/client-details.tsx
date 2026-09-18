@@ -241,6 +241,8 @@ export default function ClientDetailsScreen() {
     const [isAdvancePayment, setIsAdvancePayment] = useState(false);
     const [advanceMonths, setAdvanceMonths] = useState(1);
     const [registeringPayment, setRegisteringPayment] = useState(false);
+    const [editingPayment, setEditingPayment] = useState<any>(null);
+    const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
     const [overdueMonthsCount, setOverdueMonthsCount] = useState(0);
     const [overdueMonths, setOverdueMonths] = useState<string[]>([]);
 
@@ -294,6 +296,7 @@ export default function ClientDetailsScreen() {
                 .from('payments')
                 .select('*')
                 .eq('client_id', id)
+                .is('deleted_at', null)
                 .order('payment_date', { ascending: false });
 
             if (error) {
@@ -427,6 +430,7 @@ export default function ClientDetailsScreen() {
     };
 
     const openPaymentModal = () => {
+        setEditingPayment(null);
         setPaymentAmount(planPrice ? planPrice.toString() : '');
         setPaymentDiscount('');
         setReferenceMonth(getCurrentMonthYear());
@@ -438,6 +442,7 @@ export default function ClientDetailsScreen() {
 
     // Quick shortcut to pre-fill with the previous month
     const openPaymentModalRetroactive = () => {
+        setEditingPayment(null);
         setPaymentAmount(planPrice ? planPrice.toString() : '');
         setPaymentDiscount('');
         setReferenceMonth(getPreviousMonthYear());
@@ -474,6 +479,34 @@ export default function ClientDetailsScreen() {
         return totalPerMonth * months;
     };
 
+    // Abre o modal já preenchido com um lançamento existente.
+    const openEditPaymentModal = (p: any) => {
+        setEditingPayment(p);
+        // `amount` é gravado já líquido (valor - desconto). O campo "Valor" do
+        // formulário é o bruto, então soma o desconto de volta pra edição
+        // fechar a conta em vez de descontar duas vezes.
+        const desconto = Number(p.discount) || 0;
+        const bruto = (Number(p.amount) || 0) + desconto;
+        setPaymentAmount(String(bruto));
+        setPaymentDiscount(desconto ? String(desconto) : '');
+        setReferenceMonth(p.reference_month || '');
+        setPaymentDate(p.payment_date ? new Date(p.payment_date).toLocaleDateString('pt-BR') : '');
+        // Adiantamento só existe no ato do lançamento: editar mexe numa linha só.
+        setIsAdvancePayment(false);
+        setAdvanceMonths(1);
+        setShowPaymentModal(true);
+    };
+
+    // Converte o campo DD/MM/AAAA em Date. Devolve null se estiver incompleto,
+    // pra diferenciar "não informou" de "informou errado".
+    const parsePaymentDate = (): Date | null => {
+        if (!paymentDate) return null;
+        const parts = paymentDate.split('/');
+        if (parts.length !== 3 || parts[2].length !== 4) return null;
+        const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
     const handleRegisterPayment = async () => {
         if (!paymentAmount) {
             Alert.alert('Erro', 'Informe o valor do pagamento.');
@@ -485,26 +518,48 @@ export default function ClientDetailsScreen() {
             return;
         }
 
+        if (paymentDate && !parsePaymentDate()) {
+            Alert.alert('Erro', 'Data do pagamento inválida. Use DD/MM/AAAA.');
+            return;
+        }
+
+        if (editingPayment) {
+            updatePayment();
+            return;
+        }
+
+        const months = isAdvancePayment ? advanceMonths : 1;
+        const refMonths = getNextMonths(referenceMonth, months);
+
+        // Guarda de duplicata: avisa ANTES de gravar, em vez de deixar o mês
+        // entrar duas vezes e virar suporte manual depois.
+        const jaLancados = refMonths.filter(m => payments.some(p => p.reference_month === m));
+        if (jaLancados.length > 0) {
+            const plural = jaLancados.length > 1;
+            Alert.alert(
+                plural ? 'Meses já lançados' : 'Mês já lançado',
+                `${jaLancados.join(', ')} ${plural ? 'já foram lançados' : 'já foi lançado'} para este aluno. Lançar mesmo assim?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Lançar assim mesmo', style: 'destructive', onPress: () => insertPayment(refMonths) },
+                ]
+            );
+            return;
+        }
+
+        insertPayment(refMonths);
+    };
+
+    const insertPayment = async (refMonths: string[]) => {
         setRegisteringPayment(true);
         try {
             const gymId = await getCurrentGymId();
-
-            // Parse date or use current
-            let pDate = new Date();
-            if (paymentDate) {
-                const parts = paymentDate.split('/');
-                if (parts.length === 3) {
-                    pDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                }
-            }
+            const pDate = parsePaymentDate() ?? new Date();
 
             const amount = parseFloat(paymentAmount) || 0;
             const discount = parseFloat(paymentDiscount) || 0;
             const finalAmount = Math.max(0, amount - discount);
-            const months = isAdvancePayment ? advanceMonths : 1;
-            const refMonths = getNextMonths(referenceMonth, months);
 
-            // Insert payment(s)
             const paymentRecords = refMonths.map((refMonth, index) => ({
                 client_id: id,
                 gym_id: gymId,
@@ -519,7 +574,6 @@ export default function ClientDetailsScreen() {
             const { error } = await supabase.from('payments').insert(paymentRecords);
             if (error) throw error;
 
-            // Update client status
             const { error: clientError } = await supabase.from('clients')
                 .update({
                     last_payment_date: pDate.toISOString(),
@@ -529,13 +583,10 @@ export default function ClientDetailsScreen() {
 
             if (clientError) throw clientError;
 
+            const months = refMonths.length;
             const totalPaid = finalAmount * months;
             Alert.alert('Sucesso', `${months > 1 ? `${months} pagamentos registrados` : 'Pagamento registrado'}! Total: R$ ${totalPaid.toFixed(2)}`);
-            setShowPaymentModal(false);
-            setPaymentDate('');
-            setPaymentDiscount('');
-            setReferenceMonth('');
-            setIsAdvancePayment(false);
+            closePaymentModal();
             fetchClientDetails();
             fetchPayments();
         } catch (error: any) {
@@ -543,6 +594,102 @@ export default function ClientDetailsScreen() {
         } finally {
             setRegisteringPayment(false);
         }
+    };
+
+    const updatePayment = async () => {
+        if (!editingPayment) return;
+
+        // Mesma guarda do insert, ignorando o próprio registro que está sendo editado.
+        const conflito = payments.some(p =>
+            p.id !== editingPayment.id && p.reference_month === referenceMonth);
+
+        const gravar = async () => {
+            setRegisteringPayment(true);
+            try {
+                const amount = parseFloat(paymentAmount) || 0;
+                const discount = parseFloat(paymentDiscount) || 0;
+                const pDate = parsePaymentDate();
+
+                const patch: any = {
+                    amount: Math.max(0, amount - discount),
+                    discount,
+                    reference_month: referenceMonth,
+                };
+                if (pDate) patch.payment_date = pDate.toISOString();
+
+                const { error } = await supabase.from('payments')
+                    .update(patch)
+                    .eq('id', editingPayment.id);
+                if (error) throw error;
+
+                Alert.alert('Sucesso', 'Pagamento atualizado.');
+                closePaymentModal();
+                fetchClientDetails();
+                fetchPayments();
+            } catch (error: any) {
+                Alert.alert('Erro', 'Falha ao atualizar pagamento: ' + error.message);
+            } finally {
+                setRegisteringPayment(false);
+            }
+        };
+
+        if (conflito) {
+            Alert.alert(
+                'Mês já lançado',
+                `${referenceMonth} já foi lançado para este aluno. Salvar mesmo assim?`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Salvar assim mesmo', style: 'destructive', onPress: gravar },
+                ]
+            );
+            return;
+        }
+
+        gravar();
+    };
+
+    // Soft delete: o registro sai das telas e dos cálculos, mas continua no
+    // banco. Nunca `delete` físico — o histórico é a prova de que existiu.
+    const handleDeletePayment = (p: any) => {
+        const quando = p.payment_date
+            ? new Date(p.payment_date).toLocaleDateString('pt-BR')
+            : 'sem data';
+        Alert.alert(
+            'Excluir pagamento',
+            `${formatCurrency(p.amount || 0)} · ${p.reference_month ? `ref. ${p.reference_month}` : 'sem mês de referência'} · ${quando}\n\nO valor sai do histórico e das contas deste aluno.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        setDeletingPaymentId(p.id);
+                        try {
+                            const { error } = await supabase.from('payments')
+                                .update({ deleted_at: new Date().toISOString() })
+                                .eq('id', p.id);
+                            if (error) throw error;
+                            fetchClientDetails();
+                            fetchPayments();
+                        } catch (error: any) {
+                            Alert.alert('Erro', 'Falha ao excluir pagamento: ' + error.message);
+                        } finally {
+                            setDeletingPaymentId(null);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const closePaymentModal = () => {
+        setShowPaymentModal(false);
+        setEditingPayment(null);
+        setPaymentDate('');
+        setPaymentDiscount('');
+        setReferenceMonth('');
+        setIsAdvancePayment(false);
+        setAdvanceMonths(1);
     };
 
     const handleLockSubscription = async () => {
@@ -797,6 +944,38 @@ export default function ClientDetailsScreen() {
                                 {p.is_advance && (
                                     <DetailLabel style={{ color: theme.colors.primary }}>⚡ Adiantado</DetailLabel>
                                 )}
+
+                                <Row style={{ justifyContent: 'flex-end', gap: 18, marginTop: 6 }}>
+                                    <TouchableOpacity
+                                        onPress={() => openEditPaymentModal(p)}
+                                        disabled={deletingPaymentId === p.id}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Editar pagamento de ${formatCurrency(p.amount || 0)}`}
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                    >
+                                        <FontAwesome name="pencil" size={14} color={theme.colors.textSecondary} />
+                                        <DetailLabel style={{ marginBottom: 0 }}>Editar</DetailLabel>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        onPress={() => handleDeletePayment(p)}
+                                        disabled={deletingPaymentId === p.id}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`Excluir pagamento de ${formatCurrency(p.amount || 0)}`}
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                                    >
+                                        {deletingPaymentId === p.id ? (
+                                            <ActivityIndicator size="small" color={theme.colors.danger} />
+                                        ) : (
+                                            <>
+                                                <FontAwesome name="trash-o" size={15} color={theme.colors.danger} />
+                                                <DetailLabel style={{ marginBottom: 0, color: theme.colors.danger }}>Excluir</DetailLabel>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </Row>
                             </View>
                         ))
                     )}
@@ -815,7 +994,7 @@ export default function ClientDetailsScreen() {
                 transparent={true}
                 visible={showPaymentModal}
                 animationType="fade"
-                onRequestClose={() => setShowPaymentModal(false)}
+                onRequestClose={closePaymentModal}
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -824,7 +1003,7 @@ export default function ClientDetailsScreen() {
                     <ModalOverlay>
                         <ModalContent>
                             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                                <ModalTitle>Registrar Pagamento</ModalTitle>
+                                <ModalTitle>{editingPayment ? 'Editar Pagamento' : 'Registrar Pagamento'}</ModalTitle>
 
                                 <DetailLabel>Valor (R$)</DetailLabel>
                                 <StyledInput
@@ -912,6 +1091,7 @@ export default function ClientDetailsScreen() {
                                     maxLength={10}
                                 />
 
+                                {!editingPayment && (
                                 <SwitchRow>
                                     <SwitchLabel>Pagamento adiantado?</SwitchLabel>
                                     <Switch
@@ -921,8 +1101,9 @@ export default function ClientDetailsScreen() {
                                         thumbColor={isAdvancePayment ? theme.colors.primary : '#f4f3f4'}
                                     />
                                 </SwitchRow>
+                                )}
 
-                                {isAdvancePayment && (
+                                {!editingPayment && isAdvancePayment && (
                                     <View style={{ marginBottom: 15 }}>
                                         <DetailLabel>Quantos meses?</DetailLabel>
                                         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -957,11 +1138,13 @@ export default function ClientDetailsScreen() {
                                 </DiscountSummary>
 
                                 <ModalButtons>
-                                    <ModalButton variant="cancel" onPress={() => setShowPaymentModal(false)}>
+                                    <ModalButton variant="cancel" onPress={closePaymentModal}>
                                         <ModalButtonText>Cancelar</ModalButtonText>
                                     </ModalButton>
                                     <ModalButton variant="primary" onPress={handleRegisterPayment} disabled={registeringPayment}>
-                                        {registeringPayment ? <ActivityIndicator color="#fff" /> : <ModalButtonText>Confirmar</ModalButtonText>}
+                                        {registeringPayment
+                                            ? <ActivityIndicator color="#fff" />
+                                            : <ModalButtonText>{editingPayment ? 'Salvar' : 'Confirmar'}</ModalButtonText>}
                                     </ModalButton>
                                 </ModalButtons>
                             </ScrollView>
