@@ -16,6 +16,7 @@ import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
 import { Input } from '@/src/components/styled';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
+import { MARCADORES, MENSAGEM_PADRAO, montarMensagem } from '@/src/utils/mensagemCobranca';
 import { gerarPixBrCode } from '@/src/utils/pixBrCode';
 import {
     TIPOS_CHAVE_PIX,
@@ -237,8 +238,13 @@ export default function CollectionsScreen() {
     const [fila, setFila] = useState<Devedor[] | null>(null);
     const [filaIdx, setFilaIdx] = useState(0);
     const habilitado = useCollectionsEnabled();
-    const [academia, setAcademia] = useState<{ nome: string; pixKey: string | null; pixCity: string | null } | null>(null);
+    const [academia, setAcademia] = useState<{
+        nome: string; pixKey: string | null; pixCity: string | null; modelo: string | null;
+    } | null>(null);
     const [editandoPix, setEditandoPix] = useState(false);
+    const [editandoMsg, setEditandoMsg] = useState(false);
+    const [modeloMsg, setModeloMsg] = useState('');
+    const [salvandoMsg, setSalvandoMsg] = useState(false);
     const [pixTipo, setPixTipo] = useState<TipoChavePix>('cpf');
     const [pixChave, setPixChave] = useState('');
     const [pixCidade, setPixCidade] = useState('');
@@ -254,7 +260,7 @@ export default function CollectionsScreen() {
             desde.setDate(desde.getDate() - JANELA_RESULTADO_DIAS);
 
             const [perfilRes, clientsRes, plansRes, paymentsRes, contatosRes] = await Promise.all([
-                supabase.from('gym_profiles').select('gym_name, pix_key, pix_city').eq('id', gymId).maybeSingle(),
+                supabase.from('gym_profiles').select('gym_name, pix_key, pix_city, collection_message').eq('id', gymId).maybeSingle(),
                 supabase.from('clients').select('*').eq('gym_id', gymId),
                 supabase.from('plans').select('*').eq('gym_id', gymId),
                 supabase.from('payments').select('client_id, reference_month, amount, created_at')
@@ -270,6 +276,7 @@ export default function CollectionsScreen() {
                 nome: perfilRes.data?.gym_name || 'Academia',
                 pixKey: perfilRes.data?.pix_key || null,
                 pixCity: perfilRes.data?.pix_city || null,
+                modelo: perfilRes.data?.collection_message || null,
             });
 
             const clients = clientsRes.data || [];
@@ -377,6 +384,33 @@ export default function CollectionsScreen() {
         setEditandoPix(true);
     };
 
+    const salvarMensagem = async () => {
+        const texto = modeloMsg.trim();
+        if (!texto) {
+            Alert.alert('Mensagem vazia', 'Escreva a mensagem ou volte ao padrão.');
+            return;
+        }
+        setSalvandoMsg(true);
+        try {
+            const gymId = await getCurrentGymId();
+            const { error } = await supabase.from('gym_profiles')
+                .update({ collection_message: texto })
+                .eq('id', gymId);
+            if (error) throw error;
+            setEditandoMsg(false);
+            carregar();
+        } catch (e: any) {
+            Alert.alert('Erro', 'Não foi possível salvar: ' + e.message);
+        } finally {
+            setSalvandoMsg(false);
+        }
+    };
+
+    const abrirEdicaoMensagem = () => {
+        setModeloMsg(academia?.modelo || MENSAGEM_PADRAO);
+        setEditandoMsg(true);
+    };
+
     const registrarContato = async (d: Devedor) => {
         try {
             const gymId = await getCurrentGymId();
@@ -400,9 +434,11 @@ export default function CollectionsScreen() {
         }
         const fone = d.telefone.replace(/\D/g, '');
         const meses = d.mesesAbertos.join(', ');
-        let msg = d.meses === 1
-            ? `Olá, ${d.nome}! Passando para lembrar da mensalidade de ${meses}. Poderia regularizar?`
-            : `Olá, ${d.nome}! Passando para lembrar das mensalidades de ${meses}. Poderia regularizar?`;
+        let msg = montarMensagem(academia?.modelo, {
+            nome: d.nome,
+            meses,
+            valor: formatCurrency(d.total),
+        });
 
         // O "copia e cola" já sai com o valor exato. Poupa o aluno de pedir a
         // chave e de digitar o valor errado — que é a fricção real da cobrança.
@@ -554,120 +590,177 @@ export default function CollectionsScreen() {
         );
     }
 
-    return (
-        <PageContainer>
-            <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
+    // Elemento, e não componente: uma função componente redefinida a cada
+    // render remonta a subárvore inteira, e o campo de mensagem perderia o
+    // foco a cada tecla.
+    const cabecalho = (
+        <>
+                {devedores.length > 0 && (
+                    <Resumo>
+                        <ResumoValor>{formatCurrency(totalDevido)}</ResumoValor>
+                        <ResumoLabel>
+                            {devedores.length === 1 ? '1 aluno em atraso' : `${devedores.length} alunos em atraso`}
+                        </ResumoLabel>
+                        {efetividade && efetividade.pagaram > 0 && (
+                            <Efetividade>
+                                Últimos {JANELA_RESULTADO_DIAS} dias: {efetividade.cobrados}{' '}
+                                {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'},{' '}
+                                {efetividade.pagaram} {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
+                                {PRAZO_PAGAMENTO_DIAS} dias · {formatCurrency(efetividade.valor)} recuperados
+                            </Efetividade>
+                        )}
+                    </Resumo>
+                )}
 
-            {devedores.length > 0 && (
-                <Resumo>
-                    <ResumoValor>{formatCurrency(totalDevido)}</ResumoValor>
-                    <ResumoLabel>
-                        {devedores.length === 1 ? '1 aluno em atraso' : `${devedores.length} alunos em atraso`}
-                    </ResumoLabel>
-                    {efetividade && efetividade.pagaram > 0 && (
-                        <Efetividade>
-                            Últimos {JANELA_RESULTADO_DIAS} dias: {efetividade.cobrados}{' '}
-                            {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'},{' '}
-                            {efetividade.pagaram} {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
-                            {PRAZO_PAGAMENTO_DIAS} dias · {formatCurrency(efetividade.valor)} recuperados
-                        </Efetividade>
-                    )}
-                </Resumo>
-            )}
+                {/* A chave Pix mora aqui, e não no perfil: é aqui que ela é usada,
+                    e é aqui que o dono descobre que a cobrança pode sair com o
+                    valor já preenchido. */}
+                {(editandoPix || !academia?.pixKey) && (
+                    <CartaoPix>
+                        <PixCabecalho>
+                            <MaterialCommunityIcons name="qrcode" size={20} color={theme.colors.primary} />
+                            <PixTitulo style={{ marginBottom: 0 }}>Cobrança com Pix</PixTitulo>
+                        </PixCabecalho>
+                        <PixTexto>
+                            Com a chave cadastrada, cada cobrança sai com um Pix copia e cola
+                            e o valor já preenchido — o aluno só cola no banco. O dinheiro vai
+                            direto para você; o app não recebe nada no meio.
+                        </PixTexto>
 
-            {/* A chave Pix mora aqui, e não no perfil: é aqui que ela é usada,
-                e é aqui que o dono descobre que a cobrança pode sair com o
-                valor já preenchido. */}
-            {(editandoPix || !academia?.pixKey) && (
+                        <TipoLinha>
+                            {TIPOS_CHAVE_PIX.map(t => (
+                                <TipoChip
+                                    key={t.valor}
+                                    ativo={pixTipo === t.valor}
+                                    onPress={() => { setPixTipo(t.valor); setPixChave(''); }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`Tipo de chave: ${t.rotulo}`}
+                                >
+                                    <TipoChipTexto ativo={pixTipo === t.valor}>{t.rotulo}</TipoChipTexto>
+                                </TipoChip>
+                            ))}
+                        </TipoLinha>
+
+                        <Input
+                            placeholder={
+                                pixTipo === 'cpf' ? '000.000.000-00'
+                                    : pixTipo === 'cnpj' ? '00.000.000/0000-00'
+                                        : pixTipo === 'celular' ? '(00)00000-0000'
+                                            : pixTipo === 'email' ? 'voce@academia.com.br'
+                                                : 'chave aleatória do banco'
+                            }
+                            value={pixChave}
+                            onChangeText={t => setPixChave(mascararChave(pixTipo, t))}
+                            keyboardType={teclado(pixTipo)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={{ marginBottom: 10 }}
+                        />
+                        <Input
+                            placeholder="Cidade da conta (opcional)"
+                            value={pixCidade}
+                            onChangeText={setPixCidade}
+                            style={{ marginBottom: 12 }}
+                        />
+
+                        <Row style={{ gap: 8 }}>
+                            <AcaoLinha
+                                bg={theme.colors.primary}
+                                onPress={salvarPix}
+                                disabled={salvandoPix}
+                                accessibilityRole="button"
+                                accessibilityLabel="Salvar chave Pix"
+                            >
+                                {salvandoPix
+                                    ? <ActivityIndicator size="small" color={theme.colors.background} />
+                                    : <AcaoTexto>Salvar chave</AcaoTexto>}
+                            </AcaoLinha>
+
+                            {academia?.pixKey && (
+                                <TouchableOpacity
+                                    onPress={() => setEditandoPix(false)}
+                                    style={{ paddingHorizontal: 12, justifyContent: 'center' }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Cancelar edição da chave Pix"
+                                >
+                                    <ListItemSubtitle>Cancelar</ListItemSubtitle>
+                                </TouchableOpacity>
+                            )}
+                        </Row>
+                    </CartaoPix>
+                )}
+
+                {naFila.length > 1 && (
+                    <BotaoFila onPress={() => { setFila(naFila); setFilaIdx(0); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Cobrar ${naFila.length} alunos em sequência`}>
+                        <FontAwesome name="bolt" size={16} color={theme.colors.background} />
+                        <AcaoTexto>Cobrar {naFila.length} em sequência</AcaoTexto>
+                    </BotaoFila>
+                )}
+
+                {/* Sem paddingHorizontal aqui: o ListItem já traz margin-horizontal,
+                    e somar os dois estreitaria os cards em relação às outras listas. */}
+
+            {/* Mensagem de cobrança, editável: cobrança é assunto delicado e
+                cada dono fala de um jeito. O Pix é anexado fora do modelo. */}
+            {editandoMsg && (
                 <CartaoPix>
                     <PixCabecalho>
-                        <MaterialCommunityIcons name="qrcode" size={20} color={theme.colors.primary} />
-                        <PixTitulo style={{ marginBottom: 0 }}>Cobrança com Pix</PixTitulo>
+                        <MaterialCommunityIcons name="message-text-outline" size={20} color={theme.colors.primary} />
+                        <PixTitulo style={{ marginBottom: 0 }}>Mensagem de cobrança</PixTitulo>
                     </PixCabecalho>
                     <PixTexto>
-                        Com a chave cadastrada, cada cobrança sai com um Pix copia e cola
-                        e o valor já preenchido — o aluno só cola no banco. O dinheiro vai
-                        direto para você; o app não recebe nada no meio.
+                        Use {'{nome}'}, {'{meses}'} e {'{valor}'} onde quiser que entrem os
+                        dados do aluno. O código Pix é anexado no fim automaticamente.
                     </PixTexto>
 
-                    <TipoLinha>
-                        {TIPOS_CHAVE_PIX.map(t => (
-                            <TipoChip
-                                key={t.valor}
-                                ativo={pixTipo === t.valor}
-                                onPress={() => { setPixTipo(t.valor); setPixChave(''); }}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Tipo de chave: ${t.rotulo}`}
-                            >
-                                <TipoChipTexto ativo={pixTipo === t.valor}>{t.rotulo}</TipoChipTexto>
-                            </TipoChip>
-                        ))}
-                    </TipoLinha>
+                    <Input
+                        value={modeloMsg}
+                        onChangeText={setModeloMsg}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                        style={{ marginBottom: 10, minHeight: 100 }}
+                    />
 
-                    <Input
-                        placeholder={
-                            pixTipo === 'cpf' ? '000.000.000-00'
-                                : pixTipo === 'cnpj' ? '00.000.000/0000-00'
-                                    : pixTipo === 'celular' ? '(00)00000-0000'
-                                        : pixTipo === 'email' ? 'voce@academia.com.br'
-                                            : 'chave aleatória do banco'
-                        }
-                        value={pixChave}
-                        onChangeText={t => setPixChave(mascararChave(pixTipo, t))}
-                        keyboardType={teclado(pixTipo)}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        style={{ marginBottom: 10 }}
-                    />
-                    <Input
-                        placeholder="Cidade da conta (opcional)"
-                        value={pixCidade}
-                        onChangeText={setPixCidade}
-                        style={{ marginBottom: 12 }}
-                    />
+                    <PixTexto style={{ marginBottom: 12 }}>
+                        {MARCADORES.map(m => `${m.chave} = ${m.descricao}`).join('  ·  ')}
+                    </PixTexto>
 
                     <Row style={{ gap: 8 }}>
-                        <AcaoLinha
-                            bg={theme.colors.primary}
-                            onPress={salvarPix}
-                            disabled={salvandoPix}
-                            accessibilityRole="button"
-                            accessibilityLabel="Salvar chave Pix"
-                        >
-                            {salvandoPix
+                        <AcaoLinha bg={theme.colors.primary} onPress={salvarMensagem} disabled={salvandoMsg}
+                            accessibilityRole="button" accessibilityLabel="Salvar mensagem de cobrança">
+                            {salvandoMsg
                                 ? <ActivityIndicator size="small" color={theme.colors.background} />
-                                : <AcaoTexto>Salvar chave</AcaoTexto>}
+                                : <AcaoTexto>Salvar mensagem</AcaoTexto>}
                         </AcaoLinha>
-
-                        {academia?.pixKey && (
-                            <TouchableOpacity
-                                onPress={() => setEditandoPix(false)}
-                                style={{ paddingHorizontal: 12, justifyContent: 'center' }}
-                                accessibilityRole="button"
-                                accessibilityLabel="Cancelar edição da chave Pix"
-                            >
-                                <ListItemSubtitle>Cancelar</ListItemSubtitle>
-                            </TouchableOpacity>
-                        )}
+                        <TouchableOpacity onPress={() => setModeloMsg(MENSAGEM_PADRAO)}
+                            style={{ paddingHorizontal: 12, justifyContent: 'center' }}
+                            accessibilityRole="button" accessibilityLabel="Voltar ao texto padrão">
+                            <ListItemSubtitle>Padrão</ListItemSubtitle>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setEditandoMsg(false)}
+                            style={{ paddingHorizontal: 12, justifyContent: 'center' }}
+                            accessibilityRole="button" accessibilityLabel="Cancelar edição da mensagem">
+                            <ListItemSubtitle>Cancelar</ListItemSubtitle>
+                        </TouchableOpacity>
                     </Row>
                 </CartaoPix>
             )}
+        </>
+    );
 
-            {naFila.length > 1 && (
-                <BotaoFila onPress={() => { setFila(naFila); setFilaIdx(0); }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Cobrar ${naFila.length} alunos em sequência`}>
-                    <FontAwesome name="bolt" size={16} color={theme.colors.background} />
-                    <AcaoTexto>Cobrar {naFila.length} em sequência</AcaoTexto>
-                </BotaoFila>
-            )}
-
-            {/* Sem paddingHorizontal aqui: o ListItem já traz margin-horizontal,
-                e somar os dois estreitaria os cards em relação às outras listas. */}
+    return (
+        <PageContainer>
+            <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
             <FlatList
                 data={devedores}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ paddingBottom: 24 }}
+                ListHeaderComponent={cabecalho}
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets
                 refreshControl={
                     <RefreshControl refreshing={refreshing}
                         onRefresh={() => { setRefreshing(true); carregar(); }}
@@ -680,17 +773,30 @@ export default function CollectionsScreen() {
                     </Vazio>
                 }
                 ListFooterComponent={
-                    academia?.pixKey && !editandoPix ? (
-                        <PixRodape
-                            onPress={abrirEdicaoPix}
-                            accessibilityRole="button"
-                            accessibilityLabel="Alterar a chave Pix da academia"
-                        >
-                            <PixRodapeTexto>
-                                Pix das cobranças: {academia.pixKey} · alterar
-                            </PixRodapeTexto>
-                        </PixRodape>
-                    ) : null
+                    <>
+                        {academia?.pixKey && !editandoPix && (
+                            <PixRodape
+                                onPress={abrirEdicaoPix}
+                                accessibilityRole="button"
+                                accessibilityLabel="Alterar a chave Pix da academia"
+                            >
+                                <PixRodapeTexto>
+                                    Pix das cobranças: {academia.pixKey} · alterar
+                                </PixRodapeTexto>
+                            </PixRodape>
+                        )}
+                        {!editandoMsg && (
+                            <PixRodape
+                                onPress={abrirEdicaoMensagem}
+                                accessibilityRole="button"
+                                accessibilityLabel="Editar a mensagem de cobrança"
+                            >
+                                <PixRodapeTexto>
+                                    Mensagem de cobrança · editar
+                                </PixRodapeTexto>
+                            </PixRodape>
+                        )}
+                    </>
                 }
                 renderItem={({ item }) => (
                     <ListItem>
