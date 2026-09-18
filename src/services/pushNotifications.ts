@@ -98,7 +98,7 @@ export async function unregisterPushToken() {
         if (!Notifications) return;
         if (!Device.isDevice) return;
         const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: 'gymapp',
+            projectId: 'f6b7a86d-4445-4d65-ae39-2d43f4aa7657',
         });
         await supabase.from('push_tokens').delete().eq('token', tokenData.data);
         console.log('[PushNotifications] Token removed');
