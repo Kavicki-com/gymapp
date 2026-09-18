@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { ModalHandle } from '@/src/components/ModalHandle';
@@ -23,14 +24,6 @@ export default function ManageEmployeeScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
-
-    const formatDate = (text: string) => {
-        const cleaned = text.replace(/\D/g, '');
-        let formatted = cleaned;
-        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
-        return formatted;
-    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -205,13 +198,12 @@ export default function ManageEmployeeScreen() {
                         </View>
                         <View style={{ width: '48%' }}>
                             <Label>Data de nascimento</Label>
-                            <Input
+                            <DateField
                                 value={formData.birth_date}
-                                onChangeText={t => setFormData({ ...formData, birth_date: formatDate(t) })}
-                                placeholder="DD/MM/YYYY"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="number-pad"
-                                maxLength={10}
+                                onChange={v => setFormData({ ...formData, birth_date: v })}
+                                placeholder="Selecionar"
+                                maximumDate={new Date()}
+                                accessibilityLabel="Data de nascimento"
                             />
                         </View>
                     </Row>
@@ -257,13 +249,12 @@ export default function ManageEmployeeScreen() {
                     <Row style={{ marginBottom: 16 }}>
                         <View style={{ width: '48%' }}>
                             <Label>Data de Admissão</Label>
-                            <Input
+                            <DateField
                                 value={formData.admission_date}
-                                onChangeText={t => setFormData({ ...formData, admission_date: formatDate(t) })}
-                                placeholder="DD/MM/YYYY"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="number-pad"
-                                maxLength={10}
+                                onChange={v => setFormData({ ...formData, admission_date: v })}
+                                placeholder="Selecionar"
+                                maximumDate={new Date()}
+                                accessibilityLabel="Data de admissão"
                             />
                         </View>
                         <View style={{ width: '48%' }}>

@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import {
     Container,
@@ -377,14 +378,6 @@ export default function EquipmentDetailsScreen() {
         );
     };
 
-    const formatDate = (text: string) => {
-        const cleaned = text.replace(/\D/g, '');
-        let formatted = cleaned;
-        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
-        return formatted;
-    };
-
     const handleRegisterMaintenance = async () => {
         if (!maintenanceDate) {
             Alert.alert('Erro', 'Informe a data da manutenção.');
@@ -585,13 +578,12 @@ export default function EquipmentDetailsScreen() {
                         <ModalTitle>Registrar Manutenção</ModalTitle>
 
                         <DetailLabel>Data (DD/MM/AAAA)</DetailLabel>
-                        <StyledInput
+                        <DateField
                             value={maintenanceDate}
-                            onChangeText={(t: string) => setMaintenanceDate(formatDate(t))}
-                            placeholder={new Date().toLocaleDateString('pt-BR')}
-                            placeholderTextColor={theme.colors.textSecondary}
-                            keyboardType="number-pad"
-                            maxLength={10}
+                            onChange={setMaintenanceDate}
+                            placeholder="Selecionar data"
+                            maximumDate={new Date()}
+                            accessibilityLabel="Data da manutenção"
                         />
 
                         <DetailLabel>Observações</DetailLabel>

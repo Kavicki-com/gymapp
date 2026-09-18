@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import {
     Container,
@@ -192,14 +193,6 @@ const OverdueCountText = styled.Text`
     font-size: 12px;
     font-weight: bold;
 `;
-
-const formatDate = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
-    return formatted;
-};
 
 const formatMonthYear = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -1082,13 +1075,12 @@ export default function ClientDetailsScreen() {
                                 />
 
                                 <DetailLabel>Data do Pagamento (DD/MM/AAAA)</DetailLabel>
-                                <StyledInput
+                                <DateField
                                     value={paymentDate}
-                                    onChangeText={t => setPaymentDate(formatDate(t))}
-                                    placeholder={new Date().toLocaleDateString('pt-BR')}
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                    keyboardType="number-pad"
-                                    maxLength={10}
+                                    onChange={setPaymentDate}
+                                    placeholder="Hoje"
+                                    maximumDate={new Date()}
+                                    accessibilityLabel="Data do pagamento"
                                 />
 
                                 {!editingPayment && (
@@ -1168,13 +1160,12 @@ export default function ClientDetailsScreen() {
                         </DetailLabel>
 
                         <DetailLabel>Data de Retorno (DD/MM/AAAA)</DetailLabel>
-                        <StyledInput
+                        <DateField
                             value={lockUntilDate}
-                            onChangeText={t => setLockUntilDate(formatDate(t))}
-                            placeholder="DD/MM/AAAA"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            keyboardType="number-pad"
-                            maxLength={10}
+                            onChange={setLockUntilDate}
+                            placeholder="Selecionar data"
+                            minimumDate={new Date()}
+                            accessibilityLabel="Data de retorno"
                         />
 
                         <ModalButtons>

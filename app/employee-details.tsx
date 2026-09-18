@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import {
     Container,
@@ -462,11 +463,12 @@ export default function EmployeeDetailsScreen() {
                         />
 
                         <DetailLabel>Data (DD/MM/AAAA)</DetailLabel>
-                        <StyledInput
+                        <DateField
                             value={paymentDate}
-                            onChangeText={setPaymentDate}
-                            placeholder={new Date().toLocaleDateString('pt-BR')}
-                            placeholderTextColor={theme.colors.textSecondary}
+                            onChange={setPaymentDate}
+                            placeholder="Selecionar data"
+                            maximumDate={new Date()}
+                            accessibilityLabel="Data do pagamento"
                         />
 
                         <DetailLabel>Observação</DetailLabel>

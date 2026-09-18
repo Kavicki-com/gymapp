@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { ModalHandle } from '@/src/components/ModalHandle';
@@ -33,14 +34,6 @@ export default function ManageClientScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
-
-    const formatDate = (text: string) => {
-        const cleaned = text.replace(/\D/g, '');
-        let formatted = cleaned;
-        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
-        return formatted;
-    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -259,14 +252,12 @@ export default function ManageClientScreen() {
                         </View>
                         <View style={{ width: '48%' }}>
                             <Label>Data de nascimento</Label>
-                            <Input
+                            <DateField
                                 value={formData.birth_date}
-                                onChangeText={t => updateField('birth_date', formatDate(t))}
-                                placeholder="DD/MM/AAAA"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="number-pad"
-                                maxLength={10}
-                                style={errors.birth_date ? { borderColor: theme.colors.danger, borderWidth: 1 } : {}}
+                                onChange={v => updateField('birth_date', v)}
+                                placeholder="Selecionar"
+                                maximumDate={new Date()}
+                                accessibilityLabel="Data de nascimento"
                             />
                             {errors.birth_date && <ErrorText>{errors.birth_date}</ErrorText>}
                         </View>

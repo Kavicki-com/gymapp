@@ -1,3 +1,4 @@
+import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { ModalHandle } from '@/src/components/ModalHandle';
@@ -22,14 +23,6 @@ export default function ManageEquipmentScreen() {
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
     const router = useRouter();
-
-    const formatDate = (text: string) => {
-        const cleaned = text.replace(/\D/g, '');
-        let formatted = cleaned;
-        if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-        if (cleaned.length > 4) formatted = `${formatted.slice(0, 5)}/${formatted.slice(5, 9)}`;
-        return formatted;
-    };
 
     const convertDateToISO = (dateStr: string) => {
         if (!dateStr) return null;
@@ -164,13 +157,12 @@ export default function ManageEquipmentScreen() {
                     <Row style={{ marginBottom: 16 }}>
                         <View style={{ width: '48%' }}>
                             <Label>Data de Aquisição</Label>
-                            <Input
+                            <DateField
                                 value={formData.acquisition_date}
-                                onChangeText={t => setFormData({ ...formData, acquisition_date: formatDate(t) })}
-                                placeholder="DD/MM/YYYY"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="number-pad"
-                                maxLength={10}
+                                onChange={v => setFormData({ ...formData, acquisition_date: v })}
+                                placeholder="Selecionar"
+                                maximumDate={new Date()}
+                                accessibilityLabel="Data de aquisição"
                             />
                         </View>
                         <View style={{ width: '48%' }}>
@@ -186,13 +178,12 @@ export default function ManageEquipmentScreen() {
                     <Row style={{ marginBottom: 16 }}>
                         <View style={{ width: '48%' }}>
                             <Label>Última manutenção</Label>
-                            <Input
+                            <DateField
                                 value={formData.last_maintenance}
-                                onChangeText={t => setFormData({ ...formData, last_maintenance: formatDate(t) })}
-                                placeholder="DD/MM/YYYY"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="number-pad"
-                                maxLength={10}
+                                onChange={v => setFormData({ ...formData, last_maintenance: v })}
+                                placeholder="Selecionar"
+                                maximumDate={new Date()}
+                                accessibilityLabel="Data da última manutenção"
                             />
                         </View>
                         <View style={{ width: '48%' }}>
