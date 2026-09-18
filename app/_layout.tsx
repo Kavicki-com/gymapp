@@ -71,11 +71,9 @@ function RootLayoutNav() {
             <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
             <Stack.Screen name="manage-client" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="manage-plan" options={{ presentation: 'modal', headerShown: false }} />
-            <Stack.Screen name="manage-equipment" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="manage-employee" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="client-details" options={{ headerShown: false }} />
             <Stack.Screen name="employee-details" options={{ headerShown: false }} />
-            <Stack.Screen name="equipment-details" options={{ headerShown: false }} />
           </Stack>
         </GestureHandlerRootView>
       </ThemeProvider>
@@ -104,9 +102,7 @@ function NotificationHandler() {
       const data = response.notification.request.content.data as any;
       console.log('[Notification] User tapped:', data?.type);
 
-      if (data?.type === 'maintenance' && data?.equipmentId) {
-        router.push({ pathname: '/equipment-details', params: { id: data.equipmentId } });
-      } else if (data?.type === 'client_payment' && data?.clientId) {
+      if (data?.type === 'client_payment' && data?.clientId) {
         router.push({ pathname: '/client-details', params: { id: data.clientId } });
       } else if (data?.type === 'employee_payment' && data?.employeeId) {
         router.push({ pathname: '/employee-details', params: { id: data.employeeId } });

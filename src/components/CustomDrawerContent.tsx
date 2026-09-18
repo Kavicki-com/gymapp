@@ -132,13 +132,6 @@ export default function CustomDrawerContent(props: any) {
                 />
 
                 <DrawerItem
-                    label="Aparelhos"
-                    icon={({ color, size }) => <FontAwesome name="codepen" size={size} color={color} />}
-                    labelStyle={{ color: theme.colors.text }}
-                    onPress={() => router.push('/(drawer)/(tabs)/equipment')}
-                />
-
-                <DrawerItem
                     label="Colaboradores"
                     icon={({ color, size }) => <FontAwesome name="id-card" size={size} color={color} />}
                     labelStyle={{ color: theme.colors.text }}

@@ -149,7 +149,6 @@ const ViewAllText = styled.Text`
 
 interface DashboardStats {
   clients: number;
-  equipment: number;
   employees: number;
   plans: number;
 }
@@ -168,12 +167,6 @@ interface OverdueClient {
   overdueMonthsCount: number;
   planName: string;
   planPrice: number;
-}
-
-interface UpcomingMaintenance {
-  id: string;
-  name: string;
-  daysUntil: number;
 }
 
 interface UpcomingSalary {
@@ -201,7 +194,6 @@ export default function DashboardScreen() {
   // Basic stats
   const [stats, setStats] = useState<DashboardStats>({
     clients: 0,
-    equipment: 0,
     employees: 0,
     plans: 0,
   });
@@ -214,7 +206,6 @@ export default function DashboardScreen() {
 
   // Alerts
   const [overdueClients, setOverdueClients] = useState<OverdueClient[]>([]);
-  const [upcomingMaintenances, setUpcomingMaintenances] = useState<UpcomingMaintenance[]>([]);
   const [upcomingSalaries, setUpcomingSalaries] = useState<UpcomingSalary[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
   const [showOverdueModal, setShowOverdueModal] = useState(false);
@@ -239,21 +230,18 @@ export default function DashboardScreen() {
       if (gymProfile?.gym_name) setGymName(gymProfile.gym_name);
 
       // Fetch basic counts
-      const [clientsRes, equipmentRes, employeesRes, plansRes] = await Promise.all([
+      const [clientsRes, employeesRes, plansRes] = await Promise.all([
         supabase.from('clients').select('*').eq('gym_id', gymId),
-        supabase.from('equipment').select('*').eq('gym_id', gymId),
         supabase.from('employees').select('*').eq('gym_id', gymId),
         supabase.from('plans').select('*').eq('gym_id', gymId),
       ]);
 
       const clients = clientsRes.data || [];
-      const equipment = equipmentRes.data || [];
       const employees = employeesRes.data || [];
       const plans = plansRes.data || [];
 
       setStats({
         clients: clients.length,
-        equipment: equipment.length,
         employees: employees.length,
         plans: plans.length,
       });
@@ -372,31 +360,6 @@ export default function DashboardScreen() {
       // Sort: most overdue first (highest month count), then by daysOverdue
       overdueList.sort((a, b) => b.overdueMonthsCount - a.overdueMonthsCount || b.daysOverdue - a.daysOverdue);
       setOverdueClients(overdueList);
-
-      // Equipment Maintenance (next 15 days)
-      const maintenanceList: UpcomingMaintenance[] = [];
-
-      equipment.forEach(eq => {
-        if (!eq.last_maintenance || !eq.maintenance_interval_days) return;
-
-        const lastDate = new Date(eq.last_maintenance);
-        const nextDate = new Date(lastDate);
-        nextDate.setDate(lastDate.getDate() + eq.maintenance_interval_days);
-
-        const diffTime = nextDate.getTime() - today.getTime();
-        const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (daysUntil <= 15) {
-          maintenanceList.push({
-            id: eq.id,
-            name: eq.name,
-            daysUntil,
-          });
-        }
-      });
-
-      maintenanceList.sort((a, b) => a.daysUntil - b.daysUntil);
-      setUpcomingMaintenances(maintenanceList);
 
       // Employee Salaries (next 15 days)
       const salaryList: UpcomingSalary[] = [];
@@ -520,12 +483,6 @@ export default function DashboardScreen() {
     return { status: 'success' as const, text: `Vence em ${-daysOverdue}d` };
   };
 
-  const getMaintenanceStatus = (daysUntil: number) => {
-    if (daysUntil <= 0) return { status: 'danger' as const, text: 'Vencida' };
-    if (daysUntil <= 5) return { status: 'warning' as const, text: `Em ${daysUntil}d` };
-    return { status: 'info' as const, text: `Em ${daysUntil}d` };
-  };
-
   const StatCard = ({ title, value, icon, onPress }: { title: string; value: number; icon: string; onPress?: () => void }) => (
     <CardContainer as={onPress ? TouchableOpacity : View} onPress={onPress} activeOpacity={0.7}>
       <IconContainer>
@@ -569,7 +526,6 @@ export default function DashboardScreen() {
             {/* Basic Stats */}
             <StatsGrid>
               <StatCard title="Clientes cadastrados" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
-              <StatCard title="Aparelhos" value={stats.equipment} icon="codepen" onPress={() => router.push('/(drawer)/(tabs)/equipment')} />
               <StatCard title="Colaboradores" value={stats.employees} icon="id-card" onPress={() => router.push('/(drawer)/(tabs)/employees')} />
               <StatCard title="Planos" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
             </StatsGrid>
@@ -654,28 +610,6 @@ export default function DashboardScreen() {
                   <ViewAllText>Ver todos ({overdueClients.length})</ViewAllText>
                 </ViewAllButton>
               )}
-            </DashboardSection>
-
-            {/* Equipment Maintenance */}
-            <DashboardSection
-              title="Manutenções"
-              icon="wrench"
-              count={upcomingMaintenances.length}
-              isEmpty={upcomingMaintenances.length === 0}
-              emptyText="Nenhuma manutenção pendente"
-            >
-              {upcomingMaintenances.map(eq => {
-                const { status, text } = getMaintenanceStatus(eq.daysUntil);
-                return (
-                  <AlertItem
-                    key={eq.id}
-                    title={eq.name}
-                    statusText={text}
-                    status={status}
-                    onPress={() => router.push({ pathname: '/equipment-details', params: { id: eq.id } })}
-                  />
-                );
-              })}
             </DashboardSection>
 
             {/* Employee Salaries */}

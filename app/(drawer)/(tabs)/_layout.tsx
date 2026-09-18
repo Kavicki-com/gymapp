@@ -60,12 +60,9 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="users" color={color} />,
         }}
       />
-      {/* Aparelhos e Colaboradores saíram da barra e vivem no drawer.
-          `href: null` esconde da tab bar sem remover a rota: os links
-          existentes continuam funcionando e os dados seguem intactos.
-          Motivo: nenhuma academia real jamais cadastrou um aparelho, e
-          colaboradores têm 1 registro em uma das quatro ativas. */}
-      <Tabs.Screen name="equipment" options={{ href: null, title: 'Aparelhos' }} />
+      {/* Colaboradores saiu da barra e vive no drawer. `href: null` esconde
+          da tab bar sem remover a rota. Aparelhos foi removido por inteiro:
+          nenhuma academia real jamais cadastrou um. */}
       <Tabs.Screen name="employees" options={{ href: null, title: 'Colaboradores' }} />
       <Tabs.Screen
         name="plans"
