@@ -1,5 +1,5 @@
 import { PageContainer, PageHeader, PageTitle } from '@/src/components/styled';
-import { WHATSAPP_SUPORTE_EXIBICAO, linkWhatsApp } from '@/src/config/contato';
+import { linkWhatsApp } from '@/src/config/contato';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -83,13 +83,6 @@ const BotaoContatoTexto = styled.Text`
     font-size: 15px;
 `;
 
-const Numero = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 13px;
-    text-align: center;
-    margin-top: 8px;
-`;
-
 const Rodape = styled.Text`
     color: ${theme.colors.textSecondary};
     font-size: 14px;
@@ -150,7 +143,6 @@ export function CollectionsLocked() {
                             <BotaoContatoTexto>Ativar pelo WhatsApp</BotaoContatoTexto>
                         </BotaoContato>
 
-                        <Numero>{WHATSAPP_SUPORTE_EXIBICAO}</Numero>
                     </Cartao>
                     <View style={{ height: 32 }} />
                 </Corpo>
