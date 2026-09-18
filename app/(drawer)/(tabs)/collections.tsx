@@ -15,6 +15,7 @@ import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
+import { gerarPixBrCode } from '@/src/utils/pixBrCode';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -168,6 +169,7 @@ export default function CollectionsScreen() {
     const [fila, setFila] = useState<Devedor[] | null>(null);
     const [filaIdx, setFilaIdx] = useState(0);
     const habilitado = useCollectionsEnabled();
+    const [academia, setAcademia] = useState<{ nome: string; pixKey: string | null; pixCity: string | null } | null>(null);
     const router = useRouter();
 
     const carregar = async () => {
@@ -178,7 +180,8 @@ export default function CollectionsScreen() {
             const desde = new Date();
             desde.setDate(desde.getDate() - JANELA_RESULTADO_DIAS);
 
-            const [clientsRes, plansRes, paymentsRes, contatosRes] = await Promise.all([
+            const [perfilRes, clientsRes, plansRes, paymentsRes, contatosRes] = await Promise.all([
+                supabase.from('gym_profiles').select('gym_name, pix_key, pix_city').eq('id', gymId).maybeSingle(),
                 supabase.from('clients').select('*').eq('gym_id', gymId),
                 supabase.from('plans').select('*').eq('gym_id', gymId),
                 supabase.from('payments').select('client_id, reference_month, amount, created_at')
@@ -189,6 +192,12 @@ export default function CollectionsScreen() {
                     .gte('created_at', desde.toISOString())
                     .order('created_at', { ascending: false }),
             ]);
+
+            setAcademia({
+                nome: perfilRes.data?.gym_name || 'Academia',
+                pixKey: perfilRes.data?.pix_key || null,
+                pixCity: perfilRes.data?.pix_city || null,
+            });
 
             const clients = clientsRes.data || [];
             const plans = plansRes.data || [];
@@ -284,9 +293,23 @@ export default function CollectionsScreen() {
         }
         const fone = d.telefone.replace(/\D/g, '');
         const meses = d.mesesAbertos.join(', ');
-        const msg = d.meses === 1
+        let msg = d.meses === 1
             ? `Olá, ${d.nome}! Passando para lembrar da mensalidade de ${meses}. Poderia regularizar?`
             : `Olá, ${d.nome}! Passando para lembrar das mensalidades de ${meses}. Poderia regularizar?`;
+
+        // O "copia e cola" já sai com o valor exato. Poupa o aluno de pedir a
+        // chave e de digitar o valor errado — que é a fricção real da cobrança.
+        // Pix estático: o dinheiro vai direto para a academia e o app não fica
+        // sabendo do pagamento, então a baixa continua manual.
+        if (academia?.pixKey) {
+            const codigo = gerarPixBrCode({
+                chave: academia.pixKey,
+                nome: academia.nome,
+                cidade: academia.pixCity || undefined,
+                valor: d.total,
+            });
+            msg += `\n\nSe preferir, é só copiar o código Pix abaixo e colar no seu banco (valor já preenchido):\n\n${codigo}`;
+        }
 
         await registrarContato(d);
         Linking.openURL(`https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`)

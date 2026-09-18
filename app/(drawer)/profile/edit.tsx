@@ -153,6 +153,8 @@ export default function EditProfileScreen() {
         birth_date: '',
         gym_name: '',
         address: '',
+        pix_key: '',
+        pix_city: '',
         // Separated fields for opening hours logic
         working_days: '',
         opening_time: '',
@@ -229,6 +231,8 @@ export default function EditProfileScreen() {
                 birth_date: formatISODateToDisplay(profile?.owner_birth_date),
                 gym_name: profile?.gym_name || '',
                 address: profile?.address || '',
+                pix_key: profile?.pix_key || '',
+                pix_city: profile?.pix_city || '',
                 working_days: wDays,
                 opening_time: oTime,
                 closing_time: cTime,
@@ -347,6 +351,8 @@ export default function EditProfileScreen() {
                 gym_name: formData.gym_name,
                 logo_url: logoUrl,
                 address: formData.address,
+                pix_key: formData.pix_key?.trim() || null,
+                pix_city: formData.pix_city?.trim() || null,
                 opening_hours: `${formData.working_days} - ${formData.opening_time} às ${formData.closing_time}`,
                 cnpj: formData.cnpj,
                 owner_cpf: formData.cpf,
@@ -543,6 +549,22 @@ export default function EditProfileScreen() {
                     value={formData.address} onChangeText={t => updateForm('address', t)}
                     style={{ marginBottom: 12 }}
                 />
+
+                {/* A chave só monta o "copia e cola" da cobrança. O dinheiro vai
+                    direto do aluno para a academia — o app não intermedia. */}
+                <FormLabel>Chave Pix para receber mensalidades</FormLabel>
+                <Input
+                    placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                    value={formData.pix_key} onChangeText={t => updateForm('pix_key', t)}
+                    autoCapitalize="none"
+                    style={{ marginBottom: 12 }}
+                />
+                <Input
+                    placeholder="Cidade da conta Pix"
+                    value={formData.pix_city} onChangeText={t => updateForm('pix_city', t)}
+                    style={{ marginBottom: 12 }}
+                />
+
                 <FormLabel>Dias de Funcionamento</FormLabel>
                 <PickerContainer>
                     <PickerButton onPress={() => setShowDaysPicker(true)}>
