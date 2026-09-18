@@ -1,4 +1,5 @@
 import { FontAwesome } from '@expo/vector-icons';
+import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -232,13 +233,17 @@ export default function OnboardingScreen() {
         return `${year}-${month}-${day}`;
     };
 
+    // D2 — dias e horários deixaram de ser obrigatórios. Sem isto, um perfil
+    // sem horário gravava a string " -  às ", que é pior que vazio.
+    const montarHorario = (dias: string, abre: string, fecha: string): string | null => {
+        const faixa = abre && fecha ? `${abre} às ${fecha}` : (abre || fecha || '');
+        const partes = [dias, faixa].filter(Boolean);
+        return partes.length ? partes.join(' - ') : null;
+    };
+
     const handleFinish = async () => {
         if (!formData.gym_name || !formData.address) {
             Alert.alert('Erro', 'Preencha Nome da Academia e Endereço.');
-            return;
-        }
-        if (!formData.working_days || !formData.opening_time || !formData.closing_time) {
-            Alert.alert('Erro', 'Preencha todos os campos de dias e horários de funcionamento.');
             return;
         }
 
@@ -247,11 +252,32 @@ export default function OnboardingScreen() {
             const userId = session?.user.id;
             if (!userId) throw new Error('Usuário não autenticado.');
 
+            // A5 — a logo era pedida e descartada em silêncio. Sobe antes do
+            // insert, para o perfil já nascer com ela.
+            let logoUrl: string | null = null;
+            if (formData.logo_base64) {
+                const filePath = `${userId}/${Date.now()}.jpg`;
+                const { error: uploadError } = await supabase.storage
+                    .from('logos')
+                    .upload(filePath, decode(formData.logo_base64), {
+                        contentType: 'image/jpeg',
+                    });
+
+                if (uploadError) {
+                    // Não aborta o cadastro por causa da logo — ela é opcional.
+                    console.error('Logo upload failed:', uploadError);
+                } else {
+                    const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath);
+                    logoUrl = publicUrl;
+                }
+            }
+
             const profileData = {
                 user_id: userId,
                 gym_name: formData.gym_name,
+                logo_url: logoUrl,
                 address: formData.address,
-                opening_hours: `${formData.working_days} - ${formData.opening_time} às ${formData.closing_time}`,
+                opening_hours: montarHorario(formData.working_days, formData.opening_time, formData.closing_time),
                 cnpj: formData.cnpj || null,
                 owner_cpf: formData.owner_cpf || null,
                 owner_birth_date: convertDateToISO(formData.owner_birth_date),
@@ -262,13 +288,6 @@ export default function OnboardingScreen() {
                 .insert(profileData);
 
             if (error) throw error;
-
-            // Upload Logo if exists
-            if (formData.logo_base64) {
-                // Implement logo upload logic similar to what was intended or just ignore for now if not critical
-                // The previous file didn't actually implement upload logic in the snippet provided (it was marked "NO LOGO UPLOAD" in comment)
-                // But let's leave it as is for now.
-            }
 
             router.replace('/(drawer)/(tabs)');
 
