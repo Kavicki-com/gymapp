@@ -208,13 +208,6 @@ const getCurrentMonthYear = () => {
     return `${month}/${year}`;
 };
 
-const getPreviousMonthYear = () => {
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${month}/${d.getFullYear()}`;
-};
-
 export default function ClientDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
@@ -433,18 +426,6 @@ export default function ClientDetailsScreen() {
         setShowPaymentModal(true);
     };
 
-    // Quick shortcut to pre-fill with the previous month
-    const openPaymentModalRetroactive = () => {
-        setEditingPayment(null);
-        setPaymentAmount(planPrice ? planPrice.toString() : '');
-        setPaymentDiscount('');
-        setReferenceMonth(getPreviousMonthYear());
-        setIsAdvancePayment(false);
-        setAdvanceMonths(1);
-        setPaymentDate('');
-        setShowPaymentModal(true);
-    };
-
     const getNextMonths = (startMonth: string, count: number): string[] => {
         const months: string[] = [startMonth];
         if (count <= 1) return months;
@@ -524,34 +505,60 @@ export default function ClientDetailsScreen() {
         const months = isAdvancePayment ? advanceMonths : 1;
         const refMonths = getNextMonths(referenceMonth, months);
 
-        // Guarda de duplicata: avisa ANTES de gravar, em vez de deixar o mês
-        // entrar duas vezes e virar suporte manual depois.
-        const jaLancados = refMonths.filter(m => payments.some(p => p.reference_month === m));
-        if (jaLancados.length > 0) {
-            const plural = jaLancados.length > 1;
-            Alert.alert(
-                plural ? 'Meses já lançados' : 'Mês já lançado',
-                `${jaLancados.join(', ')} ${plural ? 'já foram lançados' : 'já foi lançado'} para este aluno. Lançar mesmo assim?`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Lançar assim mesmo', style: 'destructive', onPress: () => insertPayment(refMonths) },
-                ]
-            );
-            return;
-        }
-
-        insertPayment(refMonths);
+        comGuardaDeDuplicata(refMonths, () => insertPayment(refMonths, {
+            amount: parseFloat(paymentAmount) || 0,
+            discount: parseFloat(paymentDiscount) || 0,
+            date: parsePaymentDate() ?? new Date(),
+        }));
     };
 
-    const insertPayment = async (refMonths: string[]) => {
+    // Avisa ANTES de gravar, em vez de deixar o mês entrar duas vezes e virar
+    // suporte manual depois. Usada pelo modal e pelo lançamento rápido.
+    const comGuardaDeDuplicata = (refMonths: string[], gravar: () => void) => {
+        const jaLancados = refMonths.filter(m => payments.some(p => p.reference_month === m));
+        if (jaLancados.length === 0) {
+            gravar();
+            return;
+        }
+        const plural = jaLancados.length > 1;
+        Alert.alert(
+            plural ? 'Meses já lançados' : 'Mês já lançado',
+            `${jaLancados.join(', ')} ${plural ? 'já foram lançados' : 'já foi lançado'} para este aluno. Lançar mesmo assim?`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Lançar assim mesmo', style: 'destructive', onPress: gravar },
+            ]
+        );
+    };
+
+    // C2 — o caso comum em um toque: mês sugerido, valor do plano, hoje.
+    // O mês sugerido é o atraso mais antigo, se houver, senão o mês corrente.
+    // O rótulo do botão mostra qual é, então não há adivinhação.
+    const mesSugerido = overdueMonths.length > 0 ? overdueMonths[0] : getCurrentMonthYear();
+
+    const lancarRapido = () => {
+        // Sem preço de plano não há o que sugerir: cai no formulário.
+        if (!planPrice) {
+            openPaymentModal();
+            return;
+        }
+        comGuardaDeDuplicata([mesSugerido], () => insertPayment([mesSugerido], {
+            amount: planPrice,
+            discount: 0,
+            date: new Date(),
+        }));
+    };
+
+    type DadosPagamento = { amount: number; discount: number; date: Date };
+
+    const insertPayment = async (refMonths: string[], dados: DadosPagamento) => {
         setRegisteringPayment(true);
         try {
             const gymId = await getCurrentGymId();
-            const pDate = parsePaymentDate() ?? new Date();
+            const pDate = dados.date;
 
-            const amount = parseFloat(paymentAmount) || 0;
-            const discount = parseFloat(paymentDiscount) || 0;
-            const finalAmount = Math.max(0, amount - discount);
+            const discount = dados.discount;
+            const finalAmount = Math.max(0, dados.amount - discount);
 
             const paymentRecords = refMonths.map((refMonth, index) => ({
                 client_id: id,
@@ -874,15 +881,30 @@ export default function ClientDetailsScreen() {
 
                 <Section>
                     <DetailTitle style={{ fontSize: 18, marginBottom: 10 }}>Ações</DetailTitle>
-                    <ActionButton onPress={openPaymentModal}>
+                    {/* C3: os dois botões antigos abriam o MESMO modal, só com
+                        prefill diferente. Agora é um só, e o caso comum (C2)
+                        nem abre formulário. */}
+                    <ActionButton onPress={lancarRapido} disabled={registeringPayment}>
                         <FontAwesome name="money" size={20} color={theme.colors.background} />
-                        <ActionButtonText>Lançar Pagamento (Mês Atual)</ActionButtonText>
+                        <ActionButtonText>
+                            {registeringPayment
+                                ? 'Registrando...'
+                                : planPrice
+                                    ? `Registrar ${formatCurrency(planPrice)} · ${mesSugerido}`
+                                    : 'Registrar Pagamento'}
+                        </ActionButtonText>
                     </ActionButton>
 
-                    <ActionButton bgColor={theme.colors.surface} onPress={openPaymentModalRetroactive} style={{ borderWidth: 1, borderColor: theme.colors.border }}>
-                        <FontAwesome name="history" size={18} color={theme.colors.textSecondary} />
-                        <ActionButtonText style={{ color: theme.colors.text }}>Lançar Retroativo (Mês Anterior)</ActionButtonText>
-                    </ActionButton>
+                    <TouchableOpacity
+                        onPress={openPaymentModal}
+                        accessibilityRole="button"
+                        accessibilityLabel="Ajustar valor, data ou mês do pagamento"
+                        style={{ alignSelf: 'center', paddingVertical: 10, marginBottom: 10 }}
+                    >
+                        <DetailLabel style={{ marginBottom: 0, color: theme.colors.primary }}>
+                            Ajustar valor, data ou mês
+                        </DetailLabel>
+                    </TouchableOpacity>
 
                     {isLocked ? (
                         <ActionButton bgColor={theme.colors.success} onPress={handleUnlockSubscription}>
