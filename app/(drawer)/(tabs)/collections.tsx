@@ -115,8 +115,6 @@ const Marca = styled.Text<{ recente?: boolean }>`
 const CartaoPix = styled.View`
     background-color: ${theme.colors.surface};
     border-radius: 12px;
-    border-left-width: 3px;
-    border-left-color: ${theme.colors.primary};
     padding: ${theme.spacing.md}px;
     margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
 `;
