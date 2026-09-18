@@ -286,6 +286,7 @@ export default function DashboardScreen() {
         .from('payments')
         .select('amount')
         .eq('gym_id', gymId)
+        .is('deleted_at', null)
         .gte('payment_date', startOfMonth)
         .lte('payment_date', endOfMonth);
 
@@ -301,7 +302,8 @@ export default function DashboardScreen() {
       const { data: allPayments } = await supabase
         .from('payments')
         .select('client_id, reference_month')
-        .eq('gym_id', gymId);
+        .eq('gym_id', gymId)
+        .is('deleted_at', null);
 
       const paymentsMap: Record<string, Set<string>> = {};
       (allPayments || []).forEach(p => {
