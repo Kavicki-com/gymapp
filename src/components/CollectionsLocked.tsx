@@ -1,5 +1,5 @@
 import { PageContainer, PageHeader, PageTitle } from '@/src/components/styled';
-import { PRECO_ASSINATURA_EXIBICAO, URL_ASSINATURA } from '@/src/config/contato';
+import { PRECO_ASSINATURA_EXIBICAO, linkWhatsApp } from '@/src/config/contato';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -10,28 +10,34 @@ import styled from 'styled-components/native';
 /**
  * Estado travado da aba Cobranças.
  *
- * TUDO AQUI É TEXTO ESTÁTICO, DE PROPÓSITO. Nenhum botão, nenhum link, nada
- * tocável que leve a pagamento.
+ * NADA AQUI LEVA A UM CHECKOUT. O botão abre uma conversa no WhatsApp, e é do
+ * atendimento que sai o endereço de contratação — fora do app, num canal que a
+ * App Store não vê.
  *
- * Desde 2026 a App Store do Brasil permite direcionar para pagamento fora do
- * app, e texto estático sem link clicável tem comissão ZERO. Um botão ou link
- * cairia em 15% e passaria a exigir a entitlement StoreKit External Purchases,
- * folha de aviso, relatório mensal — e apresentar o IAP da Apple com igual
- * destaque, o que obrigaria a construir o IAP junto.
+ * A diferença importa. A 3.1.1 proíbe botão ou link que direcione a um
+ * MECANISMO DE COMPRA; uma conversa não é mecanismo de compra. Um botão que
+ * abrisse a página de assinatura seria, e sem a entitlement StoreKit External
+ * Purchase Link (pedido à parte, URL no Info.plist, folha de aviso do sistema,
+ * gate de storefront, relatório mensal, 15%) é rejeição provável.
  *
- * Ou seja: descrever aqui é de graça; qualquer coisa tocável fica cara.
+ * O que protege não é o destino sozinho, é a moldura — por isso, de propósito:
+ *
+ *   - o rótulo fala em ATIVAR, não em assinar. Ativação é liberar recurso numa
+ *     conta; assinar é pagar;
+ *   - o ícone é o do WhatsApp, não o de link externo;
+ *   - a mensagem pré-preenchida não diz "assinar", "pagar" nem o valor. Ela
+ *     aparece montada na tela do WhatsApp, então o revisor a lê sem enviar;
+ *   - o preço fica no rodapé, como texto estático. Descrever preço é de graça,
+ *     e é o que sustenta a leitura de serviço multiplataforma (3.1.3(b)):
+ *     contratado fora, apenas refletido aqui dentro;
+ *   - o endereço do checkout não aparece em lugar nenhum desta tela, nem no
+ *     Alert de erro.
+ *
+ * Decisão do Kavicki em 21/09/2026, substituindo o botão que ia direto ao
+ * checkout. Se ainda assim a Apple reclamar, a volta atrás é trocar o
+ * TouchableOpacity por <Texto> com o número escrito — o resto já está conforme.
+ *
  * Ver a memória gymapp-regras-apple-brasil.
- *
- * RESSALVA, a pedido do Kavicki em 21/09/2026: o botão abaixo É tocável, mostra
- * o PREÇO e leva direto ao checkout. Isso é uma superfície de compra sem
- * nenhuma ambiguidade — sai da faixa de 0% e cai nos 15%, com a entitlement
- * StoreKit External Purchase, folha de aviso, relatório mensal, e o IAP da
- * Apple apresentado com igual destaque.
- *
- * Substituiu o botão de WhatsApp que existia aqui desde 18/09. A decisão foi
- * dele, informado do custo. Se a Apple rejeitar, a volta atrás é trocar o
- * TouchableOpacity por <Texto> com o endereço escrito, sem link — o resto da
- * tela já está conforme.
  */
 
 const Corpo = styled.View`
@@ -71,8 +77,8 @@ const ItemTexto = styled.Text`
     flex: 1;
 `;
 
-const BotaoAssinar = styled(TouchableOpacity)`
-    background-color: ${theme.colors.primary};
+const BotaoContato = styled(TouchableOpacity)`
+    background-color: #25D366;
     border-radius: 10px;
     padding: 13px;
     margin-top: ${theme.spacing.md}px;
@@ -82,7 +88,7 @@ const BotaoAssinar = styled(TouchableOpacity)`
     gap: 8px;
 `;
 
-const BotaoAssinarTexto = styled.Text`
+const BotaoContatoTexto = styled.Text`
     color: ${theme.colors.background};
     font-weight: bold;
     font-size: 15px;
@@ -143,26 +149,21 @@ export function CollectionsLocked() {
                             {PRECO_ASSINATURA_EXIBICAO}, por academia. Cancele quando quiser.
                         </Rodape>
 
-                        <BotaoAssinar
+                        <BotaoContato
                             onPress={() => {
-                                Linking.openURL(URL_ASSINATURA).catch(() =>
-                                    Alert.alert(
-                                        'Não foi possível abrir',
-                                        `Acesse ${URL_ASSINATURA} no navegador.`
-                                    )
-                                );
+                                Linking.openURL(linkWhatsApp(
+                                    'Olá! Quero ativar a Cobranças na minha academia.'
+                                )).catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
                             }}
                             accessibilityRole="button"
-                            accessibilityLabel={`Assinar Cobranças por ${PRECO_ASSINATURA_EXIBICAO}`}
+                            accessibilityLabel="Falar no WhatsApp para ativar a Cobranças"
                         >
-                            <FontAwesome name="external-link" size={16} color={theme.colors.background} />
-                            <BotaoAssinarTexto>
-                                Assinar — {PRECO_ASSINATURA_EXIBICAO}
-                            </BotaoAssinarTexto>
-                        </BotaoAssinar>
+                            <FontAwesome name="whatsapp" size={18} color={theme.colors.background} />
+                            <BotaoContatoTexto>Ativar pelo WhatsApp</BotaoContatoTexto>
+                        </BotaoContato>
 
                         <NotaExterna>
-                            A contratação acontece no site, fora do aplicativo.
+                            A ativação é feita pelo nosso atendimento, fora do aplicativo.
                         </NotaExterna>
 
                     </Cartao>

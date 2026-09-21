@@ -15,11 +15,5 @@ export const linkWhatsApp = (mensagem?: string) =>
     `https://wa.me/${WHATSAPP_SUPORTE}` +
     (mensagem ? `?text=${encodeURIComponent(mensagem)}` : '');
 
-/**
- * Página de assinatura, fora do app. A contratação NUNCA acontece dentro do
- * iOS — ver o cabeçalho de CollectionsLocked para o que isso custa.
- */
-export const URL_ASSINATURA = 'https://gymapp.kavicki.com/assinatura.html';
-
 /** Preço exibido. A cobrança de verdade lê billing_plans.amount no servidor. */
 export const PRECO_ASSINATURA_EXIBICAO = 'R$ 9,90/mês';

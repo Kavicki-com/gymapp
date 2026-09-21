@@ -506,37 +506,66 @@ export default function CollectionsScreen() {
             .catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
     };
 
+    // Uma linha por competência, e não uma linha com a soma: a regra de atraso
+    // (src/utils/overdue) casa pagamento com mês pelo `reference_month`. Uma
+    // linha só de R$ 300 quitaria um mês e deixaria os outros dois em aberto —
+    // e ainda jogaria os R$ 300 inteiros no faturamento daquele mês.
+    const registrarPagamento = async (d: Devedor, meses: string[]) => {
+        setLancando(d.id);
+        try {
+            const gymId = await getCurrentGymId();
+            const agora = new Date().toISOString();
+            const { error } = await supabase.from('payments').insert(
+                meses.map(mes => ({
+                    client_id: d.id, gym_id: gymId, amount: d.valorPlano,
+                    discount: 0, reference_month: mes, is_advance: false,
+                    payment_date: agora,
+                }))
+            );
+            if (error) throw error;
+            await supabase.from('clients')
+                .update({ last_payment_date: agora, payment_status: 'paid' })
+                .eq('id', d.id);
+            carregar();
+        } catch (e: any) {
+            Alert.alert('Erro', 'Falha ao registrar: ' + e.message);
+        } finally {
+            setLancando(null);
+        }
+    };
+
     const darBaixa = (d: Devedor) => {
-        const mes = d.mesesAbertos[0];
-        if (!mes) return;
+        const meses = d.mesesAbertos;
+        if (!meses.length) return;
+
+        if (meses.length === 1) {
+            Alert.alert(
+                'Registrar pagamento',
+                `${d.nome}\n${formatCurrency(d.valorPlano)} · ref. ${meses[0]} · hoje`,
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Registrar', onPress: () => registrarPagamento(d, meses) },
+                ]
+            );
+            return;
+        }
+
+        // A cobrança sai pelo total: a mensagem e o Pix copia e cola são montados
+        // com d.total. Sem a opção de quitar tudo, quem devia 3 meses pagava de
+        // uma vez e o dono tinha que dar baixa três vezes — ou dava uma e o aluno
+        // continuava aparecendo como devedor do valor que já pagou.
         Alert.alert(
             'Registrar pagamento',
-            `${d.nome}\n${formatCurrency(d.valorPlano)} · ref. ${mes} · hoje`,
+            `${d.nome}\n${meses.length} meses em aberto · ${meses.join(', ')}`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
-                    text: 'Registrar',
-                    onPress: async () => {
-                        setLancando(d.id);
-                        try {
-                            const gymId = await getCurrentGymId();
-                            const agora = new Date().toISOString();
-                            const { error } = await supabase.from('payments').insert({
-                                client_id: d.id, gym_id: gymId, amount: d.valorPlano,
-                                discount: 0, reference_month: mes, is_advance: false,
-                                payment_date: agora,
-                            });
-                            if (error) throw error;
-                            await supabase.from('clients')
-                                .update({ last_payment_date: agora, payment_status: 'paid' })
-                                .eq('id', d.id);
-                            carregar();
-                        } catch (e: any) {
-                            Alert.alert('Erro', 'Falha ao registrar: ' + e.message);
-                        } finally {
-                            setLancando(null);
-                        }
-                    },
+                    text: `Só ${meses[0]} · ${formatCurrency(d.valorPlano)}`,
+                    onPress: () => registrarPagamento(d, [meses[0]]),
+                },
+                {
+                    text: `Total · ${formatCurrency(d.total)}`,
+                    onPress: () => registrarPagamento(d, meses),
                 },
             ]
         );
@@ -911,7 +940,13 @@ export default function CollectionsScreen() {
                                 ) : (
                                     <>
                                         <FontAwesome name="check" size={14} color={theme.colors.background} />
-                                        <AcaoTexto>Registrar {formatCurrency(item.valorPlano)}</AcaoTexto>
+                                        {/* Com vários meses em aberto o rótulo não pode prometer
+                                            um valor: o toque abre a escolha entre o mês e o total. */}
+                                        <AcaoTexto>
+                                            {item.meses === 1
+                                                ? `Registrar ${formatCurrency(item.valorPlano)}`
+                                                : 'Registrar'}
+                                        </AcaoTexto>
                                     </>
                                 )}
                             </AcaoLinha>

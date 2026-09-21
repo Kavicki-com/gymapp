@@ -143,7 +143,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible,
                         <Paragraph>
                             Para fornecer certas funcionalidades, o Gymapp pode solicitar acesso a recursos do seu dispositivo móvel:
                         </Paragraph>
-                        <BulletPoint>• Câmera e Galeria de Fotos: Para upload de logomarca e fotos de perfil.</BulletPoint>
+                        <BulletPoint>• Galeria de Fotos: Para upload de logomarca e fotos de perfil.</BulletPoint>
                         <BulletPoint>• Armazenamento Local: Para preferências e sessão ativa.</BulletPoint>
 
                         <SectionTitle>3. Como Usamos Suas Informações</SectionTitle>

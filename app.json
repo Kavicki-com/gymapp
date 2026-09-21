@@ -41,11 +41,20 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "O $(PRODUCT_NAME) usa suas fotos para definir a foto do aluno, do colaborador e da academia.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#151B23"
+          "image": "./assets/images/splash-logo.png",
+          "resizeMode": "contain",
+          "imageWidth": 360,
+          "backgroundColor": "#111827"
         }
       ],
       "expo-status-bar",

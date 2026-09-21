@@ -13,6 +13,11 @@ import React, { useState } from 'react';
 import { RefreshControl, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
+/* Prévia, não lista: o dashboard mostra quem está devendo para dar o empurrão
+   até Cobranças, que é onde a cobrança acontece. Passando disto vira a segunda
+   cópia da mesma tela — que foi justamente o que o commit 64a040c removeu. */
+const PREVIA_ATRASO = 3;
+
 const ScrollContainer = styled.ScrollView`
   flex: 1;
   background-color: ${theme.colors.background};
@@ -117,9 +122,13 @@ const MarginValue = styled.Text<{ positive: boolean }>`
   margin-top: ${theme.spacing.sm}px;
 `;
 
+/* Contagem à esquerda, valor à direita — a mesma leitura das linhas de aluno
+   logo abaixo, que também têm nome à esquerda e valor à direita. */
 const AvisoAtraso = styled(TouchableOpacity)`
-  padding: 4px 0 8px;
-  align-items: center;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0 10px;
 `;
 
 const AvisoValor = styled.Text`
@@ -131,8 +140,8 @@ const AvisoValor = styled.Text`
 const AvisoDetalhe = styled.Text`
   font-size: ${theme.fontSize.sm}px;
   color: ${theme.colors.textSecondary};
-  margin-top: 2px;
-  margin-bottom: 10px;
+  flex-shrink: 1;
+  padding-right: 8px;
 `;
 
 const ViewAllText = styled.Text`
@@ -431,10 +440,19 @@ export default function DashboardScreen() {
     : 0;
 
   const margin = monthlyRevenue.expected - totalSalaries;
-  const overdueCount = overdueClients.filter(c => c.daysOverdue > 0).length;
-  const totalOverdueValue = overdueClients
-    .filter(c => c.daysOverdue > 0)
-    .reduce((sum, c) => sum + c.planPrice, 0);
+
+  // overdueClients também carrega quem está por vencer (daysOverdue < 0); só o
+  // atraso de verdade entra no aviso e na prévia.
+  const emAtraso = overdueClients.filter(c => c.daysOverdue > 0);
+  const overdueCount = emAtraso.length;
+
+  // planPrice × meses, e não planPrice: é a mesma conta da aba Cobranças
+  // (valorPlano * mesesEmAtraso). Somando um mês só, o dashboard mostrava um
+  // total menor que o da outra tela para exatamente a mesma dívida — e agora
+  // que as linhas por aluno aparecem aqui embaixo, elas não fechariam.
+  const totalOverdueValue = emAtraso.reduce((sum, c) => sum + c.planPrice * c.overdueMonthsCount, 0);
+
+  const previaAtraso = emAtraso.slice(0, PREVIA_ATRASO);
 
   return (
     <>
@@ -470,9 +488,11 @@ export default function DashboardScreen() {
               </DashboardSection>
             )}
 
-            {/* Vencimentos — só o aviso. A lista de quem está em atraso, com a
-                mensagem pronta e o Pix, vive na aba Cobranças; repetir aqui era
-                duas telas dizendo a mesma coisa, e só uma delas sabe cobrar. */}
+            {/* Vencimentos — aviso e prévia dos PREVIA_ATRASO que mais devem.
+                A lista que cobra, com a mensagem pronta, o Pix e o registro do
+                que já foi feito, vive na aba Cobranças. Aqui é só reconhecer os
+                nomes e ir para lá: sem nomes, o dono precisa abrir a outra aba
+                só para saber se vale a pena abrir a outra aba. */}
             <DashboardSection
               title="Vencimentos"
               icon="exclamation-triangle"
@@ -481,12 +501,41 @@ export default function DashboardScreen() {
               emptyText="Todos os pagamentos em dia! 🎉"
             >
               <AvisoAtraso onPress={() => router.push('/collections')} activeOpacity={0.7}>
-                <AvisoValor>{formatCurrency(totalOverdueValue)} em atraso</AvisoValor>
-                <AvisoDetalhe>
-                  {overdueCount === 1 ? '1 cliente' : `${overdueCount} clientes`}
+                <AvisoDetalhe numberOfLines={1}>
+                  {overdueCount === 1 ? '1 cliente em atraso' : `${overdueCount} clientes em atraso`}
                 </AvisoDetalhe>
-                <ViewAllText>Ver em Cobranças</ViewAllText>
+                <AvisoValor>{formatCurrency(totalOverdueValue)}</AvisoValor>
               </AvisoAtraso>
+
+              {/* Sem botão de cobrar, sem baixa, sem atalho para a ficha: tocar
+                  em qualquer linha leva para Cobranças. Ação nenhuma aqui é de
+                  propósito — a mensagem com Pix e o registro do que já foi
+                  cobrado só existem lá, e duplicar meia ação aqui deixaria o
+                  dono achando que cobrou quando não cobrou. */}
+              {previaAtraso.map(c => (
+                <AlertItem
+                  key={c.id}
+                  title={c.name}
+                  subtitle={`${c.planName} · ${c.overdueMonthsCount === 1 ? '1 mês' : `${c.overdueMonthsCount} meses`}`}
+                  value={formatCurrency(c.planPrice * c.overdueMonthsCount)}
+                  status="danger"
+                  onPress={() => router.push('/collections')}
+                />
+              ))}
+
+              <TouchableOpacity
+                onPress={() => router.push('/collections')}
+                activeOpacity={0.7}
+                style={{ paddingTop: 12, alignItems: 'center' }}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir a aba Cobranças"
+              >
+                <ViewAllText>
+                  {overdueCount > previaAtraso.length
+                    ? `Ver os ${overdueCount} em Cobranças`
+                    : 'Ver em Cobranças'}
+                </ViewAllText>
+              </TouchableOpacity>
             </DashboardSection>
 
             {/* Monthly Revenue */}
