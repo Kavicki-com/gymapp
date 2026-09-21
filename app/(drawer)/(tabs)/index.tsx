@@ -8,11 +8,9 @@ import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
 import { FontAwesome } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import * as Linking from 'expo-linking';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, FlatList, Modal, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 const ScrollContainer = styled.ScrollView`
@@ -39,12 +37,16 @@ const StatsGrid = styled.View`
   justify-content: space-between;
 `;
 
-const CardContainer = styled.View<{ fullWidth?: boolean }>`
+/* Três lado a lado: 31% cada, com o respiro do space-between entre eles.
+   O padding é menor que o do resto do dashboard porque a 31% de um celular
+   sobram ~90px úteis — com o padding largo, o rótulo quebrava em três linhas. */
+const CardContainer = styled.View`
   background-color: ${theme.colors.surface};
-  padding: ${theme.spacing.lg}px;
+  padding: ${theme.spacing.md}px ${theme.spacing.sm}px;
   border-radius: ${theme.borderRadius.lg}px;
   margin-bottom: ${theme.spacing.lg}px;
-  width: ${({ fullWidth }) => (fullWidth ? '100%' : '48%')};
+  width: 31.5%;
+  align-items: center;
 `;
 
 const StatValue = styled.Text`
@@ -58,8 +60,16 @@ const StatLabel = styled.Text`
   font-size: ${theme.fontSize.sm}px;
 `;
 
+/* Rótulo do card compacto: menor e centrado, para caber em duas linhas. */
+const StatCardLabel = styled.Text`
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSize.xs}px;
+  text-align: center;
+  margin-top: 2px;
+`;
+
 const IconContainer = styled.View`
-  margin-bottom: ${theme.spacing.sm}px;
+  margin-bottom: ${theme.spacing.xs}px;
 `;
 
 const Row = styled.View`
@@ -107,39 +117,22 @@ const MarginValue = styled.Text<{ positive: boolean }>`
   margin-top: ${theme.spacing.sm}px;
 `;
 
-const BottomSheetOverlay = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.5);
-  justify-content: flex-end;
+const AvisoAtraso = styled(TouchableOpacity)`
+  padding: 4px 0 8px;
+  align-items: center;
 `;
 
-const BottomSheetContent = styled.View`
-  background-color: ${theme.colors.background};
-  border-top-left-radius: 20px;
-  border-top-right-radius: 20px;
-  padding: 20px;
-  max-height: 80%;
-`;
-
-const BottomSheetTitle = styled.Text`
+const AvisoValor = styled.Text`
   font-size: ${theme.fontSize.lg}px;
   font-weight: bold;
-  color: ${theme.colors.text};
-  margin-bottom: 16px;
-  text-align: center;
-`;
-
-const BottomSheetSubtitle = styled.Text`
-  font-size: ${theme.fontSize.sm}px;
   color: ${theme.colors.danger};
-  text-align: center;
-  margin-bottom: 12px;
 `;
 
-const ViewAllButton = styled(TouchableOpacity)`
-  padding: 12px;
-  align-items: center;
-  margin-top: 8px;
+const AvisoDetalhe = styled.Text`
+  font-size: ${theme.fontSize.sm}px;
+  color: ${theme.colors.textSecondary};
+  margin-top: 2px;
+  margin-bottom: 10px;
 `;
 
 const ViewAllText = styled.Text`
@@ -423,56 +416,13 @@ export default function DashboardScreen() {
     fetchData();
   };
 
-  const handleBulkWhatsApp = async () => {
-    const clientsWithPhone = overdueClients.filter(c => c.phone && c.daysOverdue > 0);
-
-    if (clientsWithPhone.length === 0) {
-      Alert.alert('Aviso', 'Não há clientes inadimplentes com telefone cadastrado.');
-      return;
-    }
-
-    const phones = clientsWithPhone.map(c => {
-      const phone = c.phone.replace(/\D/g, '');
-      return phone.startsWith('55') ? phone : `55${phone}`;
-    });
-
-    const message = `Olá! Gostaríamos de lembrar que sua mensalidade da academia venceu. Por favor, regularize seu pagamento. Obrigado!`;
-
-    const clipboardContent = `📱 TELEFONES (${phones.length} clientes):\n${phones.join('\n')}\n\n💬 MENSAGEM:\n${message}`;
-
-    await Clipboard.setStringAsync(clipboardContent);
-
-    Alert.alert(
-      'Dados Copiados!',
-      `${phones.length} telefones e a mensagem foram copiados para a área de transferência.\n\nAbra o WhatsApp e crie uma lista de transmissão com esses contatos.`,
-      [
-        { text: 'OK' },
-        {
-          text: 'Abrir WhatsApp',
-          onPress: () => Linking.openURL('whatsapp://'),
-        },
-      ]
-    );
-  };
-
-  const getOverdueStatus = (daysOverdue: number, count: number) => {
-    if (count > 0) {
-      return {
-        status: 'danger' as const,
-        text: count === 1 ? '1 mensalidade em atraso' : `${count} mensalidades em atraso`
-      };
-    }
-    if (daysOverdue >= -3) return { status: 'warning' as const, text: `Vence em ${-daysOverdue}d` };
-    return { status: 'success' as const, text: `Vence em ${-daysOverdue}d` };
-  };
-
   const StatCard = ({ title, value, icon, onPress }: { title: string; value: number; icon: string; onPress?: () => void }) => (
     <CardContainer as={onPress ? TouchableOpacity : View} onPress={onPress} activeOpacity={0.7}>
       <IconContainer>
-        <FontAwesome name={icon as any} size={24} color={theme.colors.primary} />
+        <FontAwesome name={icon as any} size={20} color={theme.colors.primary} />
       </IconContainer>
       <StatValue>{value}</StatValue>
-      <StatLabel>{title}</StatLabel>
+      <StatCardLabel numberOfLines={2}>{title}</StatCardLabel>
     </CardContainer>
   );
 
@@ -497,7 +447,7 @@ export default function DashboardScreen() {
         {loading ? (
           <>
             <StatsGrid>
-              {Array.from({ length: 4 }).map((_, i) => (
+              {Array.from({ length: 3 }).map((_, i) => (
                 <SkeletonLoader key={i} variant="card" />
               ))}
             </StatsGrid>
@@ -508,7 +458,7 @@ export default function DashboardScreen() {
           <>
             {/* Basic Stats */}
             <StatsGrid>
-              <StatCard title="Clientes cadastrados" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
+              <StatCard title="Clientes" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
               <StatCard title="Colaboradores" value={stats.employees} icon="id-card" onPress={() => router.push('/(drawer)/(tabs)/employees')} />
               <StatCard title="Planos" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
             </StatsGrid>
@@ -519,6 +469,25 @@ export default function DashboardScreen() {
                 <DonutChart data={clientsByPlan} />
               </DashboardSection>
             )}
+
+            {/* Vencimentos — só o aviso. A lista de quem está em atraso, com a
+                mensagem pronta e o Pix, vive na aba Cobranças; repetir aqui era
+                duas telas dizendo a mesma coisa, e só uma delas sabe cobrar. */}
+            <DashboardSection
+              title="Vencimentos"
+              icon="exclamation-triangle"
+              count={overdueCount}
+              isEmpty={overdueCount === 0}
+              emptyText="Todos os pagamentos em dia! 🎉"
+            >
+              <AvisoAtraso onPress={() => router.push('/collections')} activeOpacity={0.7}>
+                <AvisoValor>{formatCurrency(totalOverdueValue)} em atraso</AvisoValor>
+                <AvisoDetalhe>
+                  {overdueCount === 1 ? '1 cliente' : `${overdueCount} clientes`}
+                </AvisoDetalhe>
+                <ViewAllText>Ver em Cobranças</ViewAllText>
+              </AvisoAtraso>
+            </DashboardSection>
 
             {/* Monthly Revenue */}
             <DashboardSection title="Receita do Mês" icon="bar-chart">
@@ -555,44 +524,6 @@ export default function DashboardScreen() {
                   {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
                 </MarginValue>
               </View>
-            </DashboardSection>
-
-            {/* Overdue Payments */}
-            <DashboardSection
-              title="Vencimentos"
-              icon="exclamation-triangle"
-              count={overdueCount}
-              actionLabel="Cobrar"
-              actionIcon="whatsapp"
-              onAction={handleBulkWhatsApp}
-              isEmpty={overdueClients.length === 0}
-              emptyText="Todos os pagamentos em dia! 🎉"
-            >
-              {overdueCount > 0 && (
-                <View style={{ marginBottom: 8 }}>
-                  <StatLabel style={{ color: theme.colors.danger }}>
-                    {formatCurrency(totalOverdueValue)} em atraso
-                  </StatLabel>
-                </View>
-              )}
-              {overdueClients.slice(0, 5).map(client => {
-                const { status, text } = getOverdueStatus(client.daysOverdue, client.overdueMonthsCount);
-                return (
-                  <AlertItem
-                    key={client.id}
-                    title={client.name}
-                    subtitle={client.planName}
-                    statusText={text}
-                    status={status}
-                    onPress={() => router.push({ pathname: '/client-details', params: { id: client.id } })}
-                  />
-                );
-              })}
-              {overdueClients.length > 5 && (
-                <ViewAllButton onPress={() => setShowOverdueModal(true)}>
-                  <ViewAllText>Ver todos ({overdueClients.length})</ViewAllText>
-                </ViewAllButton>
-              )}
             </DashboardSection>
 
             {/* Employee Salaries */}
@@ -649,46 +580,6 @@ export default function DashboardScreen() {
           </>
         )}
       </ScrollContainer>
-
-      {/* Overdue Bottom Sheet */}
-      <Modal
-        transparent={true}
-        visible={showOverdueModal}
-        animationType="slide"
-        onRequestClose={() => setShowOverdueModal(false)}
-      >
-        <BottomSheetOverlay>
-          <BottomSheetContent>
-            <BottomSheetTitle>Todos os Vencimentos</BottomSheetTitle>
-            <BottomSheetSubtitle>
-              {overdueCount} clientes em atraso — {formatCurrency(totalOverdueValue)} pendente
-            </BottomSheetSubtitle>
-            <FlatList
-              data={overdueClients}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => {
-                const { status, text } = getOverdueStatus(item.daysOverdue, item.overdueMonthsCount);
-                return (
-                  <AlertItem
-                    title={item.name}
-                    subtitle={`${item.planName} — ${formatCurrency(item.planPrice)}`}
-                    statusText={text}
-                    status={status}
-                    onPress={() => {
-                      setShowOverdueModal(false);
-                      router.push({ pathname: '/client-details', params: { id: item.id } });
-                    }}
-                  />
-                );
-              }}
-              showsVerticalScrollIndicator={false}
-            />
-            <ViewAllButton onPress={() => setShowOverdueModal(false)}>
-              <ViewAllText>Fechar</ViewAllText>
-            </ViewAllButton>
-          </BottomSheetContent>
-        </BottomSheetOverlay>
-      </Modal>
     </>
   );
 }

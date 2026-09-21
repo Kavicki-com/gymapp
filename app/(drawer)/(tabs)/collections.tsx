@@ -71,14 +71,46 @@ const ResumoLabel = styled.Text`
     margin-top: 2px;
 `;
 
-const Efetividade = styled.Text`
-    color: ${theme.colors.success};
-    font-size: 13px;
+/* Resultado da cobrança: cobrados × pagaram, mesma janela e mesmo denominador.
+   NÃO comparar com o total devido — aquilo é estoque e isto é fluxo, e o valor
+   recuperado sai do devido no mesmo instante em que entra aqui. */
+const Efetividade = styled.View`
     margin-top: 10px;
     padding-top: 10px;
     border-top-width: 1px;
     border-top-color: ${theme.colors.border};
+`;
+
+const EfetividadeTitulo = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 12px;
+    margin-bottom: 6px;
+`;
+
+const BarraTrilho = styled.View`
+    height: 6px;
+    background-color: ${theme.colors.border};
+    border-radius: 3px;
+    overflow: hidden;
+`;
+
+const BarraPreenchida = styled.View<{ pct: number }>`
+    width: ${p => p.pct}%;
+    height: 100%;
+    background-color: ${theme.colors.success};
+    border-radius: 3px;
+`;
+
+const EfetividadeDetalhe = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 13px;
+    margin-top: 6px;
     line-height: 19px;
+`;
+
+const EfetividadeValor = styled.Text`
+    color: ${theme.colors.success};
+    font-weight: bold;
 `;
 
 const BotaoFila = styled(TouchableOpacity)`
@@ -640,12 +672,35 @@ export default function CollectionsScreen() {
                         <ResumoLabel>
                             {devedores.length === 1 ? '1 aluno em atraso' : `${devedores.length} alunos em atraso`}
                         </ResumoLabel>
-                        {efetividade && efetividade.pagaram > 0 && (
+                        {/* Aparece com qualquer cobrança na janela, inclusive com
+                            zero pagamentos: "5 cobranças, 0 pagaram" é justamente
+                            o número que diz que cobrar assim não está adiantando. */}
+                        {efetividade && (
                             <Efetividade>
-                                Últimos {JANELA_RESULTADO_DIAS} dias: {efetividade.cobrados}{' '}
-                                {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'},{' '}
-                                {efetividade.pagaram} {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
-                                {PRAZO_PAGAMENTO_DIAS} dias · {formatCurrency(efetividade.valor)} recuperados
+                                <EfetividadeTitulo>
+                                    Cobrança dos últimos {JANELA_RESULTADO_DIAS} dias
+                                </EfetividadeTitulo>
+                                <BarraTrilho>
+                                    <BarraPreenchida
+                                        pct={Math.round((efetividade.pagaram / efetividade.cobrados) * 100)}
+                                    />
+                                </BarraTrilho>
+                                <EfetividadeDetalhe>
+                                    {efetividade.cobrados}{' '}
+                                    {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'} ·{' '}
+                                    {efetividade.pagaram}{' '}
+                                    {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
+                                    {PRAZO_PAGAMENTO_DIAS} dias (
+                                    {Math.round((efetividade.pagaram / efetividade.cobrados) * 100)}%)
+                                    {efetividade.valor > 0 && (
+                                        <>
+                                            {' · '}
+                                            <EfetividadeValor>
+                                                {formatCurrency(efetividade.valor)} recuperados
+                                            </EfetividadeValor>
+                                        </>
+                                    )}
+                                </EfetividadeDetalhe>
                             </Efetividade>
                         )}
                     </Resumo>
