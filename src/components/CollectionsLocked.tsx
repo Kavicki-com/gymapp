@@ -1,5 +1,5 @@
 import { PageContainer, PageHeader, PageTitle } from '@/src/components/styled';
-import { linkWhatsApp } from '@/src/config/contato';
+import { PRECO_ASSINATURA_EXIBICAO, URL_ASSINATURA } from '@/src/config/contato';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -22,11 +22,16 @@ import styled from 'styled-components/native';
  * Ou seja: descrever aqui é de graça; qualquer coisa tocável fica cara.
  * Ver a memória gymapp-regras-apple-brasil.
  *
- * RESSALVA, a pedido do Kavicki em 18/09/2026: o botão de WhatsApp abaixo É
- * tocável e diz "para ativar". Isso é uma chamada para compra, e portanto sai
- * da faixa de 0%. Foi decisão consciente dele, ciente do risco de rejeição na
- * revisão. Se a Apple reclamar, a volta atrás é trocar o TouchableOpacity por
- * <Texto> com o número escrito — o resto da tela já está conforme.
+ * RESSALVA, a pedido do Kavicki em 21/09/2026: o botão abaixo É tocável, mostra
+ * o PREÇO e leva direto ao checkout. Isso é uma superfície de compra sem
+ * nenhuma ambiguidade — sai da faixa de 0% e cai nos 15%, com a entitlement
+ * StoreKit External Purchase, folha de aviso, relatório mensal, e o IAP da
+ * Apple apresentado com igual destaque.
+ *
+ * Substituiu o botão de WhatsApp que existia aqui desde 18/09. A decisão foi
+ * dele, informado do custo. Se a Apple rejeitar, a volta atrás é trocar o
+ * TouchableOpacity por <Texto> com o endereço escrito, sem link — o resto da
+ * tela já está conforme.
  */
 
 const Corpo = styled.View`
@@ -66,8 +71,8 @@ const ItemTexto = styled.Text`
     flex: 1;
 `;
 
-const BotaoContato = styled(TouchableOpacity)`
-    background-color: #25D366;
+const BotaoAssinar = styled(TouchableOpacity)`
+    background-color: ${theme.colors.primary};
     border-radius: 10px;
     padding: 13px;
     margin-top: ${theme.spacing.md}px;
@@ -77,10 +82,18 @@ const BotaoContato = styled(TouchableOpacity)`
     gap: 8px;
 `;
 
-const BotaoContatoTexto = styled.Text`
+const BotaoAssinarTexto = styled.Text`
     color: ${theme.colors.background};
     font-weight: bold;
     font-size: 15px;
+`;
+
+const NotaExterna = styled.Text`
+    color: ${theme.colors.textSecondary};
+    font-size: 13px;
+    line-height: 19px;
+    text-align: center;
+    margin-top: 10px;
 `;
 
 const Rodape = styled.Text`
@@ -127,21 +140,30 @@ export function CollectionsLocked() {
                         ))}
 
                         <Rodape>
-                            Faz parte de um plano pago, ativado individualmente na sua academia.
+                            {PRECO_ASSINATURA_EXIBICAO}, por academia. Cancele quando quiser.
                         </Rodape>
 
-                        <BotaoContato
+                        <BotaoAssinar
                             onPress={() => {
-                                Linking.openURL(linkWhatsApp(
-                                    'Olá! Quero ativar a Cobranças na minha academia.'
-                                )).catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
+                                Linking.openURL(URL_ASSINATURA).catch(() =>
+                                    Alert.alert(
+                                        'Não foi possível abrir',
+                                        `Acesse ${URL_ASSINATURA} no navegador.`
+                                    )
+                                );
                             }}
                             accessibilityRole="button"
-                            accessibilityLabel="Falar no WhatsApp para ativar a Cobranças"
+                            accessibilityLabel={`Assinar Cobranças por ${PRECO_ASSINATURA_EXIBICAO}`}
                         >
-                            <FontAwesome name="whatsapp" size={18} color={theme.colors.background} />
-                            <BotaoContatoTexto>Ativar pelo WhatsApp</BotaoContatoTexto>
-                        </BotaoContato>
+                            <FontAwesome name="external-link" size={16} color={theme.colors.background} />
+                            <BotaoAssinarTexto>
+                                Assinar — {PRECO_ASSINATURA_EXIBICAO}
+                            </BotaoAssinarTexto>
+                        </BotaoAssinar>
+
+                        <NotaExterna>
+                            A contratação acontece no site, fora do aplicativo.
+                        </NotaExterna>
 
                     </Cartao>
                     <View style={{ height: 32 }} />
