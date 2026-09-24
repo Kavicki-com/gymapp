@@ -89,8 +89,16 @@ Deno.serve(async (req) => {
         auto_renew: pre.status === "authorized",
         next_payment_date: pre.next_payment_date ?? null,
         updated_at: new Date().toISOString(),
-      }).eq("gym_id", gymId)
+      })
+        .eq("gym_id", gymId)
+        // Só a assinatura atual da academia. Um link abandonado é cancelado no
+        // MP quando o cliente gera outro, e esse "cancelled" não pode derrubar
+        // a assinatura nova.
+        .eq("mp_preapproval_id", String(pre.id))
 
+      // Deixa rastro do caminho feliz: sem isto, "funcionou" e "nem chegou"
+      // têm exatamente a mesma cara no log.
+      console.log(`[mp-webhook] preapproval ${pre.status} -> gym ${gymId}`)
       return ok()
     }
 
@@ -132,6 +140,8 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         }).eq("id", sub.id)
       }
+
+      console.log(`[mp-webhook] authorized_payment ${ap.status} -> gym ${sub.gym_id}`)
       return ok()
     }
 

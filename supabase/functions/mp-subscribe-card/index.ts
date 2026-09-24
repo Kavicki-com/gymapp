@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
     const gym = await gymOf(admin, user.id)
     if (!gym) return json(req, { ok: false, error: "Academia não encontrada para este usuário." }, 400)
 
-    const { planCode, cardToken, payerEmail, cardBrand } = await req.json()
-    if (!planCode || !cardToken) {
-      return json(req, { ok: false, error: "planCode e cardToken são obrigatórios." }, 400)
+    const { planCode, cardToken, payerEmail, cardBrand, deviceId } = await req.json()
+    if (!planCode) {
+      return json(req, { ok: false, error: "planCode é obrigatório." }, 400)
     }
 
     // Preço e periodicidade vêm do nosso banco, nunca do cliente.
@@ -43,6 +43,77 @@ Deno.serve(async (req) => {
     }
     if (Number(plan.trial_days) > 0) {
       autoRecurring.free_trial = { frequency: Number(plan.trial_days), frequency_type: "days" }
+    }
+
+    // Sem cardToken: checkout do próprio Mercado Pago. Em 24/09 o antifraude do
+    // MP recusou como cc_rejected_high_risk toda assinatura com cartão digitado
+    // na nossa página (3 compradores diferentes). O /preapproval "pending"
+    // devolve um init_point onde o comprador paga logado no MP ou como
+    // convidado, e o mp-webhook ativa a linha quando a assinatura é autorizada.
+    if (!cardToken) {
+      const { data: atual } = await admin
+        .from("subscriptions")
+        .select("status, mp_preapproval_id")
+        .eq("gym_id", gym.id)
+        .maybeSingle()
+      if (atual?.status === "active") {
+        return json(req, { ok: false, error: "Esta academia já tem assinatura ativa." }, 409)
+      }
+      // Link anterior abandonado: cancela no MP para não sobrar uma assinatura
+      // pendente que ainda pode ser paga e não tem mais linha apontando para ela.
+      if (atual?.status === "pending" && atual.mp_preapproval_id) {
+        const velho = await mpFetch(`/preapproval/${atual.mp_preapproval_id}`, {
+          method: "PUT",
+          body: JSON.stringify({ status: "cancelled" }),
+        })
+        if (!velho.ok) console.error("[mp-subscribe-card] cancelar pendente", velho.status, JSON.stringify(velho.data))
+      }
+
+      const mp = await mpFetch("/preapproval", {
+        method: "POST",
+        body: JSON.stringify({
+          reason: `${plan.name} — ${gym.gym_name}`,
+          external_reference: gym.id,
+          // Tem que ser o email que o comprador usa ao pagar no MP (a página
+          // pergunta, com o email do login como sugestão).
+          payer_email: payerEmail || user.email,
+          auto_recurring: autoRecurring,
+          back_url: `${env("APP_URL")}/assinatura.html`,
+          status: "pending",
+        }),
+      })
+      if (!mp.ok || !mp.data?.init_point) {
+        console.error("[mp-subscribe-card] MP erro (link)", mp.status, JSON.stringify(mp.data))
+        return json(req, {
+          ok: false,
+          error: mp.data?.message || "Falha ao criar a assinatura no Mercado Pago.",
+        }, 502)
+      }
+
+      const { error: upErr } = await admin.from("subscriptions").upsert(
+        {
+          gym_id: gym.id,
+          plan_code: plan.code,
+          status: "pending",
+          kind: "recurring_card",
+          mp_preapproval_id: String(mp.data.id),
+          mp_payer_id: null,
+          auto_renew: false,
+          next_payment_date: null,
+          card_last4: null,
+          card_brand: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "gym_id" },
+      )
+      if (upErr) {
+        // Nada foi cobrado ainda, então é seguro abortar: sem a linha, o webhook
+        // não teria onde ativar a assinatura.
+        console.error("[mp-subscribe-card] upsert erro (link)", JSON.stringify(upErr))
+        return json(req, { ok: false, error: "Falha ao preparar a assinatura. Tente de novo." }, 500)
+      }
+
+      return json(req, { ok: true, status: "pending", initPoint: mp.data.init_point })
     }
 
     // Os 4 últimos dígitos não chegam do navegador: com iframe, o cardForm nunca
@@ -65,7 +136,14 @@ Deno.serve(async (req) => {
       status: "authorized",
     }
 
-    const mp = await mpFetch("/preapproval", { method: "POST", body: JSON.stringify(payload) })
+    // Device ID do security.js da página, recomendado pelo MP para aprovação.
+    // Entrou após recusas CC_VAL_433 do C6 e do Inter em 24/09. Opcional:
+    // página antiga não manda.
+    const mp = await mpFetch("/preapproval", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: deviceId ? { "X-meli-session-id": String(deviceId) } : {},
+    })
     if (!mp.ok) {
       console.error("[mp-subscribe-card] MP erro", mp.status, JSON.stringify(mp.data))
       return json(req, {
