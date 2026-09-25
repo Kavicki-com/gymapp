@@ -21,7 +21,8 @@
         "backgroundColor": "#151B23"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.kavicki.com.gymapp"
+      "package": "com.kavicki.com.gymapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

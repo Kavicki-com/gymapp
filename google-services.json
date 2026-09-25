@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "462571101945",
+    "project_id": "gymapp-8c8d1",
+    "storage_bucket": "gymapp-8c8d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462571101945:android:17316a6233d94c08014c28",
+        "android_client_info": {
+          "package_name": "com.kavicki.com.gymapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtMN7NRAjkLemIfnlY-vr8xyyXxAjP2Sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
