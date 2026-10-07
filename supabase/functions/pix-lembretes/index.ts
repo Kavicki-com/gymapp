@@ -74,7 +74,7 @@ async function enviarEmail(para: string, assunto: string, html: string): Promise
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${chave}`, "content-type": "application/json" },
-    body: JSON.stringify({ from: env("EMAIL_FROM") || "GymApp <assinatura@gymapp.kavicki.com>", to: [para], subject: assunto, html }),
+    body: JSON.stringify({ from: env("EMAIL_FROM") || "GymApp <gymapp@kavicki.com>", to: [para], subject: assunto, html }),
   })
   if (!resp.ok) console.error("[pix-lembretes] email erro", resp.status, await resp.text())
   return resp.ok

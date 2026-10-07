@@ -150,7 +150,7 @@ Email (Resend) com preço e link; push **sem preço nem link** (regra da Apple).
 | Secret | Valor |
 |---|---|
 | `RESEND_API_KEY` | chave do Resend |
-| `EMAIL_FROM` | opcional; padrão `GymApp <assinatura@gymapp.kavicki.com>` |
+| `EMAIL_FROM` | opcional; padrão `GymApp <gymapp@kavicki.com>` |
 
 | Função | verify_jwt |
 |---|---|
