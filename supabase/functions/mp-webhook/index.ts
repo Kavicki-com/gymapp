@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { adminClient, mpFetch, mpWebhookSecret } from "../_shared/mp.ts"
+import { aplicarPagamentoPix } from "../_shared/pix.ts"
 
 // Webhook do Mercado Pago. É o que efetivamente liga e desliga a aba Cobranças:
 // ao gravar em `subscriptions`, o trigger subscriptions_sync_access recalcula
@@ -99,6 +100,17 @@ Deno.serve(async (req) => {
       // Deixa rastro do caminho feliz: sem isto, "funcionou" e "nem chegou"
       // têm exatamente a mesma cara no log.
       console.log(`[mp-webhook] preapproval ${pre.status} -> gym ${gymId}`)
+      return ok()
+    }
+
+    // --- Pix avulso (mp-pay-pix). Pagamentos que não são nossos são ignorados
+    // lá dentro — inclusive as cobranças do cartão recorrente, que também
+    // geram este evento.
+    if (type === "payment") {
+      const mp = await mpFetch(`/v1/payments/${dataId}`)
+      if (!mp.ok) return ok()
+      const resultado = await aplicarPagamentoPix(admin, mp.data)
+      console.log(`[mp-webhook] payment ${mp.data?.status} -> ${resultado}`)
       return ok()
     }
 

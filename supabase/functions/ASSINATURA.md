@@ -116,3 +116,46 @@ qualquer valor mandado pelo navegador**. Para mudar:
 ```sql
 update public.billing_plans set amount = <novo> where code = 'cobrancas_mensal';
 ```
+
+Plano anual (`cobrancas_anual`, R$ 118,80, sem desconto) existe desde 07/10/2026,
+no cartão (preapproval com `frequency: 12`) e no Pix.
+
+## Pix (avulso)
+
+Decidido em 07/10/2026. Cada Pix libera 1 mês ou 12 e **não renova sozinho**.
+
+```
+mp-pay-pix  → POST /v1/payments (pix, QR vale 30 min)
+            → subscription_payments (kind 'pix', plan_code)  ← é o que marca o Pix como nosso
+pagou       → mp-webhook (evento "payment")  ┐ os dois chamam _shared/pix.ts,
+            → mp-pay-pix action "check"      ┘ que lê o pagamento NO MP e liga
+            → subscriptions: kind 'pix', status 'active', current_period_end += 1 ou 12 meses
+venceu      → cron pix-expirar (de hora em hora) → status 'expired' → trigger desliga a aba
+```
+
+- Renovar antes de vencer soma ao fim do período atual.
+- O mesmo Pix nunca estende duas vezes: a trava é o update condicional de
+  `subscription_payments.status` para `approved`.
+- Pix aprovado com cartão já ativo **não** sobrescreve: loga "estornar" e
+  o estorno é manual.
+- O evento `payment` também chega para cobranças do cartão; o código ignora
+  qualquer pagamento que não tenha linha `kind = 'pix'`.
+
+### Lembretes (`pix-lembretes`, cron diário 12:00 UTC)
+
+7, 5 e 3 dias antes de `current_period_end`, e um aviso depois da desativação.
+Email (Resend) com preço e link; push **sem preço nem link** (regra da Apple).
+`subscription_reminders` impede duplicado. Sem `RESEND_API_KEY`, vai só o push.
+
+| Secret | Valor |
+|---|---|
+| `RESEND_API_KEY` | chave do Resend |
+| `EMAIL_FROM` | opcional; padrão `GymApp <gymapp@kavicki.com>` |
+
+| Função | verify_jwt |
+|---|---|
+| `mp-pay-pix` | true |
+| `pix-lembretes` | **false** (o cron chama sem Authorization; é idempotente) |
+
+No painel do MP, além dos eventos de assinatura, marcar **Pagamentos**. O
+`mp-pay-pix` também manda `notification_url` em cada pagamento.
