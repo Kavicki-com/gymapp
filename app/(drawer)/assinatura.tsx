@@ -210,7 +210,10 @@ export default function AssinaturaScreen() {
             // A loja primeiro: o RevenueCat sabe da compra antes do webhook
             // chegar ao banco, e é ele que diz se a renovação está ligada.
             if (ent || (sub?.kind === 'store' && sub.status === 'active')) {
-                const produto = ent?.productIdentifier ?? sub?.store_product_id ?? '';
+                // No Android o plano (mensal/anual-1) vem separado do produto.
+                const produto = ent
+                    ? [ent.productIdentifier, ent.productPlanIdentifier].filter(Boolean).join(':')
+                    : sub?.store_product_id ?? '';
                 const daApple = ent ? ent.store === 'APP_STORE' : sub?.store === 'app_store';
                 setEstado({
                     tipo: 'loja',

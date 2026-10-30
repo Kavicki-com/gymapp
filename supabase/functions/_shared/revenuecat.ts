@@ -20,6 +20,8 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 type Entitlement = {
   expires_date: string | null
   product_identifier: string
+  /** Android: o plano base ("anual-1"), que a API REST manda separado do produto. */
+  product_plan_identifier?: string | null
   purchase_date: string
 }
 type SubscriptionRC = {
@@ -108,16 +110,21 @@ export async function sincronizar(admin: SupabaseClient, appUserId: string): Pro
   }
 
   const renova = ativo && !sub?.unsubscribe_detected_at
+  // No Android o product_identifier é só a assinatura ("gymapp_cobrancas"): sem
+  // juntar o plano base, o anual era gravado como mensal.
+  const produto = ent.product_plan_identifier
+    ? `${ent.product_identifier}:${ent.product_plan_identifier}`
+    : ent.product_identifier
   const linha = {
     gym_id: gym.id,
     kind: "store",
-    plan_code: anual(ent.product_identifier) ? "cobrancas_anual_loja" : "cobrancas_mensal_loja",
+    plan_code: anual(produto) ? "cobrancas_anual_loja" : "cobrancas_mensal_loja",
     status: ativo ? "active" : "expired",
     auto_renew: renova,
     current_period_end: ent.expires_date,
     next_payment_date: renova ? ent.expires_date : null,
     store: lojaDe(sub?.store),
-    store_product_id: ent.product_identifier,
+    store_product_id: produto,
     rc_app_user_id: appUserId,
     // A linha pode ter sido de um cartão já cancelado: zera o que era do MP,
     // para um evento atrasado daquele preapproval não casar com esta linha.
@@ -134,6 +141,6 @@ export async function sincronizar(admin: SupabaseClient, appUserId: string): Pro
     return "erro ao gravar"
   }
   const sandbox = sub?.is_sandbox ? " (sandbox)" : ""
-  return `${linha.status} ${ent.product_identifier} até ${ent.expires_date}${sandbox}`
+  return `${linha.status} ${produto} até ${ent.expires_date}${sandbox}`
 }
 
