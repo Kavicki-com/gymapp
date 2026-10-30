@@ -73,11 +73,15 @@ Um GymApp novo, mais rápido de usar no dia a dia:
 | App Store   | `gymapp_cobrancas_mensal`                              | 1 mês   | R$ 11,90  |
 | App Store   | `gymapp_cobrancas_anual`                               | 1 ano   | R$ 139,90 |
 | Google Play | `gymapp_cobrancas`, plano base `mensal`                | 1 mês   | R$ 11,90  |
-| Google Play | `gymapp_cobrancas`, plano base `anual`                 | 1 ano   | R$ 139,90 |
+| Google Play | `gymapp_cobrancas`, plano base `anual-1`               | 1 ano   | R$ 139,90 |
 
 Os preços repassam a comissão de 15% sobre os R$ 9,90 / R$ 118,80 do site.
 Sem trial. O "anual" no ID é o que o webhook usa para saber o período — não
 renomear.
+
+No Google o plano anual é `anual-1`: o `anual` original foi criado por engano
+com período mensal e está desativado — ID de plano básico não pode ser
+reaproveitado. No RevenueCat o produto é `gymapp_cobrancas:anual-1`.
 
 ---
 
@@ -139,7 +143,7 @@ O app não oferece outra forma de pagamento.
 1. Subir o primeiro `.aab` da 1.3.0 no **teste interno** — sem ele o Play
    Console não libera criar assinatura.
 2. Monetizar > Produtos > Assinaturas: `gymapp_cobrancas` com os planos base
-   `mensal` e `anual` (ver a tabela da seção 1), ativar.
+   `mensal` e `anual-1` (ver a tabela da seção 1), ativar.
 3. RevenueCat: JSON da conta de serviço (Ver dados financeiros + Gerenciar
    pedidos e assinaturas) e o tópico do Pub/Sub em Monetização >
    Configuração de monetização > Notificações do desenvolvedor em tempo real.
