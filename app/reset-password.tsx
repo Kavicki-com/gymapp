@@ -1,6 +1,7 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, View } from 'react-native';
+import { ActivityIndicator, BackHandler, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
     BlocoEstado,
@@ -80,7 +81,7 @@ export default function ResetPasswordScreen() {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             // If user presses back and we have a valid session, show warning
             if (hasValidSessionRef.current && !passwordChangedRef.current) {
-                Alert.alert(
+                appAlert(
                     'Atenção',
                     'Você precisa alterar sua senha antes de sair. Deseja cancelar a recuperação?',
                     [
@@ -137,17 +138,17 @@ export default function ResetPasswordScreen() {
 
     const handleUpdatePassword = async () => {
         if (!password || !confirmPassword) {
-            Alert.alert('Erro', 'Preencha todos os campos.');
+            appAlert('Erro', 'Preencha todos os campos.');
             return;
         }
 
         if (password !== confirmPassword) {
-            Alert.alert('Erro', 'As senhas não coincidem.');
+            appAlert('Erro', 'As senhas não coincidem.');
             return;
         }
 
         if (password.length < 6) {
-            Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres.');
+            appAlert('Erro', 'A senha deve ter pelo menos 6 caracteres.');
             return;
         }
 
@@ -159,7 +160,7 @@ export default function ResetPasswordScreen() {
             });
 
             if (error) {
-                Alert.alert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
+                appAlert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
             } else {
                 // Mark password as changed BEFORE any navigation
                 passwordChangedRef.current = true;
@@ -167,7 +168,7 @@ export default function ResetPasswordScreen() {
                 router.replace('/password-changed');
             }
         } catch (error: any) {
-            Alert.alert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
+            appAlert('Erro', 'Não foi possível atualizar a senha. Tente novamente.');
         } finally {
             setLoading(false);
         }

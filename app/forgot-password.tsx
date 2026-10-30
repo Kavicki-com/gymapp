@@ -1,7 +1,8 @@
+import { appAlert } from '@/src/components/AppAlert';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import {
     BotaoPrincipal,
     BotaoVoltar,
@@ -29,7 +30,7 @@ export default function ForgotPasswordScreen() {
 
     const handleResetPassword = async () => {
         if (!email) {
-            Alert.alert('Erro', 'Por favor, informe seu email.');
+            appAlert('Erro', 'Por favor, informe seu email.');
             return;
         }
 
@@ -44,16 +45,16 @@ export default function ForgotPasswordScreen() {
             });
 
             if (error) {
-                Alert.alert('Erro', 'Não foi possível enviar o email. Verifique o email informado.');
+                appAlert('Erro', 'Não foi possível enviar o email. Verifique o email informado.');
             } else {
-                Alert.alert(
+                appAlert(
                     'Email Enviado',
                     'Verifique sua caixa de entrada para redefinir sua senha.',
                     [{ text: 'OK', onPress: () => router.back() }]
                 );
             }
         } catch (error: any) {
-            Alert.alert('Erro', 'Ocorreu um erro ao enviar o email. Tente novamente.');
+            appAlert('Erro', 'Ocorreu um erro ao enviar o email. Tente novamente.');
         } finally {
             setLoading(false);
         }

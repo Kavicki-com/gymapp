@@ -1,7 +1,8 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { useIsFocused } from "expo-router/react-navigation";
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
     BotaoPrincipal,
@@ -91,7 +92,7 @@ export default function LoginScreen() {
 
             if (userError && isNetworkError(userError)) {
                 console.warn('LoginScreen: sem conexão para validar a sessão', userError);
-                Alert.alert('Sem conexão', 'Não foi possível confirmar seu login agora. Verifique sua internet e tente de novo.');
+                appAlert('Sem conexão', 'Não foi possível confirmar seu login agora. Verifique sua internet e tente de novo.');
                 return;
             }
 
@@ -113,7 +114,7 @@ export default function LoginScreen() {
             // faria uma academia já cadastrada recomeçar o cadastro.
             if (error && error.code !== 'PGRST116') {
                 console.warn('LoginScreen: falha ao buscar perfil', error);
-                Alert.alert('Sem conexão', 'Não foi possível carregar seus dados agora. Verifique sua internet e tente de novo.');
+                appAlert('Sem conexão', 'Não foi possível carregar seus dados agora. Verifique sua internet e tente de novo.');
                 return;
             }
 
@@ -138,7 +139,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Erro', 'Preencha todos os campos');
+            appAlert('Erro', 'Preencha todos os campos');
             return;
         }
         setLoading(true);
@@ -146,7 +147,7 @@ export default function LoginScreen() {
 
         if (error) {
             setLoading(false);
-            Alert.alert('Erro no Login', translateError(error));
+            appAlert('Erro no Login', translateError(error));
         } else {
             // Check for profile immediately to decide navigation
             const { data: { user } } = await supabase.auth.getUser();

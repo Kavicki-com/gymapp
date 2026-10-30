@@ -1,10 +1,11 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { supabase } from '@/src/services/supabase';
 import { FontAwesome } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
     BotaoPrincipal,
@@ -96,21 +97,21 @@ export default function RegisterScreen() {
 
     const validateForm = () => {
         if (!formData.name || !formData.email || !formData.password) {
-            Alert.alert('Erro', 'Preencha todos os campos obrigatórios.');
+            appAlert('Erro', 'Preencha todos os campos obrigatórios.');
             return false;
         }
         if (!validateEmail(formData.email)) {
-            Alert.alert('Erro', 'Email inválido.');
+            appAlert('Erro', 'Email inválido.');
             return false;
         }
 
         if (!validatePassword(formData.password)) {
-            Alert.alert('Senha fraca', PASSWORD_RULE);
+            appAlert('Senha fraca', PASSWORD_RULE);
             return false;
         }
 
         if (formData.password !== formData.confirm_password) {
-            Alert.alert('Erro', 'As senhas não coincidem.');
+            appAlert('Erro', 'As senhas não coincidem.');
             return false;
         }
         return true;
@@ -141,7 +142,7 @@ export default function RegisterScreen() {
 
             if (authError) {
                 if (authError.message.includes("User already registered") || authError.message.includes("already registered")) {
-                    Alert.alert('Conta Existente', 'Este email já possui cadastro. Tente fazer login.');
+                    appAlert('Conta Existente', 'Este email já possui cadastro. Tente fazer login.');
                 } else {
                     throw authError;
                 }
@@ -151,7 +152,7 @@ export default function RegisterScreen() {
             }
 
         } catch (error: any) {
-            Alert.alert('Erro no Cadastro', error.message);
+            appAlert('Erro no Cadastro', error.message);
         } finally {
             setLoading(false);
         }

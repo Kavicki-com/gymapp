@@ -1,8 +1,9 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
     BotaoPrincipal,
@@ -212,10 +213,10 @@ export default function OnboardingScreen() {
                     const fullAddress = `${data.logradouro}, ${data.bairro} - ${data.localidade}/${data.uf}`;
                     setFormData(prev => ({ ...prev, address: fullAddress }));
                 } else {
-                    Alert.alert('CEP não encontrado', 'Verifique o CEP digitado.');
+                    appAlert('CEP não encontrado', 'Verifique o CEP digitado.');
                 }
             } catch (error) {
-                Alert.alert('Erro', 'Falha ao buscar CEP.');
+                appAlert('Erro', 'Falha ao buscar CEP.');
             } finally {
                 setLoadingCep(false);
             }
@@ -258,7 +259,7 @@ export default function OnboardingScreen() {
 
     const handleFinish = async () => {
         if (!formData.gym_name || !formData.address) {
-            Alert.alert('Erro', 'Preencha Nome da Academia e Endereço.');
+            appAlert('Erro', 'Preencha Nome da Academia e Endereço.');
             return;
         }
 
@@ -307,7 +308,7 @@ export default function OnboardingScreen() {
             router.replace('/(drawer)/(tabs)');
 
         } catch (error: any) {
-            Alert.alert('Erro', error.message);
+            appAlert('Erro', error.message);
         } finally {
             setLoading(false);
         }
