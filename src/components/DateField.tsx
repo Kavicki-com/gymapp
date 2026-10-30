@@ -4,7 +4,7 @@ import { Modal, Platform, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 import { theme } from '@/src/styles/theme';
-import { FontAwesome } from '@expo/vector-icons';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 /**
  * Campo de data com seletor nativo.
@@ -15,26 +15,35 @@ import { FontAwesome } from '@expo/vector-icons';
  * o ano 0026, pagamentos no futuro e meses de referência inexistentes.
  */
 
+// Mesmas medidas do Input de src/components/styled (52 px, raio 14, borda).
+// Sem margem própria: o espaçamento é de quem posiciona o campo.
 const Field = styled.TouchableOpacity`
+    min-height: 52px;
     background-color: ${theme.colors.inputBackground};
-    border-radius: 5px;
-    padding: 12px 10px;
-    margin-bottom: 15px;
+    border-width: 1px;
+    border-color: ${theme.colors.border};
+    border-radius: ${theme.borderRadius.md}px;
+    padding: 0 14px;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
 `;
 
 const FieldText = styled.Text<{ empty: boolean }>`
-    color: ${p => (p.empty ? theme.colors.textSecondary : theme.colors.text)};
+    flex-shrink: 1;
+    font-family: ${theme.fonts.regular};
+    color: ${p => (p.empty ? theme.colors.placeholder : theme.colors.text)};
     font-size: 15px;
 `;
 
 const Sheet = styled.View`
     background-color: ${theme.colors.surface};
-    border-top-left-radius: 16px;
-    border-top-right-radius: 16px;
-    padding: 12px 16px 28px;
+    border-top-width: 1px;
+    border-top-color: ${theme.colors.border};
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 12px 20px 32px;
 `;
 
 const SheetBar = styled.View`
@@ -45,10 +54,10 @@ const SheetBar = styled.View`
 `;
 
 const SheetAction = styled.Text<{ strong?: boolean }>`
+    font-family: ${p => (p.strong ? theme.fonts.bold : theme.fonts.regular)};
     color: ${p => (p.strong ? theme.colors.primary : theme.colors.textSecondary)};
     font-size: 16px;
-    font-weight: ${p => (p.strong ? '700' : '400')};
-    padding: 10px 4px;
+    padding: 12px 4px;
 `;
 
 export type DateFieldProps = {
@@ -124,7 +133,11 @@ export function DateField({
                 accessibilityLabel={accessibilityLabel ?? placeholder}
             >
                 <FieldText empty={!value}>{value || placeholder}</FieldText>
-                <FontAwesome name="calendar" size={16} color={theme.colors.textSecondary} />
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={theme.colors.textSecondary}
+                    strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <Rect x="3" y="5" width="18" height="16" rx="2" />
+                    <Path d="M3 10h18M8 3v4M16 3v4" />
+                </Svg>
             </Field>
 
             {open && Platform.OS === 'android' && picker}
