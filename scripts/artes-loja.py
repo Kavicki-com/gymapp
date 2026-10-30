@@ -3,10 +3,10 @@ Natalina usaram: capturas com título em cima e a tela dentro de um celular,
 o recurso gráfico da Play, as artes de busca e cabeçalho da App Store e a
 captura do paywall para a revisão da assinatura.
 
-As telas vêm de store/fontes/<nome>.png — prints do aparelho (qualquer
-tamanho de celular), tirados na build 1.3.0 com a conta de demonstração,
-que tem só dados fictícios. Nome de aluno de academia real nunca vai para a
-loja. Coloque os prints e rode:
+As telas vêm de store/fontes/<nome>.png: os boards do Claude Design
+exportados em PNG (dados fictícios) ou prints do aparelho numa conta de
+demonstração. Nome de aluno de academia real nunca vai para a loja.
+Coloque as imagens e rode:
 
     python3 scripts/artes-loja.py
 
@@ -43,8 +43,15 @@ def fonte(familia, peso, tamanho):
 
 
 def tela(nome):
+    """Print do aparelho ou board exportado do Claude Design. Boards mais altos
+    que um celular (o Início tem 1720 px) são cortados do topo na proporção
+    do iPhone (390×844), que é o que cabe na moldura."""
     caminho = os.path.join(STORE, 'fontes', f'{nome}.png')
-    return Image.open(caminho).convert('RGB') if os.path.exists(caminho) else None
+    if not os.path.exists(caminho):
+        return None
+    img = Image.open(caminho).convert('RGB')
+    altura = int(img.width * 844 / 390)
+    return img.crop((0, 0, img.width, altura)) if img.height > altura * 1.02 else img
 
 
 def brilho(img, centro, raio, cor, forca):

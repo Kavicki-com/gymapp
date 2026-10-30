@@ -183,19 +183,23 @@ não compartilhado, para funcionalidade do app.
 | `play-captura-1-inicio.png` … `-5-resultado.png`          | Play      | capturas de telefone (1080×2340)  |
 | `play-recurso-grafico-1024x500.png`                       | Play      | recurso gráfico                   |
 | `play-icone-512.png`                                      | Play      | ícone da página                   |
-| `fontes/`                                                 | —         | prints crus usados nas capturas   |
+| `fontes/`                                                 | —         | telas cruas usadas nas capturas   |
 
-**As capturas saem de prints do app**, não do design: tire no iPhone, na
-build 1.3.0, logado na **conta de demonstração** (só dados fictícios — nome
-de aluno real nunca vai para a loja), e salve em `fontes/` com estes nomes:
+**As capturas saem dos boards do Claude Design**
+(https://claude.ai/artifact/LCd171ziVNv9oJggxbuati), exportados em PNG — os
+dados ali são fictícios, então podem ir para a loja. Prints do aparelho
+também servem, desde que numa conta só com dados de demonstração: nome de
+aluno real nunca vai para a loja. Salve em `fontes/` com estes nomes:
 
-| Arquivo           | Tela                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| `1-inicio.png`    | Início, rolado no topo (receita do mês e "Pra resolver hoje") |
-| `2-cobrar.png`    | Cobranças > Fila, com a prévia da mensagem e o Pix            |
-| `3-devendo.png`   | Cobranças > Lista                                             |
-| `4-ficha.png`     | Ficha de um aluno com meses pagos e em aberto                 |
-| `5-resultado.png` | Cobranças > Resultado                                         |
-| `paywall.png`     | Cobranças numa conta sem assinatura (substitui a provisória)  |
+| Arquivo           | Board do design             |
+| ----------------- | --------------------------- |
+| `1-inicio.png`    | Início                      |
+| `2-cobrar.png`    | Cobranças — fila            |
+| `3-devendo.png`   | Cobranças — lista           |
+| `4-ficha.png`     | Ficha do aluno              |
+| `5-resultado.png` | Cobranças — resultado       |
+| `paywall.png`     | Cobranças — sem acesso (opcional; substitui a provisória) |
+
+O script corta do topo os boards mais altos que um celular.
 
 Depois: `python3 scripts/artes-loja.py`.
