@@ -1,60 +1,100 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
-import { SearchBar } from '@/src/components/SearchBar';
+import { Icon } from '@/src/components/Icon';
 import {
-    AddButton,
-    AddButtonText,
-    ListItem,
-    ListItemSubtitle,
-    PageContainer,
-    PageHeader,
-    PageTitle,
-    Row
-} from '@/src/components/styled';
+    Apoio,
+    BotaoIcone,
+    BotaoNovo,
+    CampoBusca,
+    IconeLixeira,
+    TextoVazio,
+    TituloTela,
+} from '@/src/components/planos/pecas';
+import { PageContainer } from '@/src/components/styled';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
-import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, View } from 'react-native';
 import styled from 'styled-components/native';
 
-const PlanName = styled.Text`
-  color: ${theme.colors.primary};
-  font-size: ${theme.fontSize.xl}px;
-  font-weight: bold;
+/* Layout do redesign (Claude Design, board "Planos"). Busca, exclusão e
+   consulta são as mesmas de antes; só a apresentação mudou. A contagem de
+   alunos por plano do board ficou de fora: esta tela não carrega alunos. */
+
+/* Azul só para distinguir o plano anual na lista; não é cor de dinheiro,
+   por isso não está no tema. */
+const ANUAL_FUNDO = 'rgba(96,165,250,0.14)';
+const ANUAL_TEXTO = '#60A5FA';
+
+const Topo = styled.View`
+    padding: ${theme.spacing.lg}px ${theme.spacing.xl}px 0;
+    gap: ${theme.spacing.lg}px;
 `;
 
-const PriceText = styled.Text`
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSize.xxl}px;
-  font-weight: bold;
-  margin-vertical: ${theme.spacing.sm}px;
+const Cabecalho = styled.View`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: ${theme.spacing.md}px;
 `;
 
-const ServicesText = styled.Text`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.sm}px;
+const Cartao = styled.View`
+    background-color: ${theme.colors.surface};
+    border-width: 1px;
+    border-color: ${theme.colors.divider};
+    border-radius: ${theme.borderRadius.lg}px;
+    padding: ${theme.spacing.lg}px ${theme.spacing.lg}px 4px;
+    gap: 10px;
 `;
 
-const BillingBadge = styled.View<{ annual?: boolean }>`
-  background-color: ${({ annual }) => annual ? theme.colors.primary + '20' : theme.colors.success + '20'};
-  padding: 4px 10px;
-  border-radius: 12px;
-  align-self: flex-start;
-  margin-top: 4px;
+const LinhaTopo = styled.View`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: ${theme.spacing.md}px;
 `;
 
-const BillingBadgeText = styled.Text<{ annual?: boolean }>`
-  color: ${({ annual }) => annual ? theme.colors.primary : theme.colors.success};
-  font-size: ${theme.fontSize.xs}px;
-  font-weight: bold;
+const NomePlano = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: ${theme.fontSize.md}px;
+    color: ${theme.colors.text};
 `;
 
-const ActionButton = styled(TouchableOpacity)`
-  padding: ${theme.spacing.sm}px;
-  margin-bottom: ${theme.spacing.sm}px;
+const Preco = styled.Text`
+    font-family: ${theme.fonts.display};
+    font-size: ${theme.fontSize.xl}px;
+    color: ${theme.colors.text};
+`;
+
+const Selo = styled.View<{ anual: boolean }>`
+    align-self: flex-start;
+    padding: 3px 9px;
+    border-radius: ${theme.borderRadius.pill}px;
+    background-color: ${({ anual }) => (anual ? ANUAL_FUNDO : theme.colors.neutralPill)};
+`;
+
+const SeloTexto = styled.Text<{ anual: boolean }>`
+    font-family: ${theme.fonts.semibold};
+    font-size: 12px;
+    color: ${({ anual }) => (anual ? ANUAL_TEXTO : theme.colors.textStrong)};
+`;
+
+const Servicos = styled.Text`
+    font-family: ${theme.fonts.regular};
+    font-size: 13px;
+    line-height: 19px;
+    color: ${theme.colors.textSecondary};
+`;
+
+const Acoes = styled.View`
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 4px;
+    border-top-width: 1px;
+    border-top-color: ${theme.colors.divider};
+    padding-top: 2px;
 `;
 
 export default function PlansScreen() {
@@ -124,51 +164,63 @@ export default function PlansScreen() {
         (plan.services && plan.services.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    const renderItem = ({ item }: { item: any }) => (
-        <ListItem>
-            <Row style={{ alignItems: 'flex-start' }}>
-                <View style={{ flex: 1 }}>
-                    <PlanName>{item.name}</PlanName>
-                    <PriceText>
-                        {formatCurrency(item.price || 0)}
-                    </PriceText>
-                    <BillingBadge annual={item.billing_type === 'annual'}>
-                        <BillingBadgeText annual={item.billing_type === 'annual'}>
-                            {item.billing_type === 'annual' ? 'Anual' : 'Mensal'}
-                        </BillingBadgeText>
-                    </BillingBadge>
-                    <ServicesText>{item.services}</ServicesText>
-                </View>
+    const renderItem = ({ item }: { item: any }) => {
+        const anual = item.billing_type === 'annual';
+        return (
+            <Cartao>
+                <LinhaTopo>
+                    <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+                        <NomePlano>{item.name}</NomePlano>
+                        <Selo anual={anual}>
+                            <SeloTexto anual={anual}>{anual ? 'Anual' : 'Mensal'}</SeloTexto>
+                        </Selo>
+                    </View>
+                    <Preco>{formatCurrency(item.price || 0)}</Preco>
+                </LinhaTopo>
+                {item.services ? <Servicos>{item.services}</Servicos> : null}
+                <Acoes>
+                    <BotaoIcone
+                        onPress={() => router.push({ pathname: '/manage-plan', params: { id: item.id } })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Editar ${item.name}`}
+                    >
+                        <Icon name="pencil" size={18} color={theme.colors.textStrong} />
+                    </BotaoIcone>
+                    <BotaoIcone
+                        onPress={() => handleDelete(item.id, item.name)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Excluir ${item.name}`}
+                    >
+                        <IconeLixeira size={18} color={theme.colors.danger} />
+                    </BotaoIcone>
+                </Acoes>
+            </Cartao>
+        );
+    };
 
-                <View style={{ marginLeft: 16 }}>
-                    <ActionButton onPress={() => router.push({ pathname: '/manage-plan', params: { id: item.id } })}>
-                        <FontAwesome name="edit" size={24} color={theme.colors.primary} />
-                    </ActionButton>
-                    <ActionButton onPress={() => handleDelete(item.id, item.name)}>
-                        <FontAwesome name="trash" size={24} color={theme.colors.danger} />
-                    </ActionButton>
-                </View>
-            </Row>
-        </ListItem>
-    );
+    const resumo = loading ? '' : `${plans.length} ${plans.length === 1 ? 'plano' : 'planos'}`;
 
     return (
         <PageContainer>
-            <PageHeader>
-                <PageTitle>Planos</PageTitle>
-                <AddButton onPress={() => router.push('/manage-plan')}>
-                    <AddButtonText>+ Criar Plano</AddButtonText>
-                </AddButton>
-            </PageHeader>
+            <Topo>
+                <Cabecalho>
+                    <View style={{ gap: 2, flex: 1 }}>
+                        <TituloTela accessibilityRole="header">Planos</TituloTela>
+                        {resumo ? <Apoio>{resumo}</Apoio> : null}
+                    </View>
+                    <BotaoNovo onPress={() => router.push('/manage-plan')} accessibilityLabel="Novo plano" />
+                </Cabecalho>
 
-            <SearchBar
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Buscar planos..."
-            />
+                <CampoBusca
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Nome ou serviço"
+                    accessibilityLabel="Buscar plano"
+                />
+            </Topo>
 
             {loading ? (
-                <View style={{ padding: 16 }}>
+                <View style={{ padding: theme.spacing.xl }}>
                     {Array.from({ length: 6 }).map((_, i) => (
                         <SkeletonLoader key={i} variant="list-item" />
                     ))}
@@ -179,11 +231,12 @@ export default function PlansScreen() {
                     keyExtractor={item => item.id}
                     renderItem={renderItem}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ padding: theme.spacing.xl, paddingTop: theme.spacing.lg, gap: 10 }}
+                    keyboardShouldPersistTaps="handled"
                     ListEmptyComponent={
-                        <ListItemSubtitle style={{ textAlign: 'center', marginTop: 20 }}>
+                        <TextoVazio>
                             {searchQuery ? 'Nenhum plano encontrado.' : 'Nenhum plano cadastrado.'}
-                        </ListItemSubtitle>
+                        </TextoVazio>
                     }
                     initialNumToRender={10}
                     windowSize={5}
