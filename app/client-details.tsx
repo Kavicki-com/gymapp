@@ -1,3 +1,4 @@
+import { momentoPositivo } from '@/src/services/avaliacao';
 import { appAlert } from '@/src/components/AppAlert';
 import { BottomSheet } from '@/src/components/BottomSheet';
 import { CenterModal } from '@/src/components/CenterModal';
@@ -792,7 +793,9 @@ export default function ClientDetailsScreen() {
 
             const months = refMonths.length;
             const totalPaid = finalAmount * months;
-            appAlert('Sucesso', `${months > 1 ? `${months} pagamentos registrados` : 'Pagamento registrado'}! Total: R$ ${totalPaid.toFixed(2)}`);
+            // O pedido de avaliação espera o "OK": nunca por cima do diálogo.
+            appAlert('Sucesso', `${months > 1 ? `${months} pagamentos registrados` : 'Pagamento registrado'}! Total: R$ ${totalPaid.toFixed(2)}`,
+                [{ text: 'OK', onPress: () => { momentoPositivo(); } }]);
             closePaymentModal();
             fetchClientDetails();
             fetchPayments();

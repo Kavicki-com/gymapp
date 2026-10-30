@@ -1,3 +1,4 @@
+import { momentoPositivo } from '@/src/services/avaliacao';
 import { appAlert } from '@/src/components/AppAlert';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { CollectionsLocked } from '@/src/components/CollectionsLocked';
@@ -362,6 +363,8 @@ export default function CollectionsScreen() {
 
         await registrarContato(d);
         Linking.openURL(`https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`)
+            // Cobrança enviada é momento bom para pedir avaliação — na volta do WhatsApp.
+            .then(() => momentoPositivo({ depoisDeAbrirOutroApp: true }))
             .catch(() => appAlert('Erro', 'Não foi possível abrir o WhatsApp.'));
     };
 
@@ -386,6 +389,7 @@ export default function CollectionsScreen() {
                 .update({ last_payment_date: agora, payment_status: 'paid' })
                 .eq('id', d.id);
             carregar();
+            momentoPositivo();
             return true;
         } catch (e: any) {
             appAlert('Erro', 'Falha ao registrar: ' + e.message);
