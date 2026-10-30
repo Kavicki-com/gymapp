@@ -1,37 +1,34 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { CollectionsLocked } from '@/src/components/CollectionsLocked';
-import { useCollectionsEnabled } from '@/src/hooks/useCollectionsEnabled';
+import { CobrancaConfig } from '@/src/components/cobrancas/CobrancaConfig';
+import { CobrancaFila } from '@/src/components/cobrancas/CobrancaFila';
+import { CobrancaResultado } from '@/src/components/cobrancas/CobrancaResultado';
 import {
-    ListItem,
-    ListItemSubtitle,
-    ListItemTitle,
-    PageContainer,
-    PageHeader,
-    PageTitle,
-    Row,
-} from '@/src/components/styled';
+    Apoio, Barra, BarraCheia, BotaoPrincipal, BotaoPrincipalTexto, BotaoSecundario, BotaoSecundarioTexto,
+    Cabecalho, Devedor, Efetividade, IconeQr, IconeWhatsApp, Miudo, Modo, Pagante, TopoCobrancas,
+} from '@/src/components/cobrancas/comum';
+import { LinhaDevedor } from '@/src/components/cobrancas/LinhaDevedor';
+import { RegistrarPagamentoSheet } from '@/src/components/cobrancas/RegistrarPagamentoSheet';
+import { useCollectionsEnabled } from '@/src/hooks/useCollectionsEnabled';
+import { PageContainer, Section } from '@/src/components/styled';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
-import { Input } from '@/src/components/styled';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
-import { MARCADORES, MENSAGEM_PADRAO, montarMensagem } from '@/src/utils/mensagemCobranca';
+import { MENSAGEM_PADRAO, montarMensagem } from '@/src/utils/mensagemCobranca';
 import { gerarPixBrCode } from '@/src/utils/pixBrCode';
 import {
-    TIPOS_CHAVE_PIX,
     TipoChavePix,
     detectarTipo,
     mascararChave,
     normalizarChave,
-    teclado,
     validarChave,
 } from '@/src/utils/pixKey';
-import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, BackHandler, FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 /**
@@ -46,257 +43,66 @@ import styled from 'styled-components/native';
  * tela sem saber quem já incomodou), a fila com "próximo" (senão são 116
  * idas e voltas na lista), e o resultado (senão não dá para saber se cobrar
  * adianta — nem para justificar continuar pagando por isto).
+ *
+ * Layout do redesign (Claude Design: Cobrancas, CobrancasLista,
+ * CobrancasResultado, CobrancaConfig). As vistas Fila · Lista · Resultado e a
+ * sub-vista "Mensagem e Pix" estão em src/components/cobrancas/ e só desenham;
+ * as consultas, as contas e as gravações continuam todas aqui.
+ *
+ * Abrir direto em "Mensagem e Pix" (ex.: pela aba Mais):
+ *   router.push({ pathname: '/collections', params: { config: '1' } })
  */
 
 const DIAS_PARA_RECOBRAR = 3;
 const JANELA_RESULTADO_DIAS = 30;
 const PRAZO_PAGAMENTO_DIAS = 5;
 
-const Resumo = styled.View`
-    background-color: ${theme.colors.surface};
-    padding: ${theme.spacing.md}px;
-    border-radius: 10px;
-    margin: 0 ${theme.spacing.lg}px ${theme.spacing.sm}px;
+const Conteudo = styled.View`
+    padding: ${theme.spacing.lg}px ${theme.spacing.xl}px 40px;
+    gap: ${theme.spacing.lg}px;
 `;
 
-const ResumoValor = styled.Text`
+const Total = styled.Text`
+    font-family: ${theme.fonts.displayHeavy};
+    font-size: 22px;
     color: ${theme.colors.danger};
-    font-size: 24px;
-    font-weight: bold;
-`;
-
-const ResumoLabel = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 13px;
-    margin-top: 2px;
-`;
-
-/* Resultado da cobrança: cobrados × pagaram, mesma janela e mesmo denominador.
-   NÃO comparar com o total devido — aquilo é estoque e isto é fluxo, e o valor
-   recuperado sai do devido no mesmo instante em que entra aqui. */
-const Efetividade = styled.View`
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top-width: 1px;
-    border-top-color: ${theme.colors.border};
-`;
-
-const EfetividadeTitulo = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 12px;
-    margin-bottom: 6px;
-`;
-
-const BarraTrilho = styled.View`
-    height: 6px;
-    background-color: ${theme.colors.border};
-    border-radius: 3px;
-    overflow: hidden;
-`;
-
-const BarraPreenchida = styled.View<{ pct: number }>`
-    width: ${p => p.pct}%;
-    height: 100%;
-    background-color: ${theme.colors.success};
-    border-radius: 3px;
-`;
-
-const EfetividadeDetalhe = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 13px;
-    margin-top: 6px;
-    line-height: 19px;
-`;
-
-const EfetividadeValor = styled.Text`
-    color: ${theme.colors.success};
-    font-weight: bold;
-`;
-
-const BotaoFila = styled(TouchableOpacity)`
-    background-color: ${theme.colors.primary};
-    margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
-    padding: 13px;
-    border-radius: 10px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-`;
-
-const AcaoLinha = styled(TouchableOpacity)<{ bg: string }>`
-    background-color: ${p => p.bg};
-    padding: 9px 12px;
-    border-radius: 8px;
-    flex-direction: row;
-    align-items: center;
-    gap: 7px;
-`;
-
-const AcaoTexto = styled.Text`
-    color: ${theme.colors.background};
-    font-weight: bold;
-    font-size: 13px;
-`;
-
-const Marca = styled.Text<{ recente?: boolean }>`
-    color: ${p => (p.recente ? theme.colors.success : theme.colors.textSecondary)};
-    font-size: 12px;
-    margin-top: 3px;
-`;
-
-const CartaoPix = styled.View`
-    background-color: ${theme.colors.surface};
-    border-radius: 12px;
-    padding: ${theme.spacing.md}px;
-    margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
-`;
-
-const PixTitulo = styled.Text`
-    color: ${theme.colors.text};
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 4px;
-`;
-
-const PixTexto = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 13px;
-    line-height: 19px;
-    margin-bottom: 12px;
-`;
-
-const PixCabecalho = styled.View`
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-`;
-
-const TipoLinha = styled.View`
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 10px;
-`;
-
-const TipoChip = styled(TouchableOpacity)<{ ativo: boolean }>`
-    padding: 7px 12px;
-    border-radius: 16px;
-    background-color: ${p => (p.ativo ? theme.colors.primary : theme.colors.inputBackground)};
-    border-width: 1px;
-    border-color: ${p => (p.ativo ? theme.colors.primary : theme.colors.border)};
-`;
-
-const TipoChipTexto = styled.Text<{ ativo: boolean }>`
-    color: ${p => (p.ativo ? theme.colors.background : theme.colors.text)};
-    font-size: 13px;
-    font-weight: ${p => (p.ativo ? '700' : '400')};
-`;
-
-const MenuLinha = styled.View`
-    flex-direction: row;
-    gap: 8px;
-    margin: 0 ${theme.spacing.lg}px ${theme.spacing.md}px;
-`;
-
-const MenuItem = styled(TouchableOpacity)<{ ativo?: boolean }>`
-    flex: 1;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background-color: ${theme.colors.surface};
-    border-width: 1px;
-    border-color: ${p => (p.ativo ? theme.colors.primary : 'transparent')};
-`;
-
-const MenuTexto = styled.Text`
-    color: ${theme.colors.text};
-    font-size: 13px;
 `;
 
 const Vazio = styled.Text`
-    color: ${theme.colors.textSecondary};
-    text-align: center;
-    margin-top: 40px;
-    padding: 0 ${theme.spacing.lg}px;
-    line-height: 22px;
-`;
-
-/* ----- fila ----- */
-const FilaFundo = styled.View`
-    flex: 1;
-    padding: ${theme.spacing.lg}px;
-    justify-content: center;
-`;
-
-const FilaCartao = styled.View`
-    background-color: ${theme.colors.surface};
-    border-radius: 14px;
-    padding: ${theme.spacing.lg}px;
-`;
-
-const FilaProgresso = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: 13px;
-    text-align: center;
-    margin-bottom: ${theme.spacing.md}px;
-`;
-
-const FilaNome = styled.Text`
-    color: ${theme.colors.text};
-    font-size: 24px;
-    font-weight: bold;
-`;
-
-const FilaDetalhe = styled.Text`
-    color: ${theme.colors.textSecondary};
+    font-family: ${theme.fonts.regular};
     font-size: 15px;
-    margin-top: 4px;
+    line-height: 24px;
+    color: ${theme.colors.textSecondary};
+    text-align: center;
+    margin-top: ${theme.spacing.xl}px;
 `;
-
-const FilaValor = styled.Text`
-    color: ${theme.colors.danger};
-    font-size: 30px;
-    font-weight: bold;
-    margin: ${theme.spacing.md}px 0;
-`;
-
-type Devedor = {
-    id: string;
-    nome: string;
-    telefone: string;
-    meses: number;
-    mesesAbertos: string[];
-    valorPlano: number;
-    total: number;
-    diasDesdeCobranca: number | null;
-};
 
 export default function CollectionsScreen() {
     const [devedores, setDevedores] = useState<Devedor[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lancando, setLancando] = useState<string | null>(null);
-    const [efetividade, setEfetividade] = useState<{ cobrados: number; pagaram: number; valor: number } | null>(null);
+    const [efetividade, setEfetividade] = useState<Efetividade | null>(null);
+    const [pagantes, setPagantes] = useState<Pagante[]>([]);
     const [fila, setFila] = useState<Devedor[] | null>(null);
     const [filaIdx, setFilaIdx] = useState(0);
+    const [contagemFila, setContagemFila] = useState({ cobrados: 0, pulados: 0, pagos: 0 });
+    const [modo, setModo] = useState<Exclude<Modo, 'fila'>>('lista');
+    const [baixa, setBaixa] = useState<{ devedor: Devedor; aoConcluir?: () => void } | null>(null);
+    const [semTelefone, setSemTelefone] = useState<string | null>(null);
     const habilitado = useCollectionsEnabled();
     const [academia, setAcademia] = useState<{
         nome: string; pixKey: string | null; pixCity: string | null; modelo: string | null;
     } | null>(null);
-    const [editandoPix, setEditandoPix] = useState(false);
-    const [editandoMsg, setEditandoMsg] = useState(false);
+    const [configAberta, setConfigAberta] = useState(false);
+    const [erroConfig, setErroConfig] = useState<[string, string] | null>(null);
+    const [salvandoConfig, setSalvandoConfig] = useState(false);
     const [modeloMsg, setModeloMsg] = useState('');
-    const [salvandoMsg, setSalvandoMsg] = useState(false);
     const [pixTipo, setPixTipo] = useState<TipoChavePix>('cpf');
     const [pixChave, setPixChave] = useState('');
     const [pixCidade, setPixCidade] = useState('');
-    const [salvandoPix, setSalvandoPix] = useState(false);
     const router = useRouter();
+    const params = useLocalSearchParams<{ config?: string }>();
 
     const carregar = async () => {
         try {
@@ -357,6 +163,9 @@ export default function CollectionsScreen() {
                     valorPlano,
                     total: valorPlano * resumo.mesesEmAtraso,
                     diasDesdeCobranca: ultimoContato[c.id] ? emDias(ultimoContato[c.id]) : null,
+                    // Só exibição (fila): nome do plano e dia de vencimento, dos
+                    // dados que já vieram nesta carga.
+                    apoio: [plano?.name, c.due_day ? `vence dia ${c.due_day}` : null].filter(Boolean).join(' · '),
                 });
             });
 
@@ -374,6 +183,9 @@ export default function CollectionsScreen() {
             // até PRAZO_PAGAMENTO_DIAS. É o número que diz se cobrar adianta.
             let pagaram = 0;
             let valor = 0;
+            // Mesmas cobranças que viraram pagamento, uma a uma, para a lista da
+            // vista Resultado. Não entra na conta acima — só a detalha.
+            const detalhe: Pagante[] = [];
             contatos.forEach(ct => {
                 const t = new Date(ct.created_at).getTime();
                 const pagou = pagamentos.find(p => {
@@ -384,9 +196,17 @@ export default function CollectionsScreen() {
                 if (pagou) {
                     pagaram++;
                     valor += Number(pagou.amount) || 0;
+                    detalhe.push({
+                        chave: `${ct.client_id}-${ct.created_at}`,
+                        nome: clients.find(c => c.id === ct.client_id)?.name || 'Aluno',
+                        cobradoEm: ct.created_at,
+                        pagouEm: pagou.created_at as string,
+                        valor: Number(pagou.amount) || 0,
+                    });
                 }
             });
             setEfetividade(contatos.length ? { cobrados: contatos.length, pagaram, valor } : null);
+            setPagantes(detalhe);
         } catch (e) {
             console.log('Cobranças:', e);
         } finally {
@@ -397,66 +217,103 @@ export default function CollectionsScreen() {
 
     useFocusEffect(useCallback(() => { carregar(); }, []));
 
-    const salvarPix = async () => {
-        const problema = validarChave(pixTipo, pixChave);
-        if (problema) {
-            Alert.alert('Chave inválida', problema);
-            return;
-        }
-        // Grava na forma canônica: é ela que entra no BR Code. CPF e CNPJ só
-        // com dígitos, celular em E.164 — com máscara o banco do aluno recusa.
-        const chave = normalizarChave(pixTipo, pixChave);
+    /* ---------------- mensagem e chave Pix ---------------- */
 
-        setSalvandoPix(true);
-        try {
-            const gymId = await getCurrentGymId();
-            const { error } = await supabase.from('gym_profiles')
-                .update({ pix_key: chave, pix_city: pixCidade.trim() || null })
-                .eq('id', gymId);
-            if (error) throw error;
-            setEditandoPix(false);
-            carregar();
-        } catch (e: any) {
-            Alert.alert('Erro', 'Não foi possível salvar a chave: ' + e.message);
-        } finally {
-            setSalvandoPix(false);
-        }
-    };
-
-    const abrirEdicaoPix = () => {
+    const abrirConfig = () => {
         const tipo = detectarTipo(academia?.pixKey);
         setPixTipo(tipo);
         setPixChave(academia?.pixKey ? mascararChave(tipo, academia.pixKey) : '');
         setPixCidade(academia?.pixCity || '');
-        setEditandoPix(true);
+        setModeloMsg(academia?.modelo || MENSAGEM_PADRAO);
+        setErroConfig(null);
+        setConfigAberta(true);
     };
 
-    const salvarMensagem = async () => {
+    // ?config=1 abre direto em "Mensagem e Pix". Espera a carga para os campos
+    // virem preenchidos, e limpa o parâmetro para a aba não reabrir nisso.
+    useEffect(() => {
+        if (params.config !== '1' || loading) return;
+        abrirConfig();
+        router.setParams({ config: undefined });
+    }, [params.config, loading]);
+
+    // No Android, o voltar do aparelho fecha a sub-vista em vez de sair da aba.
+    useEffect(() => {
+        if (!configAberta) return;
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            setConfigAberta(false);
+            return true;
+        });
+        return () => sub.remove();
+    }, [configAberta]);
+
+    /*
+     * Um "Salvar" só para as duas coisas, como no desenho. Cada parte só é
+     * validada e gravada se mudou — e com a mesma validação e o mesmo update
+     * de quando eram dois formulários separados.
+     */
+    const salvarConfig = async () => {
+        setErroConfig(null);
+
         const texto = modeloMsg.trim();
         if (!texto) {
-            Alert.alert('Mensagem vazia', 'Escreva a mensagem ou volte ao padrão.');
+            setErroConfig(['Mensagem vazia.', 'Escreva a mensagem ou volte ao padrão.']);
             return;
         }
-        setSalvandoMsg(true);
+        const msgMudou = texto !== (academia?.modelo || MENSAGEM_PADRAO).trim();
+
+        const semChave = !academia?.pixKey && !pixChave.trim();
+        const pixMudou = semChave
+            ? !!pixCidade.trim()
+            : normalizarChave(pixTipo, pixChave) !== academia?.pixKey
+                || (pixCidade.trim() || null) !== (academia?.pixCity || null);
+
+        if (pixMudou) {
+            const problema = validarChave(pixTipo, pixChave);
+            if (problema) {
+                setErroConfig(['Chave inválida.', problema]);
+                return;
+            }
+        }
+
+        setSalvandoConfig(true);
         try {
             const gymId = await getCurrentGymId();
-            const { error } = await supabase.from('gym_profiles')
-                .update({ collection_message: texto })
-                .eq('id', gymId);
-            if (error) throw error;
-            setEditandoMsg(false);
-            carregar();
+
+            if (msgMudou) {
+                const { error } = await supabase.from('gym_profiles')
+                    .update({ collection_message: texto })
+                    .eq('id', gymId);
+                if (error) {
+                    setErroConfig(['Erro.', 'Não foi possível salvar: ' + error.message]);
+                    return;
+                }
+            }
+
+            if (pixMudou) {
+                // Grava na forma canônica: é ela que entra no BR Code. CPF e CNPJ só
+                // com dígitos, celular em E.164 — com máscara o banco do aluno recusa.
+                const chave = normalizarChave(pixTipo, pixChave);
+                const { error } = await supabase.from('gym_profiles')
+                    .update({ pix_key: chave, pix_city: pixCidade.trim() || null })
+                    .eq('id', gymId);
+                if (error) {
+                    setErroConfig(['Erro.', 'Não foi possível salvar a chave: ' + error.message]);
+                    if (msgMudou) carregar();
+                    return;
+                }
+            }
+
+            setConfigAberta(false);
+            if (msgMudou || pixMudou) carregar();
         } catch (e: any) {
-            Alert.alert('Erro', 'Não foi possível salvar: ' + e.message);
+            setErroConfig(['Erro.', 'Não foi possível salvar: ' + e.message]);
         } finally {
-            setSalvandoMsg(false);
+            setSalvandoConfig(false);
         }
     };
 
-    const abrirEdicaoMensagem = () => {
-        setModeloMsg(academia?.modelo || MENSAGEM_PADRAO);
-        setEditandoMsg(true);
-    };
+    /* ---------------- cobrança ---------------- */
 
     const registrarContato = async (d: Devedor) => {
         try {
@@ -474,18 +331,19 @@ export default function CollectionsScreen() {
         }
     };
 
+    const mensagemPara = (d: Devedor) => montarMensagem(academia?.modelo, {
+        nome: d.nome,
+        meses: d.mesesAbertos.join(', '),
+        valor: formatCurrency(d.total),
+    });
+
     const cobrar = async (d: Devedor) => {
         if (!d.telefone) {
             Alert.alert('Sem telefone', `${d.nome} não tem telefone cadastrado.`);
             return;
         }
         const fone = d.telefone.replace(/\D/g, '');
-        const meses = d.mesesAbertos.join(', ');
-        let msg = montarMensagem(academia?.modelo, {
-            nome: d.nome,
-            meses,
-            valor: formatCurrency(d.total),
-        });
+        let msg = mensagemPara(d);
 
         // O "copia e cola" já sai com o valor exato. Poupa o aluno de pedir a
         // chave e de digitar o valor errado — que é a fricção real da cobrança.
@@ -510,7 +368,7 @@ export default function CollectionsScreen() {
     // (src/utils/overdue) casa pagamento com mês pelo `reference_month`. Uma
     // linha só de R$ 300 quitaria um mês e deixaria os outros dois em aberto —
     // e ainda jogaria os R$ 300 inteiros no faturamento daquele mês.
-    const registrarPagamento = async (d: Devedor, meses: string[]) => {
+    const registrarPagamento = async (d: Devedor, meses: string[]): Promise<boolean> => {
         setLancando(d.id);
         try {
             const gymId = await getCurrentGymId();
@@ -527,363 +385,285 @@ export default function CollectionsScreen() {
                 .update({ last_payment_date: agora, payment_status: 'paid' })
                 .eq('id', d.id);
             carregar();
+            return true;
         } catch (e: any) {
             Alert.alert('Erro', 'Falha ao registrar: ' + e.message);
+            return false;
         } finally {
             setLancando(null);
         }
     };
 
-    const darBaixa = (d: Devedor) => {
-        const meses = d.mesesAbertos;
-        if (!meses.length) return;
+    // Abre a folha "Registrar pagamento" (as opções estão nela). `aoConcluir`
+    // roda só se o pagamento foi gravado — a fila usa para avançar.
+    const darBaixa = (d: Devedor, aoConcluir?: () => void) => {
+        if (!d.mesesAbertos.length) return;
+        setBaixa({ devedor: d, aoConcluir });
+    };
 
-        if (meses.length === 1) {
-            Alert.alert(
-                'Registrar pagamento',
-                `${d.nome}\n${formatCurrency(d.valorPlano)} · ref. ${meses[0]} · hoje`,
-                [
-                    { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Registrar', onPress: () => registrarPagamento(d, meses) },
-                ]
-            );
-            return;
-        }
-
-        // A cobrança sai pelo total: a mensagem e o Pix copia e cola são montados
-        // com d.total. Sem a opção de quitar tudo, quem devia 3 meses pagava de
-        // uma vez e o dono tinha que dar baixa três vezes — ou dava uma e o aluno
-        // continuava aparecendo como devedor do valor que já pagou.
-        Alert.alert(
-            'Registrar pagamento',
-            `${d.nome}\n${meses.length} meses em aberto · ${meses.join(', ')}`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: `Só ${meses[0]} · ${formatCurrency(d.valorPlano)}`,
-                    onPress: () => registrarPagamento(d, [meses[0]]),
-                },
-                {
-                    text: `Total · ${formatCurrency(d.total)}`,
-                    onPress: () => registrarPagamento(d, meses),
-                },
-            ]
-        );
+    const escolherBaixa = async (meses: string[]) => {
+        const alvo = baixa;
+        setBaixa(null);
+        if (!alvo) return;
+        const ok = await registrarPagamento(alvo.devedor, meses);
+        if (ok) alvo.aoConcluir?.();
     };
 
     const totalDevido = devedores.reduce((s, d) => s + d.total, 0);
     const naFila = devedores.filter(d => d.telefone &&
         (d.diasDesdeCobranca === null || d.diasDesdeCobranca >= DIAS_PARA_RECOBRAR));
 
+    const iniciarFila = () => {
+        setFila(naFila);
+        setFilaIdx(0);
+        setContagemFila({ cobrados: 0, pulados: 0, pagos: 0 });
+    };
+
+    const sairDaFila = () => { setFila(null); setFilaIdx(0); setModo('lista'); carregar(); };
+
+    const trocarModo = (m: Modo) => {
+        if (m === 'fila') {
+            iniciarFila();
+            return;
+        }
+        if (fila) sairDaFila();
+        setModo(m);
+    };
+
+    const folha = (
+        <RegistrarPagamentoSheet
+            devedor={baixa?.devedor ?? null}
+            onEscolher={escolherBaixa}
+            onFechar={() => setBaixa(null)}
+        />
+    );
+
+    const esqueleto = (
+        <PageContainer>
+            <Conteudo>
+                <Cabecalho />
+                <SkeletonLoader variant="card" />
+                <SkeletonLoader variant="text" />
+                <SkeletonLoader variant="text" />
+            </Conteudo>
+        </PageContainer>
+    );
+
     // Enquanto não se sabe, mostra o esqueleto: piscar a tela travada para
     // quem tem a função seria pior que esperar meio segundo.
-    if (habilitado === null) {
+    if (habilitado === null) return esqueleto;
+
+    if (!habilitado) return <CollectionsLocked />;
+
+    if (loading) return esqueleto;
+
+    /* ---------------- mensagem e Pix ---------------- */
+    if (configAberta) {
         return (
             <PageContainer>
-                <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
-                <View style={{ padding: 16 }}>
-                    <SkeletonLoader variant="card" />
-                </View>
+                <CobrancaConfig
+                    mensagem={modeloMsg}
+                    onMensagem={t => { setModeloMsg(t); setErroConfig(null); }}
+                    onPadrao={() => setModeloMsg(MENSAGEM_PADRAO)}
+                    pixTipo={pixTipo}
+                    onPixTipo={t => { setPixTipo(t); setPixChave(''); setErroConfig(null); }}
+                    pixChave={pixChave}
+                    onPixChave={t => { setPixChave(t); setErroConfig(null); }}
+                    pixCidade={pixCidade}
+                    onPixCidade={setPixCidade}
+                    erro={erroConfig}
+                    salvando={salvandoConfig}
+                    onSalvar={salvarConfig}
+                    onCancelar={() => setConfigAberta(false)}
+                />
             </PageContainer>
         );
     }
 
-    if (!habilitado) return <CollectionsLocked />;
-
-    /* ---------------- modo fila ---------------- */
+    /* ---------------- fila ---------------- */
     if (fila) {
         const atual = fila[filaIdx];
-
-        if (!atual) {
-            return (
-                <PageContainer>
-                    <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
-                    <FilaFundo>
-                        <FilaCartao>
-                            <FilaNome>Fila concluída</FilaNome>
-                            <FilaDetalhe>{fila.length} {fila.length === 1 ? 'aluno cobrado' : 'alunos cobrados'}.</FilaDetalhe>
-                            <BotaoFila style={{ marginHorizontal: 0, marginTop: 20 }}
-                                onPress={() => { setFila(null); setFilaIdx(0); carregar(); }}>
-                                <AcaoTexto>Voltar para a lista</AcaoTexto>
-                            </BotaoFila>
-                        </FilaCartao>
-                    </FilaFundo>
-                </PageContainer>
-            );
-        }
-
         const avancar = () => setFilaIdx(i => i + 1);
 
         return (
             <PageContainer>
-                <PageHeader><PageTitle>Cobrando</PageTitle></PageHeader>
-                <FilaFundo>
-                    <FilaProgresso>{filaIdx + 1} de {fila.length}</FilaProgresso>
-                    <FilaCartao>
-                        <FilaNome>{atual.nome}</FilaNome>
-                        <FilaDetalhe>
-                            {atual.meses === 1 ? '1 mês' : `${atual.meses} meses`} · {atual.mesesAbertos.join(', ')}
-                        </FilaDetalhe>
-                        <FilaValor>{formatCurrency(atual.total)}</FilaValor>
+                <ScrollView style={{ flex: 1 }}>
+                    <Conteudo>
+                        <TopoCobrancas modo="fila" onModo={trocarModo} onConfig={abrirConfig} />
+                        <CobrancaFila
+                            fila={fila}
+                            indice={filaIdx}
+                            contagem={contagemFila}
+                            mensagem={atual ? mensagemPara(atual) : ''}
+                            temPix={!!academia?.pixKey}
+                            diasParaRecobrar={DIAS_PARA_RECOBRAR}
+                            efetividade={efetividade}
+                            janelaDias={JANELA_RESULTADO_DIAS}
+                            lancando={!!atual && lancando === atual.id}
+                            onCobrar={async () => {
+                                if (!atual) return;
+                                await cobrar(atual);
+                                setContagemFila(c => ({ ...c, cobrados: c.cobrados + 1 }));
+                                avancar();
+                            }}
+                            onPular={() => {
+                                setContagemFila(c => ({ ...c, pulados: c.pulados + 1 }));
+                                avancar();
+                            }}
+                            onJaPagou={() => atual && darBaixa(atual, () => {
+                                setContagemFila(c => ({ ...c, pagos: c.pagos + 1 }));
+                                avancar();
+                            })}
+                            onSair={sairDaFila}
+                            onEditarMensagem={abrirConfig}
+                        />
+                    </Conteudo>
+                </ScrollView>
+                {folha}
+            </PageContainer>
+        );
+    }
 
-                        <BotaoFila style={{ marginHorizontal: 0, backgroundColor: '#25D366' }}
-                            onPress={async () => { await cobrar(atual); avancar(); }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Cobrar ${atual.nome} e ir para o próximo`}>
-                            <FontAwesome name="whatsapp" size={18} color={theme.colors.background} />
-                            <AcaoTexto>Cobrar e avançar</AcaoTexto>
-                        </BotaoFila>
-
-                        <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
-                            <TouchableOpacity onPress={avancar} style={{ padding: 12 }}
-                                accessibilityRole="button" accessibilityLabel="Pular este aluno">
-                                <ListItemSubtitle>Pular</ListItemSubtitle>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => { setFila(null); setFilaIdx(0); carregar(); }}
-                                style={{ padding: 12 }}
-                                accessibilityRole="button" accessibilityLabel="Sair da fila">
-                                <ListItemSubtitle>Sair da fila</ListItemSubtitle>
-                            </TouchableOpacity>
-                        </Row>
-                    </FilaCartao>
-                </FilaFundo>
+    /* ---------------- resultado ---------------- */
+    if (modo === 'resultado') {
+        return (
+            <PageContainer>
+                <ScrollView style={{ flex: 1 }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing}
+                            onRefresh={() => { setRefreshing(true); carregar(); }}
+                            tintColor={theme.colors.primary} />
+                    }>
+                    <Conteudo>
+                        <TopoCobrancas modo="resultado" onModo={trocarModo} onConfig={abrirConfig} />
+                        <CobrancaResultado
+                            efetividade={efetividade}
+                            pagantes={pagantes}
+                            janelaDias={JANELA_RESULTADO_DIAS}
+                            prazoDias={PRAZO_PAGAMENTO_DIAS}
+                            diasParaRecobrar={DIAS_PARA_RECOBRAR}
+                            onVerFila={iniciarFila}
+                        />
+                    </Conteudo>
+                </ScrollView>
             </PageContainer>
         );
     }
 
     /* ---------------- lista ---------------- */
-    if (loading) {
-        return (
-            <PageContainer>
-                <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
-                <View style={{ padding: 16 }}>
-                    <SkeletonLoader variant="card" />
-                    <View style={{ height: 12 }} />
-                    <SkeletonLoader variant="text" />
-                    <SkeletonLoader variant="text" />
-                </View>
-            </PageContainer>
-        );
-    }
+
+    const pctEfetividade = efetividade
+        ? Math.round((efetividade.pagaram / efetividade.cobrados) * 100)
+        : 0;
 
     // Elemento, e não componente: uma função componente redefinida a cada
-    // render remonta a subárvore inteira, e o campo de mensagem perderia o
-    // foco a cada tecla.
+    // render remonta a subárvore inteira.
     const cabecalho = (
-        <>
-                <MenuLinha>
-                    <MenuItem
-                        ativo={editandoPix}
-                        onPress={() => (editandoPix ? setEditandoPix(false) : abrirEdicaoPix())}
-                        accessibilityRole="button"
-                        accessibilityLabel={academia?.pixKey ? 'Alterar a chave Pix' : 'Cadastrar a chave Pix'}
-                    >
-                        <MaterialCommunityIcons name="qrcode" size={17} color={theme.colors.primary} />
-                        <MenuTexto numberOfLines={1}>
-                            {academia?.pixKey ? 'Alterar chave Pix' : 'Cadastrar chave Pix'}
-                        </MenuTexto>
-                    </MenuItem>
+        <View style={{ gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+            <TopoCobrancas modo="lista" onModo={trocarModo} onConfig={abrirConfig} />
 
-                    <MenuItem
-                        ativo={editandoMsg}
-                        onPress={() => (editandoMsg ? setEditandoMsg(false) : abrirEdicaoMensagem())}
-                        accessibilityRole="button"
-                        accessibilityLabel="Editar a mensagem de cobrança"
-                    >
-                        <MaterialCommunityIcons name="message-text-outline" size={17} color={theme.colors.primary} />
-                        <MenuTexto numberOfLines={1}>Mensagem</MenuTexto>
-                    </MenuItem>
-                </MenuLinha>
-
-                {devedores.length > 0 && (
-                    <Resumo>
-                        <ResumoValor>{formatCurrency(totalDevido)}</ResumoValor>
-                        <ResumoLabel>
+            {devedores.length > 0 && (
+                <Section style={{ gap: 10 }} accessibilityLabel="Resumo">
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                        <Apoio style={{ fontSize: 14 }}>
                             {devedores.length === 1 ? '1 aluno em atraso' : `${devedores.length} alunos em atraso`}
-                        </ResumoLabel>
-                        {/* Aparece com qualquer cobrança na janela, inclusive com
-                            zero pagamentos: "5 cobranças, 0 pagaram" é justamente
-                            o número que diz que cobrar assim não está adiantando. */}
-                        {efetividade && (
-                            <Efetividade>
-                                <EfetividadeTitulo>
-                                    Cobrança dos últimos {JANELA_RESULTADO_DIAS} dias
-                                </EfetividadeTitulo>
-                                <BarraTrilho>
-                                    <BarraPreenchida
-                                        pct={Math.round((efetividade.pagaram / efetividade.cobrados) * 100)}
-                                    />
-                                </BarraTrilho>
-                                <EfetividadeDetalhe>
-                                    {efetividade.cobrados}{' '}
-                                    {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'} ·{' '}
-                                    {efetividade.pagaram}{' '}
-                                    {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
-                                    {PRAZO_PAGAMENTO_DIAS} dias (
-                                    {Math.round((efetividade.pagaram / efetividade.cobrados) * 100)}%)
-                                    {efetividade.valor > 0 && (
-                                        <>
-                                            {' · '}
-                                            <EfetividadeValor>
-                                                {formatCurrency(efetividade.valor)} recuperados
-                                            </EfetividadeValor>
-                                        </>
-                                    )}
-                                </EfetividadeDetalhe>
-                            </Efetividade>
-                        )}
-                    </Resumo>
-                )}
-
-                {/* A chave Pix mora aqui, e não no perfil: é aqui que ela é usada,
-                    e é aqui que o dono descobre que a cobrança pode sair com o
-                    valor já preenchido. */}
-                {(editandoPix || !academia?.pixKey) && (
-                    <CartaoPix>
-                        <PixCabecalho>
-                            <MaterialCommunityIcons name="qrcode" size={20} color={theme.colors.primary} />
-                            <PixTitulo style={{ marginBottom: 0 }}>Cobrança com Pix</PixTitulo>
-                        </PixCabecalho>
-                        <PixTexto>
-                            Com a chave cadastrada, cada cobrança sai com um Pix copia e cola
-                            e o valor já preenchido — o aluno só cola no banco. O dinheiro vai
-                            direto para você; o app não recebe nada no meio.
-                        </PixTexto>
-
-                        <TipoLinha>
-                            {TIPOS_CHAVE_PIX.map(t => (
-                                <TipoChip
-                                    key={t.valor}
-                                    ativo={pixTipo === t.valor}
-                                    onPress={() => { setPixTipo(t.valor); setPixChave(''); }}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={`Tipo de chave: ${t.rotulo}`}
-                                >
-                                    <TipoChipTexto ativo={pixTipo === t.valor}>{t.rotulo}</TipoChipTexto>
-                                </TipoChip>
-                            ))}
-                        </TipoLinha>
-
-                        <Input
-                            placeholder={
-                                pixTipo === 'cpf' ? '000.000.000-00'
-                                    : pixTipo === 'cnpj' ? '00.000.000/0000-00'
-                                        : pixTipo === 'celular' ? '(00)00000-0000'
-                                            : pixTipo === 'email' ? 'voce@academia.com.br'
-                                                : 'chave aleatória do banco'
-                            }
-                            value={pixChave}
-                            onChangeText={t => setPixChave(mascararChave(pixTipo, t))}
-                            keyboardType={teclado(pixTipo)}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            style={{ marginBottom: 10 }}
-                        />
-                        <Input
-                            placeholder="Cidade da conta (opcional)"
-                            value={pixCidade}
-                            onChangeText={setPixCidade}
-                            style={{ marginBottom: 12 }}
-                        />
-
-                        <Row style={{ gap: 8 }}>
-                            <AcaoLinha
-                                bg={theme.colors.primary}
-                                onPress={salvarPix}
-                                disabled={salvandoPix}
-                                accessibilityRole="button"
-                                accessibilityLabel="Salvar chave Pix"
-                            >
-                                {salvandoPix
-                                    ? <ActivityIndicator size="small" color={theme.colors.background} />
-                                    : <AcaoTexto>Salvar chave</AcaoTexto>}
-                            </AcaoLinha>
-
-                            {academia?.pixKey && (
-                                <TouchableOpacity
-                                    onPress={() => setEditandoPix(false)}
-                                    style={{ paddingHorizontal: 12, justifyContent: 'center' }}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Cancelar edição da chave Pix"
-                                >
-                                    <ListItemSubtitle>Cancelar</ListItemSubtitle>
-                                </TouchableOpacity>
-                            )}
-                        </Row>
-                    </CartaoPix>
-                )}
-
-                {naFila.length > 1 && (
-                    <BotaoFila onPress={() => { setFila(naFila); setFilaIdx(0); }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Cobrar ${naFila.length} alunos em sequência`}>
-                        <FontAwesome name="bolt" size={16} color={theme.colors.background} />
-                        <AcaoTexto>Cobrar {naFila.length} em sequência</AcaoTexto>
-                    </BotaoFila>
-                )}
-
-                {/* Sem paddingHorizontal aqui: o ListItem já traz margin-horizontal,
-                    e somar os dois estreitaria os cards em relação às outras listas. */}
-
-            {/* Mensagem de cobrança, editável: cobrança é assunto delicado e
-                cada dono fala de um jeito. O Pix é anexado fora do modelo. */}
-            {editandoMsg && (
-                <CartaoPix>
-                    <PixCabecalho>
-                        <MaterialCommunityIcons name="message-text-outline" size={20} color={theme.colors.primary} />
-                        <PixTitulo style={{ marginBottom: 0 }}>Mensagem de cobrança</PixTitulo>
-                    </PixCabecalho>
-                    <PixTexto>
-                        Use {'{nome}'}, {'{meses}'} e {'{valor}'} onde quiser que entrem os
-                        dados do aluno. O código Pix é anexado no fim automaticamente.
-                    </PixTexto>
-
-                    <Input
-                        value={modeloMsg}
-                        onChangeText={setModeloMsg}
-                        multiline
-                        numberOfLines={4}
-                        textAlignVertical="top"
-                        style={{ marginBottom: 10, minHeight: 100 }}
-                    />
-
-                    <PixTexto style={{ marginBottom: 12 }}>
-                        {MARCADORES.map(m => `${m.chave} = ${m.descricao}`).join('  ·  ')}
-                    </PixTexto>
-
-                    <Row style={{ gap: 8 }}>
-                        <AcaoLinha bg={theme.colors.primary} onPress={salvarMensagem} disabled={salvandoMsg}
-                            accessibilityRole="button" accessibilityLabel="Salvar mensagem de cobrança">
-                            {salvandoMsg
-                                ? <ActivityIndicator size="small" color={theme.colors.background} />
-                                : <AcaoTexto>Salvar mensagem</AcaoTexto>}
-                        </AcaoLinha>
-                        <TouchableOpacity onPress={() => setModeloMsg(MENSAGEM_PADRAO)}
-                            style={{ paddingHorizontal: 12, justifyContent: 'center' }}
-                            accessibilityRole="button" accessibilityLabel="Voltar ao texto padrão">
-                            <ListItemSubtitle>Padrão</ListItemSubtitle>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setEditandoMsg(false)}
-                            style={{ paddingHorizontal: 12, justifyContent: 'center' }}
-                            accessibilityRole="button" accessibilityLabel="Cancelar edição da mensagem">
-                            <ListItemSubtitle>Cancelar</ListItemSubtitle>
-                        </TouchableOpacity>
-                    </Row>
-                </CartaoPix>
+                        </Apoio>
+                        <Total adjustsFontSizeToFit numberOfLines={1}>{formatCurrency(totalDevido)}</Total>
+                    </View>
+                    {/* Aparece com qualquer cobrança na janela, inclusive com
+                        zero pagamentos: "5 cobranças, 0 pagaram" é justamente
+                        o número que diz que cobrar assim não está adiantando.
+                        NÃO comparar com o total devido acima: aquilo é estoque
+                        e isto é fluxo. */}
+                    {efetividade && (
+                        <View style={{
+                            gap: 6, paddingTop: 10,
+                            borderTopWidth: 1, borderTopColor: theme.colors.divider,
+                        }}>
+                            <Miudo>Cobrança dos últimos {JANELA_RESULTADO_DIAS} dias</Miudo>
+                            <Barra><BarraCheia pct={pctEfetividade} cor={theme.colors.success} /></Barra>
+                            <Apoio>
+                                {efetividade.cobrados}{' '}
+                                {efetividade.cobrados === 1 ? 'cobrança' : 'cobranças'} ·{' '}
+                                {efetividade.pagaram}{' '}
+                                {efetividade.pagaram === 1 ? 'pagou' : 'pagaram'} em até{' '}
+                                {PRAZO_PAGAMENTO_DIAS} dias ({pctEfetividade}%)
+                                {efetividade.valor > 0 && (
+                                    <>
+                                        {' · '}
+                                        <Text
+                                            onPress={() => setModo('resultado')}
+                                            accessibilityRole="link"
+                                            style={{ fontFamily: theme.fonts.semibold, color: theme.colors.success }}
+                                        >
+                                            {formatCurrency(efetividade.valor)} recuperados
+                                        </Text>
+                                    </>
+                                )}
+                            </Apoio>
+                        </View>
+                    )}
+                </Section>
             )}
-        </>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+                <BotaoSecundario style={{ flex: 1, minHeight: 44, borderRadius: 12 }} onPress={abrirConfig}
+                    accessibilityRole="button"
+                    accessibilityLabel={academia?.pixKey ? 'Alterar a chave Pix' : 'Cadastrar a chave Pix'}>
+                    <IconeQr color={theme.colors.primary} />
+                    <BotaoSecundarioTexto style={{ fontSize: 14 }} numberOfLines={1}>
+                        {academia?.pixKey ? 'Alterar chave Pix' : 'Cadastrar chave Pix'}
+                    </BotaoSecundarioTexto>
+                </BotaoSecundario>
+                <BotaoSecundario style={{ flex: 1, minHeight: 44, borderRadius: 12 }} onPress={abrirConfig}
+                    accessibilityRole="button" accessibilityLabel="Editar a mensagem de cobrança">
+                    <IconeWhatsApp size={16} color={theme.colors.primary} />
+                    <BotaoSecundarioTexto style={{ fontSize: 14 }} numberOfLines={1}>Mensagem</BotaoSecundarioTexto>
+                </BotaoSecundario>
+            </View>
+
+            {/* Sem chave, o aviso fica à vista: é aqui que o dono descobre que a
+                cobrança pode sair com o valor já preenchido. */}
+            {!academia?.pixKey && (
+                <TouchableOpacity onPress={abrirConfig} accessibilityRole="button"
+                    accessibilityLabel="Cadastrar a chave Pix para cobrar com Pix copia e cola">
+                    <Section style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        <IconeQr size={22} color={theme.colors.primary} />
+                        <View style={{ flex: 1, gap: 2 }}>
+                            <BotaoSecundarioTexto>Cobrança com Pix</BotaoSecundarioTexto>
+                            <Apoio>
+                                Cadastre a chave e cada cobrança sai com um Pix copia e cola, com o
+                                valor já preenchido. O dinheiro vai direto para você.
+                            </Apoio>
+                        </View>
+                    </Section>
+                </TouchableOpacity>
+            )}
+
+            {naFila.length > 1 && (
+                <BotaoPrincipal onPress={iniciarFila}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Cobrar ${naFila.length} alunos em sequência`}>
+                    <IconeWhatsApp size={18} color={theme.colors.onPrimary} />
+                    <BotaoPrincipalTexto>Cobrar {naFila.length} em sequência</BotaoPrincipalTexto>
+                </BotaoPrincipal>
+            )}
+        </View>
     );
 
     return (
         <PageContainer>
-            <PageHeader><PageTitle>Cobranças</PageTitle></PageHeader>
             <FlatList
                 data={devedores}
                 keyExtractor={item => item.id}
-                contentContainerStyle={{ paddingBottom: 24 }}
+                contentContainerStyle={{
+                    paddingTop: theme.spacing.lg,
+                    paddingHorizontal: theme.spacing.xl,
+                    paddingBottom: 40,
+                }}
                 ListHeaderComponent={cabecalho}
+                ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 keyboardShouldPersistTaps="handled"
-                automaticallyAdjustKeyboardInsets
                 refreshControl={
                     <RefreshControl refreshing={refreshing}
                         onRefresh={() => { setRefreshing(true); carregar(); }}
@@ -891,69 +671,37 @@ export default function CollectionsScreen() {
                 }
                 ListEmptyComponent={
                     <Vazio>
-                        Ninguém em atraso.{'\n\n'}
+                        Ninguém em atraso.{'\n'}
                         Alunos sem cobrança e desligados não entram nesta lista.
                     </Vazio>
                 }
+                ListFooterComponent={devedores.length > 0 ? (
+                    <Miudo style={{
+                        fontSize: 13, lineHeight: 19, color: theme.colors.textMuted,
+                        textAlign: 'center', marginTop: theme.spacing.lg,
+                    }}>
+                        Quem foi cobrado há menos de {DIAS_PARA_RECOBRAR} dias vai para o fim da lista.
+                        Puxe para baixo para atualizar.
+                    </Miudo>
+                ) : null}
                 renderItem={({ item }) => (
-                    <ListItem>
-                        <TouchableOpacity
-                            onPress={() => router.push({ pathname: '/client-details', params: { id: item.id } })}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Abrir ficha de ${item.nome}`}>
-                            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <View style={{ flex: 1, paddingRight: 8 }}>
-                                    <ListItemTitle>{item.nome}</ListItemTitle>
-                                    <ListItemSubtitle>
-                                        {item.meses === 1 ? '1 mês' : `${item.meses} meses`} · {item.mesesAbertos.join(', ')}
-                                    </ListItemSubtitle>
-                                    <Marca recente={item.diasDesdeCobranca !== null && item.diasDesdeCobranca < DIAS_PARA_RECOBRAR}>
-                                        {item.diasDesdeCobranca === null
-                                            ? 'Nunca cobrado'
-                                            : item.diasDesdeCobranca === 0
-                                                ? 'Cobrado hoje'
-                                                : item.diasDesdeCobranca === 1
-                                                    ? 'Cobrado ontem'
-                                                    : `Cobrado há ${item.diasDesdeCobranca} dias`}
-                                    </Marca>
-                                </View>
-                                <ListItemTitle style={{ color: theme.colors.danger }}>
-                                    {formatCurrency(item.total)}
-                                </ListItemTitle>
-                            </Row>
-                        </TouchableOpacity>
-
-                        <Row style={{ gap: 8, marginTop: 10 }}>
-                            <AcaoLinha bg="#25D366" onPress={() => cobrar(item)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Cobrar ${item.nome} pelo WhatsApp`}>
-                                <FontAwesome name="whatsapp" size={15} color={theme.colors.background} />
-                                <AcaoTexto>Cobrar</AcaoTexto>
-                            </AcaoLinha>
-
-                            <AcaoLinha bg={theme.colors.primary} onPress={() => darBaixa(item)}
-                                disabled={lancando === item.id}
-                                accessibilityRole="button"
-                                accessibilityLabel={`Registrar pagamento de ${item.nome}`}>
-                                {lancando === item.id ? (
-                                    <ActivityIndicator size="small" color={theme.colors.background} />
-                                ) : (
-                                    <>
-                                        <FontAwesome name="check" size={14} color={theme.colors.background} />
-                                        {/* Com vários meses em aberto o rótulo não pode prometer
-                                            um valor: o toque abre a escolha entre o mês e o total. */}
-                                        <AcaoTexto>
-                                            {item.meses === 1
-                                                ? `Registrar ${formatCurrency(item.valorPlano)}`
-                                                : 'Registrar'}
-                                        </AcaoTexto>
-                                    </>
-                                )}
-                            </AcaoLinha>
-                        </Row>
-                    </ListItem>
+                    <LinhaDevedor
+                        item={item}
+                        recente={item.diasDesdeCobranca !== null && item.diasDesdeCobranca < DIAS_PARA_RECOBRAR}
+                        lancando={lancando === item.id}
+                        semTelefone={semTelefone === item.id}
+                        onAbrir={() => router.push({ pathname: '/client-details', params: { id: item.id } })}
+                        onCobrar={() => {
+                            // Sem telefone, o aviso aparece na própria linha.
+                            if (!item.telefone) { setSemTelefone(item.id); return; }
+                            setSemTelefone(null);
+                            cobrar(item);
+                        }}
+                        onRegistrar={() => darBaixa(item)}
+                    />
                 )}
             />
+            {folha}
         </PageContainer>
     );
 }

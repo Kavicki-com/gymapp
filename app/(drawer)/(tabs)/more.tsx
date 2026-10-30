@@ -14,9 +14,8 @@ import styled from 'styled-components/native';
 /**
  * Aba Mais: o que antes era o menu lateral (redesign, Fase 2).
  *
- * Assinatura e "Mensagem e chave Pix" entram aqui quando as telas delas
- * existirem (Fases 3 e 5) — por enquanto a mensagem e a chave continuam
- * dentro da própria aba Cobranças.
+ * "Mensagem e chave Pix" abre a aba Cobranças direto na vista de
+ * configuração (param `config`). Assinatura entra na Fase 5.
  */
 
 const Conteudo = styled.View`
@@ -214,6 +213,12 @@ export default function MaisScreen() {
                         />
                         <Divider />
                         <Item icone="building" rotulo="Perfil da academia" onPress={abrirPerfil} />
+                        <Divider />
+                        <Item
+                            icone="pencil"
+                            rotulo="Mensagem e chave Pix"
+                            onPress={() => router.push({ pathname: '/collections', params: { config: '1' } })}
+                        />
                     </Grupo>
                 </View>
 
