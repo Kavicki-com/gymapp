@@ -1,5 +1,6 @@
 import { theme } from '@/src/styles/theme';
 import React from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import styled from 'styled-components/native';
 
 /**
@@ -17,8 +18,10 @@ const tons: Record<PillTone, { bg: string; fg: string }> = {
     neutral: { bg: theme.colors.neutralPill, fg: theme.colors.textSecondary },
 };
 
+// Sem align-self próprio: segue o alignItems de quem posiciona. Numa linha
+// centralizada fica no meio (antes grudava no topo); numa coluna que estica,
+// quem chama passa style={{ alignSelf: 'flex-start' }}.
 const Fundo = styled.View<{ bg: string; small?: boolean }>`
-    align-self: flex-start;
     padding: ${({ small }) => (small ? '2px 8px' : '4px 10px')};
     border-radius: ${theme.borderRadius.pill}px;
     background-color: ${({ bg }) => bg};
@@ -30,10 +33,15 @@ const Texto = styled.Text<{ fg: string; small?: boolean }>`
     color: ${({ fg }) => fg};
 `;
 
-export function Pill({ tone, label, small }: { tone: PillTone; label: string; small?: boolean }) {
+export function Pill({ tone, label, small, style }: {
+    tone: PillTone;
+    label: string;
+    small?: boolean;
+    style?: StyleProp<ViewStyle>;
+}) {
     const t = tons[tone];
     return (
-        <Fundo bg={t.bg} small={small}>
+        <Fundo bg={t.bg} small={small} style={style}>
             <Texto fg={t.fg} small={small}>{label}</Texto>
         </Fundo>
     );

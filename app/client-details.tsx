@@ -1084,12 +1084,14 @@ export default function ClientDetailsScreen() {
                             <NomeAluno numberOfLines={2}>{client.name}</NomeAluno>
                             {isLocked && (
                                 <Pill
+                                    style={{ alignSelf: 'flex-start' }}
                                     tone="soon"
                                     label={`Mensalidade trancada até ${client.locked_until ? new Date(client.locked_until + 'T00:00:00').toLocaleDateString('pt-BR') : 'indefinido'}`}
                                 />
                             )}
                             {!isLocked && overdueMonthsCount > 0 && (
                                 <Pill
+                                    style={{ alignSelf: 'flex-start' }}
                                     tone="late"
                                     label={overdueMonthsCount === 1
                                         ? '1 mensalidade em atraso'
