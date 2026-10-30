@@ -1,3 +1,4 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { Icon, IconName } from '@/src/components/Icon';
 import { Pill } from '@/src/components/Pill';
 import { PrivacyPolicyModal } from '@/src/components/PrivacyPolicyModal';
@@ -8,8 +9,7 @@ import { useAuth } from '@/src/contexts/AuthContext';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
 import { FontAwesome } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { CommonActions } from 'expo-router/react-navigation';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert, Linking, ScrollView, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
@@ -143,7 +143,6 @@ function Item({ icone, rotulo, apoio, direita, onPress, iconeNode }: {
 
 export default function MaisScreen() {
     const router = useRouter();
-    const navigation = useNavigation();
     const { signOut } = useAuth();
     const [perfil, setPerfil] = useState({ nome: '', logo: null as string | null, desde: '' });
     const [colaboradores, setColaboradores] = useState<number | null>(null);
@@ -182,18 +181,13 @@ export default function MaisScreen() {
         return () => { vivo = false; };
     }, []));
 
+    // Só desloga: quem leva ao login é o (drawer)/_layout, que reage à sessão
+    // sumir (vale também para sessão expirada).
     const sair = async () => {
         try {
             await signOut();
-            // Não dá para usar router.replace('/'): grupo não entra na URL, e
-            // '/' é tanto o login (app/index) quanto a aba Início
-            // ((tabs)/index) — o replace caía no Início. Reseta a pilha raiz
-            // pelo nome da rota, como fazia o menu lateral.
-            let raiz = navigation;
-            while (raiz.getParent()) raiz = raiz.getParent()!;
-            raiz.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'index' }] }));
         } catch {
-            Alert.alert('Erro', 'Não foi possível sair. Tente novamente.');
+            appAlert('Erro', 'Não foi possível sair. Tente novamente.');
         }
     };
 
