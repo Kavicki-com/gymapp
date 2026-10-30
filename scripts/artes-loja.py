@@ -182,12 +182,16 @@ def icone_play():
 
 def paywall_revisao():
     """Só com print do aparelho; sem ele, fica a provisória gerada do design."""
-    src = tela('paywall')
-    if src is None:
+    caminho_src = os.path.join(STORE, 'fontes', 'paywall.png')
+    if not os.path.exists(caminho_src):
         return False
-    out = src.resize((1179, int(src.height * 1179 / src.width)), Image.LANCZOS)
+    # Sem corte: a revisão precisa ver o "Assinar", o "Restaurar" e o texto
+    # de renovação. Board mais alto que a tela é encaixado pela altura.
+    src = Image.open(caminho_src).convert('RGB')
+    escala = min(1179 / src.width, 2556 / src.height)
+    out = src.resize((int(src.width * escala), int(src.height * escala)), Image.LANCZOS)
     fundo = Image.new('RGB', (1179, 2556), FUNDO)
-    fundo.paste(out.crop((0, 0, 1179, min(out.height, 2556))), (0, 0))
+    fundo.paste(out, ((1179 - out.width) // 2, (2556 - out.height) // 2))
     caminho = os.path.join(STORE, 'appstore-revisao-paywall-1179x2556.png')
     fundo.save(caminho, optimize=True)
     print(caminho, 'do aparelho')
