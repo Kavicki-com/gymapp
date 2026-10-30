@@ -52,10 +52,13 @@ async function lerAssinante(appUserId: string): Promise<Subscriber | null> {
  */
 export const anual = (productId: string) => /anual|annual|year/i.test(productId)
 
-export const lojaDe = (store: string | undefined) =>
-  store === "APP_STORE" || store === "MAC_APP_STORE" ? "app_store"
-    : store === "PLAY_STORE" ? "play_store"
+/** O evento do webhook manda "APP_STORE"; a API REST v1 manda "app_store". */
+export const lojaDe = (store: string | undefined) => {
+  const s = (store || "").toUpperCase()
+  return s === "APP_STORE" || s === "MAC_APP_STORE" ? "app_store"
+    : s === "PLAY_STORE" ? "play_store"
     : null
+}
 
 /** Sincroniza a academia de um app_user_id com o que o RevenueCat diz agora. */
 export async function sincronizar(admin: SupabaseClient, appUserId: string): Promise<string> {
