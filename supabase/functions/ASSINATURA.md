@@ -159,3 +159,41 @@ Email (Resend) com preço e link; push **sem preço nem link** (regra da Apple).
 
 No painel do MP, além dos eventos de assinatura, marcar **Pagamentos**. O
 `mp-pay-pix` também manda `notification_url` em cada pagamento.
+
+## Loja (App Store / Google Play) via RevenueCat
+
+Decidido em 30/10/2026: o app vende pela loja, e o Mercado Pago, o Pix pelo
+site e o Pix direto na PJ **convivem** com ela até todos migrarem.
+
+```
+app: Purchases.logIn(auth.users.id) → compra na loja
+RevenueCat → revenuecat-webhook (Authorization = REVENUECAT_WEBHOOK_SECRET)
+           → relê o assinante na API do RevenueCat (REVENUECAT_API_KEY)
+           → subscriptions: kind 'store', status, current_period_end, store
+           → trigger liga/desliga collections_enabled
+```
+
+- O evento nunca é confiado: a cada um, o webhook relê o assinante. Evento
+  repetido ou fora de ordem dá no mesmo resultado.
+- **Cartão ou Pix ativo nunca é sobrescrito pela loja.** Se as duas estiverem
+  ativas, o log mostra `CONFLITO` — estorno à mão.
+- Compra e renovação viram linha em `subscription_payments` com
+  `mp_payment_id = 'rc:<transaction_id>'` e `kind = 'store'` (sandbox fica com
+  `status = 'sandbox'`, para não entrar na conta do mês).
+- Planos `cobrancas_mensal_loja` (R$ 11,90) e `cobrancas_anual_loja`
+  (R$ 139,90) existem só para a contabilidade e estão com `active = false`, para
+  as funções do Mercado Pago não os venderem. Quem cobra é a loja.
+- O período sai do ID do produto: `anual|annual|year` no nome = anual.
+
+| Secret | Valor |
+|---|---|
+| `REVENUECAT_WEBHOOK_SECRET` | o mesmo valor do campo Authorization do webhook no painel do RevenueCat |
+| `REVENUECAT_API_KEY` | chave **secreta** do projeto (`sk_…`), para a API REST v1 |
+| `REVENUECAT_ENTITLEMENT` | opcional; padrão `gymapp_cobrancas` |
+
+| Função | verify_jwt |
+|---|---|
+| `revenuecat-webhook` | **false** (o RevenueCat não manda JWT; a autenticação é o secret) |
+
+URL a cadastrar no RevenueCat:
+`https://mvmmxkkllufoqtnyiqwm.supabase.co/functions/v1/revenuecat-webhook`
