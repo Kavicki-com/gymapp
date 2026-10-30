@@ -1,5 +1,7 @@
 import { Icon, IconName } from '@/src/components/Icon';
+import { Pill } from '@/src/components/Pill';
 import { PrivacyPolicyModal } from '@/src/components/PrivacyPolicyModal';
+import { lerCollectionsEnabled } from '@/src/hooks/useCollectionsEnabled';
 import { Divider, SectionLabel } from '@/src/components/styled';
 import { linkWhatsApp, WHATSAPP_SUPORTE_EXIBICAO } from '@/src/config/contato';
 import { useAuth } from '@/src/contexts/AuthContext';
@@ -16,7 +18,8 @@ import styled from 'styled-components/native';
  * Aba Mais: o que antes era o menu lateral (redesign, Fase 2).
  *
  * "Mensagem e chave Pix" abre a aba Cobranças direto na vista de
- * configuração (param `config`). Assinatura entra na Fase 5.
+ * configuração (param `config`). Assinatura abre a tela de assinatura, com
+ * a pílula do estado (ativa por loja, cartão, Pix ou cortesia).
  */
 
 const Conteudo = styled.View`
@@ -145,6 +148,7 @@ export default function MaisScreen() {
     const [perfil, setPerfil] = useState({ nome: '', logo: null as string | null, desde: '' });
     const [colaboradores, setColaboradores] = useState<number | null>(null);
     const [politicaAberta, setPoliticaAberta] = useState(false);
+    const [assinaturaAtiva, setAssinaturaAtiva] = useState<boolean | null>(null);
 
     useFocusEffect(useCallback(() => {
         let vivo = true;
@@ -152,6 +156,7 @@ export default function MaisScreen() {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
+                lerCollectionsEnabled().then(v => vivo && setAssinaturaAtiva(v));
                 const { data: gym } = await supabase
                     .from('gym_profiles')
                     .select('id, gym_name, logo_url')
@@ -221,6 +226,16 @@ export default function MaisScreen() {
                         />
                         <Divider />
                         <Item icone="building" rotulo="Perfil da academia" onPress={abrirPerfil} />
+                        <Divider />
+                        <Item
+                            icone="card"
+                            rotulo="Assinatura"
+                            direita={assinaturaAtiva === null ? null : (
+                                <Pill small tone={assinaturaAtiva ? 'ok' : 'neutral'}
+                                    label={assinaturaAtiva ? 'Ativa' : 'Sem assinatura'} />
+                            )}
+                            onPress={() => router.push('/(drawer)/assinatura')}
+                        />
                         <Divider />
                         <Item
                             icone="pencil"

@@ -91,7 +91,7 @@ export default function CollectionsScreen() {
     const [modo, setModo] = useState<Exclude<Modo, 'fila'>>('lista');
     const [baixa, setBaixa] = useState<{ devedor: Devedor; aoConcluir?: () => void } | null>(null);
     const [semTelefone, setSemTelefone] = useState<string | null>(null);
-    const habilitado = useCollectionsEnabled();
+    const [habilitado, recarregarAcesso] = useCollectionsEnabled();
     const [academia, setAcademia] = useState<{
         nome: string; pixKey: string | null; pixCity: string | null; modelo: string | null;
     } | null>(null);
@@ -454,7 +454,11 @@ export default function CollectionsScreen() {
     // quem tem a função seria pior que esperar meio segundo.
     if (habilitado === null) return esqueleto;
 
-    if (!habilitado) return <CollectionsLocked />;
+    // Assinou na tela de compra: o webhook já ligou o acesso no banco. Relê a
+    // flag e os dados da aba, para abrir direto na lista.
+    if (!habilitado) return (
+        <CollectionsLocked onLiberado={async () => { if (await recarregarAcesso()) carregar(); }} />
+    );
 
     if (loading) return esqueleto;
 

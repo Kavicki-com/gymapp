@@ -1,5 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { esquecerUsuarioCompras, identificarCompras } from '../services/purchases';
 import { registerForPushNotificationsAsync, unregisterPushToken } from '../services/pushNotifications';
 import { supabase } from '../services/supabase';
 
@@ -72,6 +73,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // O usuário do RevenueCat é o do Supabase: é por ele que o webhook acha a
+    // academia de quem comprou. Segue a sessão, inclusive a restaurada na
+    // abertura do app (que não dispara SIGNED_IN).
+    useEffect(() => {
+        const userId = session?.user?.id;
+        if (userId) identificarCompras(userId);
+        else esquecerUsuarioCompras();
+    }, [session?.user?.id]);
 
     // Simple admin check (mock for now, or check email)
     useEffect(() => {
