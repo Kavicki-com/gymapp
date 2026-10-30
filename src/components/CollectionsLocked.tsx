@@ -3,7 +3,16 @@ import { Icon } from '@/src/components/Icon';
 import { BodyText, PageTitle, Section, SectionLabel } from '@/src/components/styled';
 import { URL_PRIVACIDADE, URL_TERMOS } from '@/src/config/revenuecat';
 import { lerCollectionsEnabled } from '@/src/hooks/useCollectionsEnabled';
-import { comprar, lerPlanos, restaurar, type Planos, type ResultadoCompra } from '@/src/services/purchases';
+import {
+    comprar,
+    entitlementAtivo,
+    lerCliente,
+    lerPlanos,
+    restaurar,
+    sincronizarNoServidor,
+    type Planos,
+    type ResultadoCompra,
+} from '@/src/services/purchases';
 import { theme } from '@/src/styles/theme';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -202,6 +211,12 @@ export function CollectionsLocked({ onLiberado }: { onLiberado?: () => void }) {
 
     const carregarPlanos = useCallback(async () => {
         setEtapa('carregando');
+        // Já assinou pela loja e o banco ainda não sabe (webhook atrasado ou
+        // perdido): sincroniza em vez de oferecer a compra de novo.
+        if (entitlementAtivo(await lerCliente())) {
+            await aguardarLiberacao();
+            return;
+        }
         const p = await lerPlanos();
         setPlanos(p);
         if (!p.anual && p.mensal) setEscolhido('mensal');
@@ -211,8 +226,13 @@ export function CollectionsLocked({ onLiberado }: { onLiberado?: () => void }) {
     useEffect(() => { carregarPlanos(); }, [carregarPlanos]);
 
     /** Compra feita na loja: espera o webhook ligar o acesso no banco. */
-    const aguardarLiberacao = async () => {
+    async function aguardarLiberacao() {
         setEtapa('liberando');
+        // O servidor relê o RevenueCat na hora; o webhook vira só a garantia.
+        if (await sincronizarNoServidor()) {
+            onLiberado?.();
+            return;
+        }
         const limite = Date.now() + ESPERA_MS;
         while (Date.now() < limite) {
             if (await lerCollectionsEnabled()) {
@@ -223,7 +243,7 @@ export function CollectionsLocked({ onLiberado }: { onLiberado?: () => void }) {
         }
         // A compra foi feita; só o aviso do servidor atrasou. Não é erro.
         setEtapa('ativa');
-    };
+    }
 
     const tratar = async (r: ResultadoCompra, deRestaurar: boolean) => {
         switch (r.status) {

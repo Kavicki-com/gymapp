@@ -9,6 +9,7 @@ import {
     lerCliente,
     lerPlanos,
     restaurar,
+    sincronizarNoServidor,
     type Planos,
 } from '@/src/services/purchases';
 import { supabase } from '@/src/services/supabase';
@@ -202,6 +203,10 @@ export default function AssinaturaScreen() {
             const sub = linha as Linha | null;
             const ent = entitlementAtivo(cliente);
 
+            // A loja diz que está ativa e o banco não: sincroniza agora, para a
+            // aba Cobranças abrir sem esperar o webhook.
+            if (ent && !perfil?.collections_enabled) sincronizarNoServidor();
+
             // A loja primeiro: o RevenueCat sabe da compra antes do webhook
             // chegar ao banco, e é ele que diz se a renovação está ligada.
             if (ent || (sub?.kind === 'store' && sub.status === 'active')) {
@@ -237,6 +242,7 @@ export default function AssinaturaScreen() {
         setRestaurando(false);
         if (r.status === 'ativo') {
             setMsgRestaurar('Compras verificadas. Sua assinatura está ativa.');
+            await sincronizarNoServidor();
             carregar();
         } else if (r.status === 'nada-a-restaurar') {
             setMsgRestaurar('Nenhuma assinatura encontrada nesta conta.');
