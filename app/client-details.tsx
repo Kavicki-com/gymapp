@@ -1,14 +1,15 @@
 import { resumirCobranca } from '@/src/utils/overdue';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { IconeAluno, iniciaisDe } from '@/src/components/alunos/icones';
+import { Icon } from '@/src/components/Icon';
+import { Pill } from '@/src/components/Pill';
 import {
     Container,
-    DetailHeader,
-    DetailLabel,
-    DetailTitle,
-    DetailValue,
-    PageContainer,
-    Row
+    Divider,
+    Input,
+    Label,
+    SectionLabel
 } from '@/src/components/styled';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
@@ -21,184 +22,406 @@ import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
-const ContentContainer = styled.ScrollView`
-  flex: 1;
-  padding: ${theme.spacing.lg}px;
-`;
-
-const Section = styled.View`
-  background-color: ${theme.colors.surface};
-  padding: ${theme.spacing.lg}px;
-  border-radius: ${theme.borderRadius.md}px;
-  margin-bottom: ${theme.spacing.lg}px;
-`;
-
-const BackButton = styled(TouchableOpacity)`
-  padding: ${theme.spacing.sm}px;
-  margin-right: ${theme.spacing.md}px;
-`;
-
-const PhotoContainer = styled.TouchableOpacity`
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
-  background-color: ${theme.colors.background};
-  justify-content: center;
-  align-items: center;
-  align-self: center;
-  margin-bottom: ${theme.spacing.lg}px;
-  overflow: hidden;
-  border: 2px solid ${theme.colors.primary};
-`;
-
-const ClientPhoto = styled.Image`
-  width: 100%;
-  height: 100%;
-`;
+/* Layout do redesign (Claude Design, boards "Ficha" e "RegistrarPagamento").
+   Toda a lógica — consultas, lançamento rápido, guarda de duplicata, edição e
+   exclusão (soft delete) de pagamento, trancamento — é a mesma de antes; só a
+   apresentação mudou. As confirmações continuam nos Alerts nativos. */
 
 // Teclado numérico no iOS não tem tecla de confirmar: sem uma barra de
 // acessório, quem toca num campo de valor fica preso — o teclado cobre os
 // botões do modal e não há como fechá-lo.
 const ACESSORIO_TECLADO = 'gymapp-acessorio-teclado';
 
-const ModalOverlay = styled.View`
-    flex: 1;
-    background-color: rgba(0, 0, 0, 0.5);
-    justify-content: center;
-    align-items: center;
+const NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+const Nav = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 `;
 
-const ModalContent = styled.View`
-    width: 85%;
-    background-color: ${theme.colors.surface};
-    padding: 20px;
-    border-radius: 10px;
-    max-height: 80%;
+const BotaoIcone = styled(TouchableOpacity)`
+  width: ${theme.touch}px;
+  height: ${theme.touch}px;
+  align-items: center;
+  justify-content: center;
 `;
 
-const ModalTitle = styled.Text`
-    font-size: 18px;
-    font-weight: bold;
-    color: ${theme.colors.text};
-    margin-bottom: 15px;
-    text-align: center;
+const BotaoEditar = styled(TouchableOpacity)`
+  min-height: ${theme.touch}px;
+  padding: 0 ${theme.spacing.md}px;
+  justify-content: center;
 `;
 
-const StyledInput = styled.TextInput`
-    background-color: ${theme.colors.inputBackground};
-    color: ${theme.colors.text};
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 15px;
+const BotaoEditarTexto = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 15px;
+  color: ${theme.colors.primary};
 `;
 
-const ModalButtons = styled.View`
-    flex-direction: row;
-    justify-content: space-between;
+const Conteudo = styled.View`
+  gap: 18px;
+  padding: 0 ${theme.spacing.xl}px 40px;
 `;
 
-const ModalButton = styled.TouchableOpacity<{ variant?: 'cancel' | 'primary' | 'danger' }>`
-    flex: 1;
-    padding: 10px;
-    background-color: ${props =>
-        props.variant === 'cancel' ? theme.colors.danger :
-            props.variant === 'danger' ? theme.colors.danger :
-                theme.colors.primary};
-    border-radius: 5px;
-    margin-left: ${props => props.variant === 'primary' ? '10px' : '0'};
-    align-items: center;
+const Foto = styled(TouchableOpacity)`
+  width: 72px;
+  height: 72px;
+  border-radius: 36px;
+  background-color: ${theme.colors.neutralPill};
+  align-items: center;
+  justify-content: center;
 `;
 
-const ModalButtonText = styled.Text`
-    color: #fff;
-    font-weight: bold;
+const FotoImagem = styled.Image`
+  width: 72px;
+  height: 72px;
+  border-radius: 36px;
 `;
 
-const ActionButton = styled.TouchableOpacity<{ bgColor?: string }>`
-    background-color: ${props => props.bgColor || theme.colors.primary};
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    padding: 12px;
-    border-radius: 8px;
-    margin-top: 10px;
+const FotoIniciais = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 24px;
+  color: ${theme.colors.textStrong};
 `;
 
-const ActionButtonText = styled.Text`
-    color: ${theme.colors.background};
-    font-weight: bold;
-    margin-left: 8px;
+const SeloCamera = styled.View`
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  border-width: 3px;
+  border-color: ${theme.colors.background};
+  background-color: ${theme.colors.primary};
+  align-items: center;
+  justify-content: center;
 `;
 
-const SwitchRow = styled.View`
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
+const NomeAluno = styled.Text`
+  font-family: ${theme.fonts.display};
+  font-size: ${theme.fontSize.xxl}px;
+  letter-spacing: -0.2px;
+  color: ${theme.colors.text};
 `;
 
-const SwitchLabel = styled.Text`
-    color: ${theme.colors.text};
-    font-size: 14px;
+const BotaoPrincipal = styled(TouchableOpacity)<{ disabled?: boolean }>`
+  min-height: 56px;
+  border-radius: 16px;
+  background-color: ${theme.colors.primary};
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm}px;
+  padding: 0 ${theme.spacing.lg}px;
+  opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
 `;
 
-const DiscountSummary = styled.Text`
-    color: ${theme.colors.primary};
-    font-size: 13px;
-    text-align: center;
-    margin-bottom: 10px;
-    font-weight: bold;
+const BotaoPrincipalTexto = styled.Text`
+  font-family: ${theme.fonts.bold};
+  font-size: ${theme.fontSize.md}px;
+  color: ${theme.colors.onPrimary};
 `;
 
-const LockedBadge = styled.View`
-    background-color: ${theme.colors.primary}20;
-    padding: 8px 16px;
-    border-radius: 8px;
-    margin-bottom: ${theme.spacing.md}px;
-    flex-direction: row;
-    align-items: center;
+const LinkAjuste = styled(TouchableOpacity)`
+  align-self: center;
+  min-height: ${theme.touch}px;
+  padding: 0 ${theme.spacing.md}px;
+  justify-content: center;
 `;
 
-const LockedBadgeText = styled.Text`
-    color: ${theme.colors.primary};
-    font-weight: bold;
-    margin-left: 8px;
+const LinkAjusteTexto = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 14px;
+  color: ${theme.colors.primary};
 `;
 
-const OverdueBadge = styled.View`
-    background-color: ${theme.colors.danger}20;
-    padding: 10px 16px;
-    border-radius: 8px;
-    margin-bottom: ${theme.spacing.md}px;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+const BotaoSecundario = styled(TouchableOpacity)`
+  flex: 1;
+  min-height: 48px;
+  border-radius: ${theme.borderRadius.md}px;
+  border-width: 1px;
+  border-color: ${theme.colors.border};
+  background-color: ${theme.colors.surface};
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm}px;
 `;
 
-const OverdueBadgeText = styled.Text`
-    color: ${theme.colors.danger};
-    font-weight: bold;
-    margin-left: 8px;
-    flex: 1;
+const BotaoSecundarioTexto = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.semibold};
+  font-size: 15px;
+  color: ${({ cor }) => cor};
 `;
 
-const OverdueCount = styled.View`
-    background-color: ${theme.colors.danger};
-    border-radius: 12px;
-    min-width: 24px;
-    height: 24px;
-    align-items: center;
-    justify-content: center;
-    padding: 0 6px;
+const Quadro = styled.View`
+  flex: 1;
+  background-color: ${theme.colors.surface};
+  border-width: 1px;
+  border-color: ${theme.colors.divider};
+  border-radius: 16px;
+  padding: ${theme.spacing.md}px 14px;
+  gap: 2px;
 `;
 
-const OverdueCountText = styled.Text`
-    color: #fff;
-    font-size: 12px;
-    font-weight: bold;
+const QuadroRotulo = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 12px;
+  color: ${theme.colors.textSecondary};
 `;
+
+const QuadroValor = styled.Text<{ cor?: string }>`
+  font-family: ${theme.fonts.semibold};
+  font-size: 15px;
+  color: ${({ cor }) => cor || theme.colors.text};
+`;
+
+const QuadroApoio = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 13px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const Cartao = styled.View`
+  background-color: ${theme.colors.surface};
+  border-width: 1px;
+  border-color: ${theme.colors.divider};
+  border-radius: ${theme.borderRadius.lg}px;
+`;
+
+const TituloCartao = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 15px;
+  color: ${theme.colors.text};
+`;
+
+const Mes = styled.View<{ bg: string; bd: string }>`
+  flex: 1;
+  height: 44px;
+  border-radius: ${theme.borderRadius.sm}px;
+  border-width: 1px;
+  border-color: ${({ bd }) => bd};
+  background-color: ${({ bg }) => bg};
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+`;
+
+const MesRotulo = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.semibold};
+  font-size: 11px;
+  text-transform: uppercase;
+  color: ${({ cor }) => cor};
+`;
+
+const MesMarca = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.regular};
+  font-size: 11px;
+  color: ${({ cor }) => cor};
+`;
+
+const Legenda = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 12px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const Amostra = styled.View<{ bg: string; bd?: string }>`
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background-color: ${({ bg }) => bg};
+  border-width: ${({ bd }) => (bd ? 1 : 0)}px;
+  border-color: ${({ bd }) => bd || 'transparent'};
+`;
+
+const TextoForte = styled.Text<{ bold?: boolean }>`
+  font-family: ${({ bold }) => (bold ? theme.fonts.bold : theme.fonts.semibold)};
+  font-size: 15px;
+  color: ${theme.colors.text};
+`;
+
+const TextoApoio = styled.Text<{ cor?: string; forte?: boolean }>`
+  font-family: ${({ forte }) => (forte ? theme.fonts.semibold : theme.fonts.regular)};
+  font-size: 13px;
+  color: ${({ cor }) => cor || theme.colors.textSecondary};
+`;
+
+const AcaoLinha = styled(TouchableOpacity)`
+  min-height: ${theme.touch}px;
+  padding: 0 10px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+`;
+
+const AcaoLinhaTexto = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.semibold};
+  font-size: 13px;
+  color: ${({ cor }) => cor};
+`;
+
+const Vazio = styled.Text`
+  padding: ${theme.spacing.lg}px;
+  border-radius: 16px;
+  border-width: 1px;
+  border-style: dashed;
+  border-color: ${theme.colors.border};
+  text-align: center;
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const DadoLinha = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  gap: ${theme.spacing.md}px;
+  padding: 13px 0;
+`;
+
+const DadoRotulo = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const DadoValor = styled.Text<{ vazio?: boolean }>`
+  flex-shrink: 1;
+  text-align: right;
+  font-family: ${theme.fonts.medium};
+  font-size: 14px;
+  color: ${({ vazio }) => (vazio ? theme.colors.textSecondary : theme.colors.text)};
+`;
+
+const Observacoes = styled.Text`
+  padding: 14px ${theme.spacing.lg}px;
+  background-color: ${theme.colors.surface};
+  border-width: 1px;
+  border-color: ${theme.colors.divider};
+  border-radius: 16px;
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  line-height: 21px;
+  color: ${theme.colors.textStrong};
+`;
+
+/* ─── Folhas (registrar pagamento, trancar) ───────────────────────────── */
+
+const Fundo = styled.View`
+  flex: 1;
+  background-color: rgba(0, 0, 0, 0.62);
+  justify-content: flex-end;
+`;
+
+const Folha = styled.View`
+  max-height: 92%;
+  background-color: ${theme.colors.surface};
+  border-top-width: 1px;
+  border-top-color: ${theme.colors.border};
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+`;
+
+const Alca = styled.View`
+  align-self: center;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background-color: #3A3F45;
+`;
+
+const FolhaTitulo = styled.Text`
+  font-family: ${theme.fonts.display};
+  font-size: 22px;
+  color: ${theme.colors.text};
+`;
+
+const FolhaTexto = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  line-height: 21px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const BotaoFecharFolha = styled(TouchableOpacity)`
+  width: ${theme.touch}px;
+  height: ${theme.touch}px;
+  border-radius: 22px;
+  background-color: ${theme.colors.elevated};
+  align-items: center;
+  justify-content: center;
+`;
+
+const ChipMes = styled(TouchableOpacity)<{ bg: string; bd: string }>`
+  min-height: ${theme.touch}px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${({ bd }) => bd};
+  background-color: ${({ bg }) => bg};
+  justify-content: center;
+`;
+
+const ChipMesTexto = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.semibold};
+  font-size: 14px;
+  color: ${({ cor }) => cor};
+`;
+
+const CaixaAdiantado = styled.View`
+  padding: 14px;
+  border-radius: 16px;
+  background-color: ${theme.colors.elevated};
+  gap: ${theme.spacing.md}px;
+`;
+
+const OpcaoMeses = styled(TouchableOpacity)<{ ativo: boolean }>`
+  min-height: ${theme.touch}px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${({ ativo }) => (ativo ? theme.colors.primary : theme.colors.border)};
+  background-color: ${({ ativo }) => (ativo ? theme.colors.primary : theme.colors.surface)};
+  align-items: center;
+  justify-content: center;
+`;
+
+const OpcaoMesesTexto = styled.Text<{ ativo: boolean }>`
+  font-family: ${({ ativo }) => (ativo ? theme.fonts.bold : theme.fonts.medium)};
+  font-size: 14px;
+  color: ${({ ativo }) => (ativo ? theme.colors.onPrimary : theme.colors.text)};
+`;
+
+const Total = styled.Text`
+  font-family: ${theme.fonts.displayHeavy};
+  font-size: 26px;
+  color: ${theme.colors.text};
+`;
+
+const BotaoFolha = styled(TouchableOpacity)<{ tipo: 'primario' | 'contorno'; disabled?: boolean }>`
+  min-height: 56px;
+  border-radius: 16px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${({ tipo }) => (tipo === 'primario' ? theme.colors.primary : 'transparent')};
+  border-width: ${({ tipo }) => (tipo === 'contorno' ? 1 : 0)}px;
+  border-color: ${theme.colors.border};
+  opacity: ${({ disabled }) => (disabled ? 0.6 : 1)};
+`;
+
+const BotaoFolhaTexto = styled.Text<{ tipo: 'primario' | 'contorno' }>`
+  font-family: ${({ tipo }) => (tipo === 'primario' ? theme.fonts.bold : theme.fonts.semibold)};
+  font-size: ${theme.fontSize.md}px;
+  color: ${({ tipo }) => (tipo === 'primario' ? theme.colors.onPrimary : theme.colors.text)};
+`;
+
+const campoFolha = { backgroundColor: theme.colors.elevated };
 
 const formatMonthYear = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -217,6 +440,7 @@ const getCurrentMonthYear = () => {
 export default function ClientDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [client, setClient] = useState<any>(null);
     const [planName, setPlanName] = useState('');
     const [planPrice, setPlanPrice] = useState(0);
@@ -275,7 +499,7 @@ export default function ClientDetailsScreen() {
             }
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar os detalhes do cliente.');
+            Alert.alert('Erro', 'Não foi possível carregar a ficha do aluno.');
             router.back();
         } finally {
             setLoading(false);
@@ -327,7 +551,7 @@ export default function ClientDetailsScreen() {
     const handleDelete = () => {
         Alert.alert(
             'Confirmar Exclusão',
-            'Deseja realmente excluir este cliente?',
+            'Deseja realmente excluir este aluno?',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -711,7 +935,7 @@ export default function ClientDetailsScreen() {
     const handleUnlockSubscription = async () => {
         Alert.alert(
             'Destrancar Mensalidade',
-            'Deseja reativar a mensalidade deste cliente?',
+            'Deseja reativar a mensalidade deste aluno?',
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -740,7 +964,7 @@ export default function ClientDetailsScreen() {
 
     const handleWhatsApp = () => {
         if (!client.phone) {
-            Alert.alert('Erro', 'Cliente sem telefone cadastrado.');
+            Alert.alert('Erro', 'Aluno sem telefone cadastrado.');
             return;
         }
 
@@ -754,19 +978,23 @@ export default function ClientDetailsScreen() {
         });
     };
 
+
     if (loading) {
         return (
-            <PageContainer>
-                <DetailHeader>
-                    <DetailTitle>Carregando...</DetailTitle>
-                </DetailHeader>
-                <View style={{ padding: 16 }}>
+            <Container style={{ paddingTop: insets.top + theme.spacing.sm }}>
+                <Stack.Screen options={{ headerShown: false }} />
+                <Nav style={{ paddingHorizontal: 10 }}>
+                    <BotaoIcone onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Voltar para Alunos">
+                        <Icon name="back" size={22} color={theme.colors.text} strokeWidth={2.2} />
+                    </BotaoIcone>
+                </Nav>
+                <View style={{ padding: theme.spacing.xl }}>
                     <SkeletonLoader variant="card" />
                     <View style={{ height: 16 }} />
                     <SkeletonLoader variant="text" />
                     <SkeletonLoader variant="text" />
                 </View>
-            </PageContainer>
+            </Container>
         );
     }
 
@@ -775,218 +1003,293 @@ export default function ClientDetailsScreen() {
     const isOverdue = client.payment_status !== 'paid' && client.payment_status !== 'locked';
     const isLocked = client.subscription_locked;
 
+    // Grade do ano corrente, derivada do que a tela já tem: competências
+    // pagas (payments) e em aberto (overdueMonths, da regra de overdue.ts).
+    // Mês sem nenhum dos dois não é dívida — fica neutro.
+    const anoAtual = new Date().getFullYear();
+    const competenciasPagas = new Set(payments.map(p => p.reference_month).filter(Boolean));
+    const valorAberto = planPrice ? `R$ ${Number(planPrice).toLocaleString('pt-BR')}` : '!';
+    const grade = NOMES_MESES.map((rotulo, i) => {
+        const chave = `${String(i + 1).padStart(2, '0')}/${anoAtual}`;
+        if (competenciasPagas.has(chave)) {
+            return { rotulo, bg: theme.colors.successSoft, bd: 'transparent', cor: theme.colors.success, marca: '✓', palavra: 'pago' };
+        }
+        if (overdueMonths.includes(chave)) {
+            return { rotulo, bg: theme.colors.dangerSoft, bd: 'transparent', cor: theme.colors.danger, marca: valorAberto, palavra: 'em aberto' };
+        }
+        return { rotulo, bg: 'transparent', bd: '#3A3F45', cor: theme.colors.textMuted, marca: '·', palavra: 'sem lançamento' };
+    });
+
+    const statusCor = client.payment_status === 'paid' ? theme.colors.success :
+        client.payment_status === 'locked' ? theme.colors.primary :
+            theme.colors.danger;
+    const statusTexto = client.payment_status === 'paid' ? 'Em dia' :
+        client.payment_status === 'locked' ? 'Trancado' : 'Pendente';
+
+    // Chips do mês de referência: os em atraso e o mês corrente. Se o mês
+    // corrente já é um dos atrasados, aparece uma vez só.
+    const mesCorrente = getCurrentMonthYear();
+    const chipsMes = overdueMonths.length > 0
+        ? [
+            ...overdueMonths.map(m => ({ mes: m, atrasado: true })),
+            ...(overdueMonths.includes(mesCorrente) ? [] : [{ mes: mesCorrente, atrasado: false }]),
+        ]
+        : [];
+
+    const dados: { rotulo: string; valor?: string | null }[] = [
+        { rotulo: 'Nome completo', valor: client.name },
+        { rotulo: 'E-mail', valor: client.email },
+        { rotulo: 'CPF', valor: client.cpf },
+        { rotulo: 'Telefone', valor: client.phone },
+    ];
+
     return (
         <Container>
             <Stack.Screen options={{ headerShown: false }} />
-            <DetailHeader>
-                <Row style={{ justifyContent: 'flex-start' }}>
-                    <BackButton onPress={() => router.back()}>
-                        <FontAwesome name="arrow-left" size={24} color={theme.colors.text} />
-                    </BackButton>
-                    <DetailTitle>Detalhes do Cliente</DetailTitle>
-                </Row>
-                <Row>
-                    <TouchableOpacity onPress={() => router.push({ pathname: '/manage-client', params: { id: client.id } })} style={{ marginRight: 16 }}>
-                        <FontAwesome name="edit" size={24} color={theme.colors.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleDelete}>
-                        <FontAwesome name="trash" size={24} color={theme.colors.danger} />
-                    </TouchableOpacity>
-                </Row>
-            </DetailHeader>
-
-            <ContentContainer>
-                <PhotoContainer onPress={pickImage} disabled={uploading}>
-                    {client.photo_url ? (
-                        <ClientPhoto source={{ uri: client.photo_url }} />
-                    ) : (
-                        <FontAwesome name="camera" size={40} color={theme.colors.textSecondary} />
-                    )}
-                    {uploading && <ActivityIndicator style={{ position: 'absolute' }} color={theme.colors.primary} />}
-                </PhotoContainer>
-
-                {isLocked && (
-                    <LockedBadge>
-                        <FontAwesome name="lock" size={16} color={theme.colors.primary} />
-                        <LockedBadgeText>
-                            Mensalidade trancada até {client.locked_until ? new Date(client.locked_until + 'T00:00:00').toLocaleDateString('pt-BR') : 'indefinido'}
-                        </LockedBadgeText>
-                    </LockedBadge>
-                )}
-
-                {!isLocked && overdueMonthsCount > 0 && (
-                    <OverdueBadge>
-                        <FontAwesome name="exclamation-circle" size={16} color={theme.colors.danger} />
-                        <OverdueBadgeText>
-                            {overdueMonthsCount === 1
-                                ? '1 mensalidade em atraso'
-                                : `${overdueMonthsCount} mensalidades em atraso`}
-                        </OverdueBadgeText>
-                        <OverdueCount>
-                            <OverdueCountText>{overdueMonthsCount}</OverdueCountText>
-                        </OverdueCount>
-                    </OverdueBadge>
-                )}
-
-                <Section>
-                    <DetailLabel>Nome Completo</DetailLabel>
-                    <DetailValue>{client.name}</DetailValue>
-
-                    <DetailLabel>Email</DetailLabel>
-                    <DetailValue>{client.email || 'Não informado'}</DetailValue>
-
-                    <DetailLabel>CPF</DetailLabel>
-                    <DetailValue>{client.cpf || 'Não informado'}</DetailValue>
-
-                    <DetailLabel>Telefone</DetailLabel>
-                    <DetailValue>{client.phone || 'Não informado'}</DetailValue>
-                </Section>
-
-                <Section>
-                    <DetailLabel>Plano Atual</DetailLabel>
-                    <DetailValue>{planName || 'Sem plano'}</DetailValue>
-
-                    <DetailLabel>Dia de Vencimento</DetailLabel>
-                    <DetailValue>{client.due_day ? `Dia ${client.due_day}` : 'Não definido'}</DetailValue>
-
-                    <DetailLabel>Status do Pagamento</DetailLabel>
-                    <DetailValue style={{
-                        color: client.payment_status === 'paid' ? theme.colors.success :
-                            client.payment_status === 'locked' ? theme.colors.primary :
-                                theme.colors.danger
-                    }}>
-                        {client.payment_status === 'paid' ? 'Em dia' :
-                            client.payment_status === 'locked' ? '🔒 Trancado' : 'Pendente'}
-                    </DetailValue>
-
-                    <DetailLabel>Último Pagamento</DetailLabel>
-                    <DetailValue>{client.last_payment_date ? new Date(client.last_payment_date).toLocaleDateString('pt-BR') : 'Nunca'}</DetailValue>
-                </Section>
-
-                <Section>
-                    <DetailTitle style={{ fontSize: 18, marginBottom: 10 }}>Ações</DetailTitle>
-                    {/* C3: os dois botões antigos abriam o MESMO modal, só com
-                        prefill diferente. Agora é um só, e o caso comum (C2)
-                        nem abre formulário. */}
-                    <ActionButton onPress={lancarRapido} disabled={registeringPayment}>
-                        <FontAwesome name="money" size={20} color={theme.colors.background} />
-                        <ActionButtonText>
-                            {registeringPayment
-                                ? 'Registrando...'
-                                : planPrice
-                                    ? `Registrar ${formatCurrency(planPrice)} · ${mesSugerido}`
-                                    : 'Registrar Pagamento'}
-                        </ActionButtonText>
-                    </ActionButton>
-
-                    <TouchableOpacity
-                        onPress={openPaymentModal}
-                        accessibilityRole="button"
-                        accessibilityLabel="Ajustar valor, data ou mês do pagamento"
-                        style={{ alignSelf: 'center', paddingVertical: 10, marginBottom: 10 }}
-                    >
-                        <DetailLabel style={{ marginBottom: 0, color: theme.colors.primary }}>
-                            Ajustar valor, data ou mês
-                        </DetailLabel>
-                    </TouchableOpacity>
-
-                    {isLocked ? (
-                        <ActionButton bgColor={theme.colors.success} onPress={handleUnlockSubscription}>
-                            <FontAwesome name="unlock" size={20} color={theme.colors.background} />
-                            <ActionButtonText>Destrancar Mensalidade</ActionButtonText>
-                        </ActionButton>
-                    ) : (
-                        <ActionButton bgColor={theme.colors.textSecondary} onPress={() => {
-                            setLockUntilDate('');
-                            setShowLockModal(true);
-                        }}>
-                            <FontAwesome name="lock" size={20} color={theme.colors.background} />
-                            <ActionButtonText>Trancar Mensalidade</ActionButtonText>
-                        </ActionButton>
-                    )}
-
-                    {isOverdue && (
-                        <ActionButton
-                            onPress={handleWhatsApp}
-                            bgColor="#25D366"
+            <ScrollView contentContainerStyle={{ paddingTop: insets.top + theme.spacing.sm }}>
+                <Nav style={{ paddingHorizontal: 10, marginBottom: 18 }}>
+                    <BotaoIcone onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Voltar para Alunos">
+                        <Icon name="back" size={22} color={theme.colors.text} strokeWidth={2.2} />
+                    </BotaoIcone>
+                    <View style={{ flexDirection: 'row', gap: 4 }}>
+                        <BotaoEditar
+                            onPress={() => router.push({ pathname: '/manage-client', params: { id: client.id } })}
+                            accessibilityRole="button"
+                            accessibilityLabel="Editar cadastro"
                         >
-                            <FontAwesome name="whatsapp" size={20} color={theme.colors.background} />
-                            <ActionButtonText style={{ color: theme.colors.background }}>Cobrar Mensalidade</ActionButtonText>
-                        </ActionButton>
-                    )}
-                </Section>
+                            <BotaoEditarTexto>Editar</BotaoEditarTexto>
+                        </BotaoEditar>
+                        <BotaoIcone onPress={handleDelete} accessibilityRole="button" accessibilityLabel="Excluir aluno">
+                            <IconeAluno name="lixeira" size={22} color={theme.colors.danger} />
+                        </BotaoIcone>
+                    </View>
+                </Nav>
 
-                <Section>
-                    <DetailTitle style={{ fontSize: 18, marginBottom: 10 }}>Histórico de Pagamentos</DetailTitle>
-                    {payments.length === 0 ? (
-                        <DetailValue>Nenhum pagamento registrado.</DetailValue>
-                    ) : (
-                        payments.map((p, index) => (
-                            <View key={p.id || index} style={{
-                                borderBottomWidth: index < payments.length - 1 ? 1 : 0,
-                                borderBottomColor: theme.colors.border,
-                                paddingVertical: 10
-                            }}>
-                                <Row>
-                                    <DetailValue>{new Date(p.payment_date).toLocaleDateString('pt-BR')}</DetailValue>
-                                    <DetailValue style={{ fontWeight: 'bold' }}>{formatCurrency(p.amount || 0)}</DetailValue>
-                                </Row>
-                                <Row style={{ justifyContent: 'space-between' }}>
-                                    <DetailLabel>{p.plan_name || 'Pagamento avulso'}</DetailLabel>
-                                    {p.reference_month && (
-                                        <DetailLabel style={{ color: theme.colors.primary }}>Ref: {p.reference_month}</DetailLabel>
-                                    )}
-                                </Row>
-                                {p.discount > 0 && (
-                                    <DetailLabel style={{ color: theme.colors.success }}>Desconto: {formatCurrency(p.discount || 0)}</DetailLabel>
-                                )}
-                                {p.is_advance && (
-                                    <DetailLabel style={{ color: theme.colors.primary }}>⚡ Adiantado</DetailLabel>
-                                )}
+                <Conteudo>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                        <Foto
+                            onPress={pickImage}
+                            disabled={uploading}
+                            accessibilityRole="button"
+                            accessibilityLabel="Trocar foto do aluno"
+                        >
+                            {client.photo_url
+                                ? <FotoImagem source={{ uri: client.photo_url }} />
+                                : <FotoIniciais>{iniciaisDe(client.name)}</FotoIniciais>}
+                            {uploading && <ActivityIndicator style={{ position: 'absolute' }} color={theme.colors.primary} />}
+                            <SeloCamera>
+                                <IconeAluno name="camera" size={14} color={theme.colors.onPrimary} />
+                            </SeloCamera>
+                        </Foto>
+                        <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+                            <NomeAluno numberOfLines={2}>{client.name}</NomeAluno>
+                            {isLocked && (
+                                <Pill
+                                    tone="soon"
+                                    label={`Mensalidade trancada até ${client.locked_until ? new Date(client.locked_until + 'T00:00:00').toLocaleDateString('pt-BR') : 'indefinido'}`}
+                                />
+                            )}
+                            {!isLocked && overdueMonthsCount > 0 && (
+                                <Pill
+                                    tone="late"
+                                    label={overdueMonthsCount === 1
+                                        ? '1 mensalidade em atraso'
+                                        : `${overdueMonthsCount} mensalidades em atraso`}
+                                />
+                            )}
+                        </View>
+                    </View>
 
-                                <Row style={{ justifyContent: 'flex-end', gap: 18, marginTop: 6 }}>
-                                    <TouchableOpacity
-                                        onPress={() => openEditPaymentModal(p)}
-                                        disabled={deletingPaymentId === p.id}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Editar pagamento de ${formatCurrency(p.amount || 0)}`}
-                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                                    >
-                                        <FontAwesome name="pencil" size={14} color={theme.colors.textSecondary} />
-                                        <DetailLabel style={{ marginBottom: 0 }}>Editar</DetailLabel>
-                                    </TouchableOpacity>
+                    <View style={{ gap: 10 }}>
+                        {/* C3: os dois botões antigos abriam o MESMO modal, só com
+                            prefill diferente. Agora é um só, e o caso comum (C2)
+                            nem abre formulário. */}
+                        <BotaoPrincipal onPress={lancarRapido} disabled={registeringPayment} accessibilityRole="button">
+                            {registeringPayment
+                                ? <ActivityIndicator color={theme.colors.onPrimary} />
+                                : <Icon name="plus" size={20} color={theme.colors.onPrimary} strokeWidth={2.4} />}
+                            <BotaoPrincipalTexto>
+                                {registeringPayment
+                                    ? 'Registrando...'
+                                    : planPrice
+                                        ? `Registrar ${formatCurrency(planPrice)} · ${mesSugerido}`
+                                        : 'Registrar pagamento'}
+                            </BotaoPrincipalTexto>
+                        </BotaoPrincipal>
 
-                                    <TouchableOpacity
-                                        onPress={() => handleDeletePayment(p)}
-                                        disabled={deletingPaymentId === p.id}
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Excluir pagamento de ${formatCurrency(p.amount || 0)}`}
-                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                                    >
-                                        {deletingPaymentId === p.id ? (
-                                            <ActivityIndicator size="small" color={theme.colors.danger} />
-                                        ) : (
-                                            <>
-                                                <FontAwesome name="trash-o" size={15} color={theme.colors.danger} />
-                                                <DetailLabel style={{ marginBottom: 0, color: theme.colors.danger }}>Excluir</DetailLabel>
-                                            </>
-                                        )}
-                                    </TouchableOpacity>
-                                </Row>
+                        <LinkAjuste
+                            onPress={openPaymentModal}
+                            accessibilityRole="button"
+                            accessibilityLabel="Ajustar valor, data ou mês do pagamento"
+                        >
+                            <LinkAjusteTexto>Ajustar valor, data ou mês</LinkAjusteTexto>
+                        </LinkAjuste>
+
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            {isOverdue && (
+                                <BotaoSecundario onPress={handleWhatsApp} accessibilityRole="button" accessibilityLabel="Cobrar mensalidade no WhatsApp">
+                                    <FontAwesome name="whatsapp" size={18} color={theme.colors.whatsapp} />
+                                    <BotaoSecundarioTexto cor={theme.colors.success}>Cobrar</BotaoSecundarioTexto>
+                                </BotaoSecundario>
+                            )}
+                            {isLocked ? (
+                                <BotaoSecundario onPress={handleUnlockSubscription} accessibilityRole="button" accessibilityLabel="Destrancar mensalidade">
+                                    <IconeAluno name="cadeado-aberto" size={18} color={theme.colors.success} />
+                                    <BotaoSecundarioTexto cor={theme.colors.success}>Destrancar</BotaoSecundarioTexto>
+                                </BotaoSecundario>
+                            ) : (
+                                <BotaoSecundario
+                                    onPress={() => {
+                                        setLockUntilDate('');
+                                        setShowLockModal(true);
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Trancar mensalidade"
+                                >
+                                    <Icon name="lock" size={18} color={theme.colors.textStrong} />
+                                    <BotaoSecundarioTexto cor={theme.colors.textStrong}>Trancar</BotaoSecundarioTexto>
+                                </BotaoSecundario>
+                            )}
+                        </View>
+                    </View>
+
+                    <View style={{ gap: 10 }} accessibilityLabel="Situação">
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <Quadro>
+                                <QuadroRotulo>Plano atual</QuadroRotulo>
+                                <QuadroValor numberOfLines={2}>{planName || 'Sem plano'}</QuadroValor>
+                                {planPrice ? <QuadroApoio>{formatCurrency(planPrice)}/mês</QuadroApoio> : null}
+                            </Quadro>
+                            <Quadro>
+                                <QuadroRotulo>Vencimento</QuadroRotulo>
+                                <QuadroValor>{client.due_day ? `Dia ${client.due_day}` : 'Não definido'}</QuadroValor>
+                            </Quadro>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <Quadro>
+                                <QuadroRotulo>Status do pagamento</QuadroRotulo>
+                                <QuadroValor cor={statusCor}>{statusTexto}</QuadroValor>
+                            </Quadro>
+                            <Quadro>
+                                <QuadroRotulo>Último pagamento</QuadroRotulo>
+                                <QuadroValor>{client.last_payment_date ? new Date(client.last_payment_date).toLocaleDateString('pt-BR') : 'Nunca'}</QuadroValor>
+                            </Quadro>
+                        </View>
+                    </View>
+
+                    <Cartao style={{ padding: theme.spacing.lg, gap: 14 }}>
+                        <TituloCartao>Mensalidades em {anoAtual}</TituloCartao>
+                        <View style={{ gap: 6 }}>
+                            {[0, 6].map(inicio => (
+                                <View key={inicio} style={{ flexDirection: 'row', gap: 6 }}>
+                                    {grade.slice(inicio, inicio + 6).map(m => (
+                                        <Mes
+                                            key={m.rotulo}
+                                            bg={m.bg}
+                                            bd={m.bd}
+                                            accessible
+                                            accessibilityLabel={`${m.rotulo}: ${m.palavra}`}
+                                        >
+                                            <MesRotulo cor={m.cor}>{m.rotulo}</MesRotulo>
+                                            <MesMarca cor={m.cor} numberOfLines={1} adjustsFontSizeToFit>{m.marca}</MesMarca>
+                                        </Mes>
+                                    ))}
+                                </View>
+                            ))}
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 14, flexWrap: 'wrap' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Amostra bg={theme.colors.success} /><Legenda>Pago</Legenda>
                             </View>
-                        ))
-                    )}
-                </Section>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Amostra bg={theme.colors.danger} /><Legenda>Em aberto</Legenda>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Amostra bg="transparent" bd="#3A3F45" /><Legenda>Sem lançamento</Legenda>
+                            </View>
+                        </View>
+                    </Cartao>
 
-                {client.notes && (
-                    <Section>
-                        <DetailLabel>Observações</DetailLabel>
-                        <DetailValue>{client.notes}</DetailValue>
-                    </Section>
-                )}
-            </ContentContainer>
+                    <View style={{ gap: theme.spacing.sm }}>
+                        <SectionLabel>Histórico de pagamentos</SectionLabel>
+                        {payments.length === 0 ? (
+                            <Vazio>Nenhum pagamento registrado.</Vazio>
+                        ) : (
+                            <Cartao style={{ paddingHorizontal: theme.spacing.lg }}>
+                                {payments.map((p, index) => (
+                                    <View key={p.id || index} style={{
+                                        gap: 6,
+                                        paddingTop: 14,
+                                        paddingBottom: 4,
+                                        borderTopWidth: index > 0 ? 1 : 0,
+                                        borderTopColor: theme.colors.divider,
+                                    }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                            <TextoForte>{new Date(p.payment_date).toLocaleDateString('pt-BR')}</TextoForte>
+                                            <TextoForte bold>{formatCurrency(p.amount || 0)}</TextoForte>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                                            <TextoApoio style={{ flexShrink: 1 }} numberOfLines={1}>{p.plan_name || 'Pagamento avulso'}</TextoApoio>
+                                            {p.reference_month ? (
+                                                <TextoApoio cor={theme.colors.primary} forte>Ref. {p.reference_month}</TextoApoio>
+                                            ) : null}
+                                        </View>
+                                        {(p.discount > 0 || p.is_advance) ? (
+                                            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                                                {p.discount > 0 ? <Pill tone="ok" label={`Desconto ${formatCurrency(p.discount || 0)}`} /> : null}
+                                                {p.is_advance ? <Pill tone="soon" label="Adiantado" /> : null}
+                                            </View>
+                                        ) : null}
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 4 }}>
+                                            <AcaoLinha
+                                                onPress={() => openEditPaymentModal(p)}
+                                                disabled={deletingPaymentId === p.id}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Editar pagamento de ${formatCurrency(p.amount || 0)}`}
+                                            >
+                                                <AcaoLinhaTexto cor={theme.colors.textStrong}>Editar</AcaoLinhaTexto>
+                                            </AcaoLinha>
+                                            <AcaoLinha
+                                                onPress={() => handleDeletePayment(p)}
+                                                disabled={deletingPaymentId === p.id}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Excluir pagamento de ${formatCurrency(p.amount || 0)}`}
+                                            >
+                                                {deletingPaymentId === p.id
+                                                    ? <ActivityIndicator size="small" color={theme.colors.danger} />
+                                                    : <AcaoLinhaTexto cor={theme.colors.danger}>Excluir</AcaoLinhaTexto>}
+                                            </AcaoLinha>
+                                        </View>
+                                    </View>
+                                ))}
+                            </Cartao>
+                        )}
+                    </View>
+
+                    <View style={{ gap: theme.spacing.sm }}>
+                        <SectionLabel>Dados pessoais</SectionLabel>
+                        <Cartao style={{ paddingHorizontal: theme.spacing.lg }}>
+                            {dados.map((d, i) => (
+                                <View key={d.rotulo}>
+                                    {i > 0 && <Divider />}
+                                    <DadoLinha>
+                                        <DadoRotulo>{d.rotulo}</DadoRotulo>
+                                        <DadoValor vazio={!d.valor}>{d.valor || 'Não informado'}</DadoValor>
+                                    </DadoLinha>
+                                </View>
+                            ))}
+                        </Cartao>
+                    </View>
+
+                    {client.notes ? (
+                        <View style={{ gap: theme.spacing.sm }}>
+                            <SectionLabel>Observações</SectionLabel>
+                            <Observacoes>{client.notes}</Observacoes>
+                        </View>
+                    ) : null}
+                </Conteudo>
+            </ScrollView>
 
             {/* Payment Modal */}
             <Modal
@@ -999,166 +1302,179 @@ export default function ClientDetailsScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
                 >
-                    {/* Tocar fora do cartão fecha o teclado. Os toques dentro
+                    {/* Tocar fora da folha fecha o teclado. Os toques dentro
                         são tratados pelos próprios campos e botões. */}
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                    <ModalOverlay>
-                        <ModalContent>
+                    <Fundo>
+                        <Folha>
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                                 keyboardShouldPersistTaps="handled"
                                 automaticallyAdjustKeyboardInsets
-                                contentContainerStyle={{ paddingBottom: 12 }}
+                                contentContainerStyle={{
+                                    paddingTop: 10,
+                                    paddingHorizontal: theme.spacing.xl,
+                                    paddingBottom: insets.bottom + 28,
+                                    gap: 18,
+                                }}
                             >
-                                <ModalTitle>{editingPayment ? 'Editar Pagamento' : 'Registrar Pagamento'}</ModalTitle>
-
-                                <DetailLabel>Valor (R$)</DetailLabel>
-                                <StyledInput
-                                    value={paymentAmount}
-                                    onChangeText={setPaymentAmount}
-                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
-                                    keyboardType="numeric"
-                                    placeholder="0.00"
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                />
-
-                                <DetailLabel>Desconto (R$)</DetailLabel>
-                                <StyledInput
-                                    value={paymentDiscount}
-                                    onChangeText={setPaymentDiscount}
-                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
-                                    keyboardType="numeric"
-                                    placeholder="0.00"
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                />
-
-                                <DetailLabel>Mês de Referência (MM/AAAA)</DetailLabel>
-                                {overdueMonths.length > 0 && (
-                                    <View style={{ marginBottom: 10 }}>
-                                        <DetailLabel style={{ fontSize: 12, opacity: 0.7 }}>Selecionar mês em atraso:</DetailLabel>
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 5 }}>
-                                            {overdueMonths.map(month => (
-                                                <TouchableOpacity
-                                                    key={month}
-                                                    onPress={() => setReferenceMonth(month)}
-                                                    style={{
-                                                        paddingHorizontal: 12,
-                                                        paddingVertical: 6,
-                                                        borderRadius: 15,
-                                                        backgroundColor: referenceMonth === month ? theme.colors.danger : theme.colors.border,
-                                                        marginRight: 8,
-                                                        borderWidth: 1,
-                                                        borderColor: referenceMonth === month ? theme.colors.danger : theme.colors.border
-                                                    }}
-                                                >
-                                                    <DetailValue style={{
-                                                        fontSize: 12,
-                                                        color: referenceMonth === month ? '#fff' : theme.colors.text,
-                                                        fontWeight: referenceMonth === month ? 'bold' : 'normal',
-                                                        marginBottom: 0
-                                                    }}>{month}</DetailValue>
-                                                </TouchableOpacity>
-                                            ))}
-                                            <TouchableOpacity
-                                                onPress={() => setReferenceMonth(getCurrentMonthYear())}
-                                                style={{
-                                                    paddingHorizontal: 12,
-                                                    paddingVertical: 6,
-                                                    borderRadius: 15,
-                                                    backgroundColor: referenceMonth === getCurrentMonthYear() ? theme.colors.primary : theme.colors.border,
-                                                    marginRight: 8,
-                                                    borderWidth: 1,
-                                                    borderColor: referenceMonth === getCurrentMonthYear() ? theme.colors.primary : theme.colors.border
-                                                }}
-                                            >
-                                                <DetailValue style={{
-                                                    fontSize: 12,
-                                                    color: referenceMonth === getCurrentMonthYear() ? '#fff' : theme.colors.text,
-                                                    fontWeight: referenceMonth === getCurrentMonthYear() ? 'bold' : 'normal',
-                                                    marginBottom: 0
-                                                }}>{getCurrentMonthYear()} (Atual)</DetailValue>
-                                            </TouchableOpacity>
-                                        </ScrollView>
+                                <Alca />
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                                    <View style={{ flex: 1, gap: 2 }}>
+                                        <FolhaTitulo accessibilityRole="header">{editingPayment ? 'Editar pagamento' : 'Registrar pagamento'}</FolhaTitulo>
+                                        <TextoApoio numberOfLines={1}>{client.name}{planName ? ` · ${planName}` : ''}</TextoApoio>
                                     </View>
-                                )}
-                                <StyledInput
-                                    value={referenceMonth}
-                                    onChangeText={t => setReferenceMonth(formatMonthYear(t))}
-                                    placeholder="MM/AAAA"
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                    inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
-                                    keyboardType="number-pad"
-                                    maxLength={7}
-                                />
+                                    <BotaoFecharFolha onPress={closePaymentModal} accessibilityRole="button" accessibilityLabel="Fechar">
+                                        <Icon name="close" size={20} color={theme.colors.textStrong} />
+                                    </BotaoFecharFolha>
+                                </View>
 
-                                <DetailLabel>Data do Pagamento (DD/MM/AAAA)</DetailLabel>
-                                <DateField
-                                    value={paymentDate}
-                                    onChange={setPaymentDate}
-                                    placeholder="Hoje"
-                                    maximumDate={new Date()}
-                                    accessibilityLabel="Data do pagamento"
-                                />
+                                <View style={{ gap: theme.spacing.sm }}>
+                                    <Label style={{ marginBottom: 0 }}>Mês de referência</Label>
+                                    {chipsMes.length > 0 && (
+                                        <>
+                                            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                                                {chipsMes.map(({ mes, atrasado }) => {
+                                                    const ativo = referenceMonth === mes;
+                                                    return (
+                                                        <ChipMes
+                                                            key={mes}
+                                                            onPress={() => setReferenceMonth(mes)}
+                                                            bg={ativo ? theme.colors.text : atrasado ? 'rgba(248,113,113,0.12)' : 'transparent'}
+                                                            bd={ativo ? theme.colors.text : atrasado ? 'transparent' : theme.colors.border}
+                                                            accessibilityRole="button"
+                                                            accessibilityState={{ selected: ativo }}
+                                                        >
+                                                            <ChipMesTexto cor={ativo ? theme.colors.onPrimary : atrasado ? theme.colors.danger : theme.colors.textStrong}>
+                                                                {mes === mesCorrente ? `${mes} · mês atual` : mes}
+                                                            </ChipMesTexto>
+                                                        </ChipMes>
+                                                    );
+                                                })}
+                                            </View>
+                                            <TextoApoio style={{ fontSize: 12 }}>Selecione um mês em atraso ou digite outro.</TextoApoio>
+                                        </>
+                                    )}
+                                    <Input
+                                        value={referenceMonth}
+                                        onChangeText={t => setReferenceMonth(formatMonthYear(t))}
+                                        placeholder="MM/AAAA"
+                                        inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
+                                        keyboardType="number-pad"
+                                        maxLength={7}
+                                        accessibilityLabel="Mês de referência (MM/AAAA)"
+                                        style={[campoFolha, { minHeight: 48 }]}
+                                    />
+                                </View>
+
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ flex: 1, minWidth: 0, gap: theme.spacing.sm }}>
+                                        <Label style={{ marginBottom: 0 }}>Valor (R$)</Label>
+                                        <Input
+                                            value={paymentAmount}
+                                            onChangeText={setPaymentAmount}
+                                            inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
+                                            keyboardType="numeric"
+                                            placeholder="0.00"
+                                            accessibilityLabel="Valor em reais"
+                                            style={[campoFolha, { paddingHorizontal: 12 }]}
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0, gap: theme.spacing.sm }}>
+                                        <Label style={{ marginBottom: 0 }}>Desconto (R$)</Label>
+                                        <Input
+                                            value={paymentDiscount}
+                                            onChangeText={setPaymentDiscount}
+                                            inputAccessoryViewID={Platform.OS === 'ios' ? ACESSORIO_TECLADO : undefined}
+                                            keyboardType="numeric"
+                                            placeholder="0.00"
+                                            accessibilityLabel="Desconto em reais"
+                                            style={[campoFolha, { paddingHorizontal: 12 }]}
+                                        />
+                                    </View>
+                                </View>
+
+                                <View style={{ gap: theme.spacing.sm }}>
+                                    <Label style={{ marginBottom: 0 }}>Data do pagamento</Label>
+                                    <DateField
+                                        value={paymentDate}
+                                        onChange={setPaymentDate}
+                                        placeholder="Hoje"
+                                        maximumDate={new Date()}
+                                        accessibilityLabel="Data do pagamento"
+                                    />
+                                </View>
 
                                 {!editingPayment && (
-                                <SwitchRow>
-                                    <SwitchLabel>Pagamento adiantado?</SwitchLabel>
-                                    <Switch
-                                        value={isAdvancePayment}
-                                        onValueChange={setIsAdvancePayment}
-                                        trackColor={{ false: theme.colors.border, true: theme.colors.primary + '80' }}
-                                        thumbColor={isAdvancePayment ? theme.colors.primary : '#f4f3f4'}
-                                    />
-                                </SwitchRow>
-                                )}
-
-                                {!editingPayment && isAdvancePayment && (
-                                    <View style={{ marginBottom: 15 }}>
-                                        <DetailLabel>Quantos meses?</DetailLabel>
-                                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                            {[2, 3].map(num => (
-                                                <TouchableOpacity
-                                                    key={num}
-                                                    onPress={() => setAdvanceMonths(num)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: 10,
-                                                        borderRadius: 8,
-                                                        backgroundColor: advanceMonths === num ? theme.colors.primary : theme.colors.inputBackground,
-                                                        alignItems: 'center',
-                                                    }}
-                                                >
-                                                    <SwitchLabel style={{
-                                                        color: advanceMonths === num ? theme.colors.background : theme.colors.text,
-                                                        fontWeight: advanceMonths === num ? 'bold' : 'normal'
-                                                    }}>
-                                                        {num} meses
-                                                    </SwitchLabel>
-                                                </TouchableOpacity>
-                                            ))}
+                                    <CaixaAdiantado>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, minHeight: 44 }}>
+                                            <View style={{ flex: 1, gap: 2 }}>
+                                                <TextoForte>Pagamento adiantado</TextoForte>
+                                                <TextoApoio style={{ fontSize: 12 }}>Registra vários meses de uma vez</TextoApoio>
+                                            </View>
+                                            <Switch
+                                                value={isAdvancePayment}
+                                                onValueChange={setIsAdvancePayment}
+                                                trackColor={{ false: '#3A3F45', true: theme.colors.primary }}
+                                                thumbColor={theme.colors.text}
+                                                ios_backgroundColor="#3A3F45"
+                                                accessibilityLabel="Pagamento adiantado"
+                                            />
                                         </View>
-                                    </View>
+
+                                        {isAdvancePayment && (
+                                            <View style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                borderTopWidth: 1,
+                                                borderTopColor: theme.colors.border,
+                                                paddingTop: 12,
+                                            }}>
+                                                <TextoApoio style={{ fontSize: 14 }} cor={theme.colors.textStrong}>Quantos meses?</TextoApoio>
+                                                <View style={{ flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
+                                                    {[2, 3].map(num => (
+                                                        <OpcaoMeses
+                                                            key={num}
+                                                            ativo={advanceMonths === num}
+                                                            onPress={() => setAdvanceMonths(num)}
+                                                            accessibilityRole="radio"
+                                                            accessibilityState={{ selected: advanceMonths === num }}
+                                                        >
+                                                            <OpcaoMesesTexto ativo={advanceMonths === num}>{num} meses</OpcaoMesesTexto>
+                                                        </OpcaoMeses>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                    </CaixaAdiantado>
                                 )}
 
-                                <DiscountSummary>
-                                    Total: {formatCurrency(calculateFinalAmount())}
-                                    {isAdvancePayment ? ` (${advanceMonths}x)` : ''}
-                                    {parseFloat(paymentDiscount) > 0 ? ` (desc. R$ ${paymentDiscount})` : ''}
-                                </DiscountSummary>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                                    <View style={{ flexShrink: 1, gap: 2 }}>
+                                        <TextoApoio style={{ fontSize: 14 }}>
+                                            Total{isAdvancePayment ? ` (${advanceMonths}x)` : ''}
+                                        </TextoApoio>
+                                        {parseFloat(paymentDiscount) > 0 ? (
+                                            <TextoApoio style={{ fontSize: 12 }} cor={theme.colors.success}>desc. R$ {paymentDiscount}</TextoApoio>
+                                        ) : null}
+                                    </View>
+                                    <Total>{formatCurrency(calculateFinalAmount())}</Total>
+                                </View>
 
-                                <ModalButtons>
-                                    <ModalButton variant="cancel" onPress={closePaymentModal}>
-                                        <ModalButtonText>Cancelar</ModalButtonText>
-                                    </ModalButton>
-                                    <ModalButton variant="primary" onPress={handleRegisterPayment} disabled={registeringPayment}>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <BotaoFolha tipo="contorno" style={{ flex: 1 }} onPress={closePaymentModal} accessibilityRole="button">
+                                        <BotaoFolhaTexto tipo="contorno">Cancelar</BotaoFolhaTexto>
+                                    </BotaoFolha>
+                                    <BotaoFolha tipo="primario" style={{ flex: 2 }} onPress={handleRegisterPayment} disabled={registeringPayment} accessibilityRole="button">
                                         {registeringPayment
-                                            ? <ActivityIndicator color="#fff" />
-                                            : <ModalButtonText>{editingPayment ? 'Salvar' : 'Confirmar'}</ModalButtonText>}
-                                    </ModalButton>
-                                </ModalButtons>
+                                            ? <ActivityIndicator color={theme.colors.onPrimary} />
+                                            : <BotaoFolhaTexto tipo="primario">{editingPayment ? 'Salvar' : 'Confirmar'}</BotaoFolhaTexto>}
+                                    </BotaoFolha>
+                                </View>
                             </ScrollView>
-                        </ModalContent>
-                    </ModalOverlay>
+                        </Folha>
+                    </Fundo>
                     </TouchableWithoutFeedback>
 
                     {Platform.OS === 'ios' && (
@@ -1174,13 +1490,9 @@ export default function ClientDetailsScreen() {
                                     onPress={Keyboard.dismiss}
                                     accessibilityRole="button"
                                     accessibilityLabel="Fechar teclado"
-                                    style={{ paddingVertical: 10, paddingHorizontal: 8 }}
+                                    style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}
                                 >
-                                    <DetailValue style={{
-                                        marginBottom: 0,
-                                        color: theme.colors.primary,
-                                        fontWeight: 'bold',
-                                    }}>Concluído</DetailValue>
+                                    <BotaoEditarTexto>Concluído</BotaoEditarTexto>
                                 </TouchableOpacity>
                             </View>
                         </InputAccessoryView>
@@ -1195,32 +1507,35 @@ export default function ClientDetailsScreen() {
                 animationType="fade"
                 onRequestClose={() => setShowLockModal(false)}
             >
-                <ModalOverlay>
-                    <ModalContent>
-                        <ModalTitle>Trancar Mensalidade</ModalTitle>
-                        <DetailLabel style={{ marginBottom: 8 }}>
-                            O cliente não será cobrado durante o período de trancamento.
-                        </DetailLabel>
+                <Fundo>
+                    <Folha style={{ paddingTop: 12, paddingHorizontal: theme.spacing.xl, paddingBottom: insets.bottom + 28, gap: 16 }}>
+                        <Alca />
+                        <FolhaTitulo accessibilityRole="header">Trancar mensalidade</FolhaTitulo>
+                        <FolhaTexto>O aluno não será cobrado durante o período de trancamento.</FolhaTexto>
 
-                        <DetailLabel>Data de Retorno (DD/MM/AAAA)</DetailLabel>
-                        <DateField
-                            value={lockUntilDate}
-                            onChange={setLockUntilDate}
-                            placeholder="Selecionar data"
-                            minimumDate={new Date()}
-                            accessibilityLabel="Data de retorno"
-                        />
+                        <View style={{ gap: theme.spacing.sm }}>
+                            <Label style={{ marginBottom: 0 }}>Data de retorno</Label>
+                            <DateField
+                                value={lockUntilDate}
+                                onChange={setLockUntilDate}
+                                placeholder="Selecionar data"
+                                minimumDate={new Date()}
+                                accessibilityLabel="Data de retorno"
+                            />
+                        </View>
 
-                        <ModalButtons>
-                            <ModalButton variant="cancel" onPress={() => setShowLockModal(false)}>
-                                <ModalButtonText>Cancelar</ModalButtonText>
-                            </ModalButton>
-                            <ModalButton variant="primary" onPress={handleLockSubscription} disabled={locking}>
-                                {locking ? <ActivityIndicator color="#fff" /> : <ModalButtonText>Trancar</ModalButtonText>}
-                            </ModalButton>
-                        </ModalButtons>
-                    </ModalContent>
-                </ModalOverlay>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <BotaoFolha tipo="contorno" style={{ flex: 1 }} onPress={() => setShowLockModal(false)} accessibilityRole="button">
+                                <BotaoFolhaTexto tipo="contorno">Cancelar</BotaoFolhaTexto>
+                            </BotaoFolha>
+                            <BotaoFolha tipo="primario" style={{ flex: 1 }} onPress={handleLockSubscription} disabled={locking} accessibilityRole="button">
+                                {locking
+                                    ? <ActivityIndicator color={theme.colors.onPrimary} />
+                                    : <BotaoFolhaTexto tipo="primario">Trancar</BotaoFolhaTexto>}
+                            </BotaoFolha>
+                        </View>
+                    </Folha>
+                </Fundo>
             </Modal>
         </Container>
     );
