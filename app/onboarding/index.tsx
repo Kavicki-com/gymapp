@@ -446,7 +446,6 @@ export default function OnboardingScreen() {
                 <Bloco>
                     <Cabecalho>
                         <BlockTitle accessibilityRole="header" style={{ fontSize: 22 }}>Responsável</BlockTitle>
-                        <Subtitulo>Tudo opcional. Ajuda em contratos e na emissão de recibos.</Subtitulo>
                     </Cabecalho>
 
                     <Formulario>

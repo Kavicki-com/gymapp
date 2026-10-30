@@ -1,7 +1,8 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { theme } from '@/src/styles/theme';
 import { formatCurrency } from '@/src/utils/masks';
 import React from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 import {
@@ -51,9 +52,7 @@ export function RegistrarPagamentoSheet({ devedor, onEscolher, onFechar }: {
     const varios = meses.length > 1;
 
     return (
-        <Modal visible={!!devedor} transparent animationType="fade" onRequestClose={onFechar} statusBarTranslucent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                <Pressable style={{ flex: 1 }} onPress={onFechar} accessibilityRole="button" accessibilityLabel="Fechar" />
+        <BottomSheet visible={!!devedor} onClose={onFechar}>
                 {devedor && (
                     <Folha style={{ paddingBottom: Math.max(insets.bottom, 16) + 20 }}
                         accessibilityViewIsModal accessibilityLabel="Registrar pagamento">
@@ -90,7 +89,7 @@ export function RegistrarPagamentoSheet({ devedor, onEscolher, onFechar }: {
                         </BotaoTexto>
                     </Folha>
                 )}
-            </View>
-        </Modal>
+            
+        </BottomSheet>
     );
 }

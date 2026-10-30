@@ -1,14 +1,14 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { Icon } from '@/src/components/Icon';
 import { theme } from '@/src/styles/theme';
 import React from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
-    Modal,
+    Dimensions,
     Platform,
     ScrollView,
     TouchableOpacity,
-    TouchableWithoutFeedback,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -358,7 +358,7 @@ export function IconeAcesso({ nome, size = 20, color, strokeWidth = 2 }: {
 /* ─── Folha inferior (termos e política) ─────────────────────────────── */
 
 const Folha = styled.View`
-    max-height: 86%;
+    max-height: ${Math.round(Dimensions.get('window').height * 0.86)}px;
     background-color: ${theme.colors.surface};
     border-top-width: 1px;
     border-color: ${theme.colors.border};
@@ -400,11 +400,7 @@ export function FolhaInferior({ visible, onClose, titulo, children }: {
 }) {
     const insets = useSafeAreaInsets();
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <TouchableWithoutFeedback onPress={onClose} accessibilityLabel="Fechar" accessibilityRole="button">
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-                </TouchableWithoutFeedback>
+        <BottomSheet visible={visible} onClose={onClose}>
                 <Folha style={{ paddingBottom: insets.bottom + 24 }} accessibilityViewIsModal>
                     <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: ALCA }} />
                     <TituloFolha accessibilityRole="header">{titulo}</TituloFolha>
@@ -415,7 +411,6 @@ export function FolhaInferior({ visible, onClose, titulo, children }: {
                         <BotaoFecharTexto>Fechar</BotaoFecharTexto>
                     </BotaoFechar>
                 </Folha>
-            </View>
-        </Modal>
+        </BottomSheet>
     );
 }

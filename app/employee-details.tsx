@@ -1,3 +1,4 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { iniciaisDe, JANELA_PROXIMO, proximoPagamento } from '@/src/components/colaboradores/pagamento';
@@ -22,7 +23,7 @@ import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -608,18 +609,13 @@ export default function EmployeeDetailsScreen() {
                 )}
             </ScrollView>
 
-            <Modal
-                transparent={true}
+            {/* Tocar fora só fecha o teclado, como antes; fecha pelo X. */}
+            <BottomSheet
                 visible={showPaymentModal}
-                animationType="fade"
-                onRequestClose={() => setShowPaymentModal(false)}
+                onClose={() => setShowPaymentModal(false)}
+                onBackdropPress={Keyboard.dismiss}
+                avoidKeyboard
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{ flex: 1 }}
-                >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'flex-end' }}>
                     <FolhaPagamento style={{ paddingBottom: Math.max(insets.bottom, 16) + 12 }}>
                         <Alca />
                         <Barra>
@@ -688,8 +684,6 @@ export default function EmployeeDetailsScreen() {
                             </BotaoFolha>
                         </View>
                     </FolhaPagamento>
-                </View>
-                </TouchableWithoutFeedback>
 
                 {Platform.OS === 'ios' && (
                     <InputAccessoryView nativeID={ACESSORIO_TECLADO}>
@@ -711,8 +705,7 @@ export default function EmployeeDetailsScreen() {
                         </View>
                     </InputAccessoryView>
                 )}
-                </KeyboardAvoidingView>
-            </Modal>
+            </BottomSheet>
         </Container>
     );
 }

@@ -1,3 +1,4 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { iniciaisDe, proximoPagamento } from '@/src/components/colaboradores/pagamento';
 import { Icon } from '@/src/components/Icon';
@@ -17,7 +18,7 @@ import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, FlatList, Modal, Pressable, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -323,19 +324,7 @@ export default function EmployeesScreen() {
                 />
             )}
 
-            <Modal
-                transparent
-                visible={!!menu}
-                animationType="fade"
-                onRequestClose={() => setMenu(null)}
-            >
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                    <Pressable
-                        style={{ flex: 1 }}
-                        onPress={() => setMenu(null)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Fechar"
-                    />
+            <BottomSheet visible={!!menu} onClose={() => setMenu(null)}>
                     <Folha style={{ paddingBottom: Math.max(insets.bottom, 16) + 20 }}>
                         <Alca />
                         <FolhaTitulo numberOfLines={1}>{menu?.name}</FolhaTitulo>
@@ -365,8 +354,8 @@ export default function EmployeesScreen() {
                             <FolhaAcaoTexto perigo>Excluir</FolhaAcaoTexto>
                         </FolhaAcao>
                     </Folha>
-                </View>
-            </Modal>
+                
+            </BottomSheet>
         </PageContainer>
     );
 }

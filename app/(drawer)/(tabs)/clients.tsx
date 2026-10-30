@@ -1,3 +1,4 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { iniciaisDe } from '@/src/components/alunos/icones';
 import { Icon } from '@/src/components/Icon';
@@ -8,7 +9,7 @@ import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -520,9 +521,7 @@ export default function ClientsScreen() {
                 />
             )}
 
-            <Modal transparent visible={!!menu} animationType="fade" onRequestClose={fecharMenu}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                    <Pressable style={{ flex: 1 }} onPress={fecharMenu} accessibilityRole="button" accessibilityLabel="Fechar" />
+            <BottomSheet visible={!!menu} onClose={fecharMenu}>
                     <Folha style={{ paddingBottom: insets.bottom + 24 }}>
                         <Alca />
                         {menu && confirmando ? (
@@ -561,8 +560,8 @@ export default function ClientsScreen() {
                             </>
                         ) : null}
                     </Folha>
-                </View>
-            </Modal>
+                
+            </BottomSheet>
         </PageContainer>
     );
 }

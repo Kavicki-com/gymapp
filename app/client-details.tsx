@@ -1,3 +1,4 @@
+import { BottomSheet } from '@/src/components/BottomSheet';
 import { resumirCobranca } from '@/src/utils/overdue';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
@@ -21,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, ActivityIndicator, Alert, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -313,14 +314,10 @@ const Observacoes = styled.Text`
 
 /* ─── Folhas (registrar pagamento, trancar) ───────────────────────────── */
 
-const Fundo = styled.View`
-  flex: 1;
-  background-color: rgba(0, 0, 0, 0.62);
-  justify-content: flex-end;
-`;
-
+// Em px: o pai da folha agora é a camada animada do BottomSheet, sem
+// altura própria, e porcentagem não teria referência.
 const Folha = styled.View`
-  max-height: 92%;
+  max-height: ${Math.round(Dimensions.get('window').height * 0.92)}px;
   background-color: ${theme.colors.surface};
   border-top-width: 1px;
   border-top-color: ${theme.colors.border};
@@ -1292,20 +1289,14 @@ export default function ClientDetailsScreen() {
             </ScrollView>
 
             {/* Payment Modal */}
-            <Modal
-                transparent={true}
+            {/* Tocar fora da folha fecha o teclado. Os toques dentro são
+                tratados pelos próprios campos e botões. */}
+            <BottomSheet
                 visible={showPaymentModal}
-                animationType="fade"
-                onRequestClose={closePaymentModal}
+                onClose={closePaymentModal}
+                onBackdropPress={Keyboard.dismiss}
+                avoidKeyboard
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={{ flex: 1 }}
-                >
-                    {/* Tocar fora da folha fecha o teclado. Os toques dentro
-                        são tratados pelos próprios campos e botões. */}
-                    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                    <Fundo>
                         <Folha>
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
@@ -1474,8 +1465,6 @@ export default function ClientDetailsScreen() {
                                 </View>
                             </ScrollView>
                         </Folha>
-                    </Fundo>
-                    </TouchableWithoutFeedback>
 
                     {Platform.OS === 'ios' && (
                         <InputAccessoryView nativeID={ACESSORIO_TECLADO}>
@@ -1497,17 +1486,10 @@ export default function ClientDetailsScreen() {
                             </View>
                         </InputAccessoryView>
                     )}
-                </KeyboardAvoidingView>
-            </Modal>
+            </BottomSheet>
 
             {/* Lock Subscription Modal */}
-            <Modal
-                transparent={true}
-                visible={showLockModal}
-                animationType="fade"
-                onRequestClose={() => setShowLockModal(false)}
-            >
-                <Fundo>
+            <BottomSheet visible={showLockModal} onClose={() => setShowLockModal(false)}>
                     <Folha style={{ paddingTop: 12, paddingHorizontal: theme.spacing.xl, paddingBottom: insets.bottom + 28, gap: 16 }}>
                         <Alca />
                         <FolhaTitulo accessibilityRole="header">Trancar mensalidade</FolhaTitulo>
@@ -1535,8 +1517,7 @@ export default function ClientDetailsScreen() {
                             </BotaoFolha>
                         </View>
                     </Folha>
-                </Fundo>
-            </Modal>
+            </BottomSheet>
         </Container>
     );
 }
