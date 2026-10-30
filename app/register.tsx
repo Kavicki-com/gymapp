@@ -11,8 +11,10 @@ import {
     BotaoPrincipal,
     BotaoVoltar,
     Cabecalho,
+    bordaDeErro,
     Campo,
     Dica,
+    ErroCampo,
     Formulario,
     FolhaInferior,
     Rodape,
@@ -25,7 +27,7 @@ import { PASSWORD_RULE, PasswordInput } from '../src/components/PasswordInput';
 import { PrivacyPolicyModal } from '../src/components/PrivacyPolicyModal';
 import { Container, HighlightText, Input } from '../src/components/styled';
 import { theme } from '../src/styles/theme';
-import { validateEmail, validatePassword } from '../src/utils/validations';
+import { validateEmail, validatePassword, validatePhone } from '../src/utils/validations';
 
 /* Layout do redesign (Claude Design, "Criar conta"). Validação, signUp e
    navegação são os mesmos de antes; só a apresentação mudou. */
@@ -77,6 +79,40 @@ const forcaDaSenha = (senha: string) =>
         /[!@#$%^&*(),.?":{}|<>]/.test(senha),
     ].filter(Boolean).length;
 
+type CampoForm = 'name' | 'email' | 'phone' | 'password' | 'confirm_password';
+type Formulario = Record<CampoForm, string>;
+
+/**
+ * Erro de cada campo, na mesma regra que o cadastro sempre usou
+ * (validateEmail, validatePassword). O telefone é opcional: só é checado se
+ * preenchido, e como é WhatsApp, pede celular com DDD (11 dígitos).
+ */
+const errosDoFormulario = (f: Formulario): Partial<Record<CampoForm, string>> => {
+    const e: Partial<Record<CampoForm, string>> = {};
+    if (!f.name.trim()) e.name = 'Informe seu nome.';
+    if (!f.email.trim()) e.email = 'Informe seu e-mail.';
+    else if (!validateEmail(f.email.trim())) e.email = 'E-mail inválido. Confira se está no formato voce@email.com.';
+    if (f.phone.trim() && !validatePhone(f.phone))
+        e.phone = 'Telefone incompleto. Use DDD + número do celular, ex.: (21) 99999-9999.';
+    if (!f.password) e.password = 'Crie uma senha.';
+    else if (!validatePassword(f.password)) e.password = `Senha fraca. ${PASSWORD_RULE}`;
+    if (!f.confirm_password) e.confirm_password = 'Repita a senha.';
+    else if (f.password !== f.confirm_password) e.confirm_password = 'As senhas não coincidem.';
+    return e;
+};
+
+/**
+ * Máscara do WhatsApp enquanto digita: "(21) 9", "(21) 99999", "(21) 99999-9999".
+ * Não reaproveita formatPhone de utils/masks: aquela põe o hífen nos 4
+ * últimos dígitos desde o começo, e no meio da digitação sai "(21) 9-9999".
+ */
+const mascararTelefone = (t: string) => {
+    const d = t.replace(/\D/g, '').slice(0, 11);
+    if (d.length <= 2) return d;
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
 export default function RegisterScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -91,30 +127,23 @@ export default function RegisterScreen() {
         phone: '',
     });
 
-    const updateForm = (key: string, value: string) => {
-        setFormData(prev => ({ ...prev, [key]: value }));
+    // Campo só mostra erro depois de visitado (ou depois de tentar criar a
+    // conta) — sem isso, a tela já abriria toda vermelha.
+    const [tocados, setTocados] = useState<Partial<Record<CampoForm, boolean>>>({});
+    const [tentou, setTentou] = useState(false);
+
+    const updateForm = (key: CampoForm, value: string) => {
+        setFormData(prev => ({ ...prev, [key]: key === 'phone' ? mascararTelefone(value) : value }));
     };
 
+    const tocar = (key: CampoForm) => () => setTocados(t => ({ ...t, [key]: true }));
+
+    const erros = errosDoFormulario(formData);
+    const erroDe = (key: CampoForm) => ((tentou || tocados[key]) ? erros[key] ?? null : null);
+
     const validateForm = () => {
-        if (!formData.name || !formData.email || !formData.password) {
-            appAlert('Erro', 'Preencha todos os campos obrigatórios.');
-            return false;
-        }
-        if (!validateEmail(formData.email)) {
-            appAlert('Erro', 'Email inválido.');
-            return false;
-        }
-
-        if (!validatePassword(formData.password)) {
-            appAlert('Senha fraca', PASSWORD_RULE);
-            return false;
-        }
-
-        if (formData.password !== formData.confirm_password) {
-            appAlert('Erro', 'As senhas não coincidem.');
-            return false;
-        }
-        return true;
+        setTentou(true);
+        return Object.keys(erros).length === 0;
     };
 
     const handleRegister = async () => {
@@ -129,7 +158,7 @@ export default function RegisterScreen() {
                 : 'gymapp://confirm-email';
 
             const { data: authData, error: authError } = await supabase.auth.signUp({
-                email: formData.email,
+                email: formData.email.trim(),
                 password: formData.password,
                 options: {
                     data: {
@@ -174,18 +203,22 @@ export default function RegisterScreen() {
                 </Cabecalho>
 
                 <Formulario>
-                    <Campo rotulo="Seu nome">
+                    <Campo rotulo="Seu nome" erro={erroDe('name')}>
                         <Input
                             placeholder="Nome completo"
                             value={formData.name} onChangeText={t => updateForm('name', t)}
+                            onBlur={tocar('name')}
+                            style={erroDe('name') ? bordaDeErro : undefined}
                             autoComplete="name"
                             textContentType="name"
                         />
                     </Campo>
-                    <Campo rotulo="E-mail">
+                    <Campo rotulo="E-mail" erro={erroDe('email')}>
                         <Input
                             placeholder="voce@academia.com.br"
                             value={formData.email} onChangeText={t => updateForm('email', t)}
+                            onBlur={tocar('email')}
+                            style={erroDe('email') ? bordaDeErro : undefined}
                             keyboardType="email-address" autoCapitalize="none"
                             autoComplete="email"
                             textContentType="emailAddress"
@@ -195,10 +228,14 @@ export default function RegisterScreen() {
                         rotulo="WhatsApp"
                         opcional
                         icone={<FontAwesome name="whatsapp" size={14} color={theme.colors.whatsapp} />}
+                        erro={erroDe('phone')}
                     >
                         <Input
                             placeholder="(21) 90000-0000"
                             value={formData.phone} onChangeText={t => updateForm('phone', t)}
+                            onBlur={tocar('phone')}
+                            maxLength={15}
+                            style={erroDe('phone') ? bordaDeErro : undefined}
                             keyboardType="phone-pad"
                             autoComplete="tel"
                             textContentType="telephoneNumber"
@@ -208,6 +245,8 @@ export default function RegisterScreen() {
                         <PasswordInput
                             placeholder="Crie uma senha"
                             value={formData.password} onChangeText={t => updateForm('password', t)}
+                            onBlur={tocar('password')}
+                            containerStyle={erroDe('password') ? bordaDeErro : undefined}
                             autoComplete="new-password"
                             textContentType="newPassword"
                         />
@@ -228,12 +267,16 @@ export default function RegisterScreen() {
                                 />
                             ))}
                         </View>
-                        <Dica>{PASSWORD_RULE}</Dica>
+                        {erroDe('password')
+                            ? <ErroCampo accessibilityRole="alert">{erroDe('password')}</ErroCampo>
+                            : <Dica>{PASSWORD_RULE}</Dica>}
                     </Campo>
-                    <Campo rotulo="Confirmar senha">
+                    <Campo rotulo="Confirmar senha" erro={erroDe('confirm_password')}>
                         <PasswordInput
                             placeholder="Repita a senha"
                             value={formData.confirm_password} onChangeText={t => updateForm('confirm_password', t)}
+                            onBlur={tocar('confirm_password')}
+                            containerStyle={erroDe('confirm_password') ? bordaDeErro : undefined}
                             autoComplete="new-password"
                             textContentType="newPassword"
                         />

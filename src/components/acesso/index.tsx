@@ -143,12 +143,25 @@ const RotuloObrigatorio = styled.Text`
 `;
 
 /** Rótulo + campo + dica, empilhados com 8 px. */
-export function Campo({ rotulo, icone, opcional, obrigatorio, dica, children }: {
+/** Mensagem de erro do campo, embaixo do input (no lugar da dica). */
+export const ErroCampo = styled.Text`
+    font-family: ${theme.fonts.medium};
+    font-size: 13px;
+    line-height: 18px;
+    color: ${theme.colors.dangerText};
+`;
+
+/** Borda do input quando o campo tem erro: `style={erro ? bordaDeErro : undefined}`. */
+export const bordaDeErro = { borderColor: theme.colors.danger };
+
+export function Campo({ rotulo, icone, opcional, obrigatorio, dica, erro, children }: {
     rotulo: string;
     icone?: React.ReactNode;
     opcional?: boolean;
     obrigatorio?: boolean;
     dica?: string;
+    /** Com erro, a mensagem substitui a dica e é anunciada pelo leitor de tela. */
+    erro?: string | null;
     children: React.ReactNode;
 }) {
     return (
@@ -162,7 +175,9 @@ export function Campo({ rotulo, icone, opcional, obrigatorio, dica, children }: 
                 </Rotulo>
             </View>
             {children}
-            {dica ? <Dica>{dica}</Dica> : null}
+            {erro
+                ? <ErroCampo accessibilityRole="alert" accessibilityLiveRegion="polite">{erro}</ErroCampo>
+                : dica ? <Dica>{dica}</Dica> : null}
         </View>
     );
 }
