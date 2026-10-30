@@ -22,9 +22,14 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarLabelStyle: { fontFamily: theme.fonts.semibold, fontSize: 11 },
+        // 8 px a mais sobre a área segura: colado na borda, o toque nos
+        // ícones ficava desconfortável. A altura sobe junto para o conteúdo
+        // da barra não ser espremido.
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.divider,
+          height: 49 + insets.bottom + 8,
+          paddingBottom: insets.bottom + 8,
         },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: icone('home') }} />
