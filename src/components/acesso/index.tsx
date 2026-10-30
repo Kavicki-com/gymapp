@@ -146,8 +146,8 @@ const RotuloObrigatorio = styled.Text`
 /** Mensagem de erro do campo, embaixo do input (no lugar da dica). */
 export const ErroCampo = styled.Text`
     font-family: ${theme.fonts.medium};
-    font-size: 13px;
-    line-height: 18px;
+    font-size: 12px;
+    line-height: 16px;
     color: ${theme.colors.dangerText};
 `;
 

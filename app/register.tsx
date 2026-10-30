@@ -91,11 +91,11 @@ const errosDoFormulario = (f: Formulario): Partial<Record<CampoForm, string>> =>
     const e: Partial<Record<CampoForm, string>> = {};
     if (!f.name.trim()) e.name = 'Informe seu nome.';
     if (!f.email.trim()) e.email = 'Informe seu e-mail.';
-    else if (!validateEmail(f.email.trim())) e.email = 'E-mail inválido. Confira se está no formato voce@email.com.';
+    else if (!validateEmail(f.email.trim())) e.email = 'E-mail inválido.';
     if (f.phone.trim() && !validatePhone(f.phone))
-        e.phone = 'Telefone incompleto. Use DDD + número do celular, ex.: (21) 99999-9999.';
+        e.phone = 'Telefone incompleto.';
     if (!f.password) e.password = 'Crie uma senha.';
-    else if (!validatePassword(f.password)) e.password = `Senha fraca. ${PASSWORD_RULE}`;
+    else if (!validatePassword(f.password)) e.password = 'Senha fraca.';
     if (!f.confirm_password) e.confirm_password = 'Repita a senha.';
     else if (f.password !== f.confirm_password) e.confirm_password = 'As senhas não coincidem.';
     return e;
