@@ -11,7 +11,6 @@ import {
     Campo,
     Formulario,
     Rodape,
-    Subtitulo,
     TelaAcesso,
     TextoRodape,
     Titulo,
@@ -188,10 +187,7 @@ export default function LoginScreen() {
                         <Logo width={40} height={40} color={theme.colors.primary} />
                         <Marca>GymApp</Marca>
                     </View>
-                    <View style={{ gap: theme.spacing.sm }}>
-                        <TituloLogin accessibilityRole="header">Sua academia,{'\n'}em dia.</TituloLogin>
-                        <Subtitulo>Entre para ver quem pagou, quem está devendo e o que fazer hoje.</Subtitulo>
-                    </View>
+                    <TituloLogin accessibilityRole="header">Sua academia,{'\n'}em dia.</TituloLogin>
                 </Cabecalho>
 
                 <Formulario>
