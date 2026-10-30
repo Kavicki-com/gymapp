@@ -1,59 +1,25 @@
-import { FontAwesome } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import styled from 'styled-components/native';
-import { Button, ButtonText, Container, Title } from '../src/components/styled';
+import {
+    AvisoErro,
+    BlocoEstado,
+    BotaoPrincipal,
+    Contagem,
+    IconeAcesso,
+    IconeEstado,
+    Rodape,
+    TelaAcesso,
+    TextoEstado,
+    TituloEstado,
+} from '../src/components/acesso';
+import { Icon } from '../src/components/Icon';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/services/supabase';
 import { theme } from '../src/styles/theme';
 
-const Content = styled.View`
-    flex: 1;
-    justify-content: center;
-    align-items: center;
-    padding: ${theme.spacing.xl}px;
-`;
-
-const IconContainer = styled.View`
-    margin-bottom: ${theme.spacing.xl}px;
-    width: 120px;
-    height: 120px;
-    border-radius: 60px;
-    background-color: ${theme.colors.surface};
-    justify-content: center;
-    align-items: center;
-    border-width: 2px;
-    border-color: ${theme.colors.success};
-`;
-
-const Message = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: ${theme.fontSize.md}px;
-    text-align: center;
-    margin-bottom: ${theme.spacing.xl}px;
-    line-height: 24px;
-`;
-
-const CountdownText = styled.Text`
-    color: ${theme.colors.primary};
-    font-size: ${theme.fontSize.xl}px;
-    font-weight: bold;
-    margin-vertical: ${theme.spacing.md}px;
-`;
-
-const ErrorContainer = styled.View`
-    background-color: ${theme.colors.danger}20;
-    padding: ${theme.spacing.md}px;
-    border-radius: 8px;
-    margin-bottom: ${theme.spacing.lg}px;
-`;
-
-const ErrorText = styled.Text`
-    color: ${theme.colors.danger};
-    font-size: ${theme.fontSize.sm}px;
-    text-align: center;
-`;
+/* Layout do redesign (Claude Design, "Confirmar e-mail"). A detecção do
+   token/sessão, a contagem e os destinos são os mesmos de antes. */
 
 export default function ConfirmEmailScreen() {
     const router = useRouter();
@@ -126,60 +92,47 @@ export default function ConfirmEmailScreen() {
 
     if (loading) {
         return (
-            <Container>
-                <Content>
+            <TelaAcesso>
+                <BlocoEstado style={{ marginTop: 'auto', marginBottom: 'auto' }} accessibilityRole="progressbar">
                     <ActivityIndicator size="large" color={theme.colors.primary} />
-                    <Message style={{ marginTop: 20 }}>Confirmando seu email...</Message>
-                </Content>
-            </Container>
+                    <TextoEstado style={{ color: theme.colors.textStrong, fontSize: 16 }}>Confirmando seu e-mail...</TextoEstado>
+                </BlocoEstado>
+            </TelaAcesso>
         );
     }
 
     if (error) {
         return (
-            <Container>
-                <Content>
-                    <IconContainer style={{ borderColor: theme.colors.danger }}>
-                        <FontAwesome name="times" size={50} color={theme.colors.danger} />
-                    </IconContainer>
-
-                    <Title>Erro na Confirmação</Title>
-
-                    <ErrorContainer>
-                        <ErrorText>{error}</ErrorText>
-                    </ErrorContainer>
-
-                    <View style={{ width: '100%', maxWidth: 300 }}>
-                        <Button onPress={handleManualLogin}>
-                            <ButtonText>Ir para o Login</ButtonText>
-                        </Button>
-                    </View>
-                </Content>
-            </Container>
+            <TelaAcesso respiroTopo={48}>
+                <BlocoEstado style={{ marginTop: 80 }}>
+                    <IconeEstado tom="perigo">
+                        <IconeAcesso nome="alerta" size={40} strokeWidth={2.4} color={theme.colors.danger} />
+                    </IconeEstado>
+                    <TituloEstado accessibilityRole="header">Erro na confirmação</TituloEstado>
+                    <AvisoErro accessibilityRole="alert">{error}</AvisoErro>
+                </BlocoEstado>
+                <Rodape>
+                    <BotaoPrincipal titulo="Ir para o login" onPress={handleManualLogin} />
+                </Rodape>
+            </TelaAcesso>
         );
     }
 
     return (
-        <Container>
-            <Content>
-                <IconContainer>
-                    <FontAwesome name="check" size={50} color={theme.colors.success} />
-                </IconContainer>
-
-                <Title>Cadastro Realizado!</Title>
-
-                <Message style={{ marginTop: 24 }}>
-                    Você será redirecionado para a configuração da academia em:
-                </Message>
-
-                <CountdownText>{countdown}s</CountdownText>
-
-                <View style={{ width: '100%', maxWidth: 300 }}>
-                    <Button onPress={performAutoLogin}>
-                        <ButtonText>Entrar Agora</ButtonText>
-                    </Button>
+        <TelaAcesso respiroTopo={48}>
+            <BlocoEstado style={{ marginTop: 80 }}>
+                <IconeEstado tom="sucesso">
+                    <Icon name="check" size={40} strokeWidth={2.4} color={theme.colors.success} />
+                </IconeEstado>
+                <TituloEstado accessibilityRole="header">Cadastro realizado!</TituloEstado>
+                <TextoEstado>Você será levado à configuração da academia em:</TextoEstado>
+                <View accessibilityLiveRegion="polite">
+                    <Contagem>{countdown}s</Contagem>
                 </View>
-            </Content>
-        </Container>
+            </BlocoEstado>
+            <Rodape>
+                <BotaoPrincipal titulo="Entrar agora" onPress={performAutoLogin} />
+            </Rodape>
+        </TelaAcesso>
     );
 }

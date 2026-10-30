@@ -1,45 +1,22 @@
-import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import styled from 'styled-components/native';
-import { Button, ButtonText, Container, Title } from '../src/components/styled';
+import {
+    BlocoEstado,
+    BotaoPrincipal,
+    Contagem,
+    IconeEstado,
+    Rodape,
+    TelaAcesso,
+    TextoEstado,
+    TituloEstado,
+} from '../src/components/acesso';
+import { Icon } from '../src/components/Icon';
 import { useAuth } from '../src/contexts/AuthContext';
 import { theme } from '../src/styles/theme';
 
-const Content = styled.View`
-    flex: 1;
-    justify-content: center;
-    align-items: center;
-    padding: ${theme.spacing.xl}px;
-`;
-
-const IconContainer = styled.View`
-    margin-bottom: ${theme.spacing.xl}px;
-    width: 120px;
-    height: 120px;
-    border-radius: 60px;
-    background-color: ${theme.colors.surface};
-    justify-content: center;
-    align-items: center;
-    border-width: 2px;
-    border-color: ${theme.colors.success};
-`;
-
-const Message = styled.Text`
-    color: ${theme.colors.textSecondary};
-    font-size: ${theme.fontSize.md}px;
-    text-align: center;
-    margin-bottom: ${theme.spacing.xl}px;
-    line-height: 24px;
-`;
-
-const CountdownText = styled.Text`
-    color: ${theme.colors.primary};
-    font-size: ${theme.fontSize.xl}px;
-    font-weight: bold;
-    margin-vertical: ${theme.spacing.md}px;
-`;
+/* Layout do redesign (Claude Design, "Senha alterada"). Contagem e destino
+   são os mesmos de antes. */
 
 export default function PasswordChangedScreen() {
     const router = useRouter();
@@ -66,27 +43,20 @@ export default function PasswordChangedScreen() {
     };
 
     return (
-        <Container>
-            <Content>
-                <IconContainer>
-                    <FontAwesome name="check" size={50} color={theme.colors.success} />
-                </IconContainer>
-
-                <Title>Senha Alterada!</Title>
-
-                <Message>
-                    Sua senha foi alterada com sucesso.{'\n'}
-                    Você será redirecionado para o painel em:
-                </Message>
-
-                <CountdownText>{countdown}s</CountdownText>
-
-                <View style={{ width: '100%', maxWidth: 300 }}>
-                    <Button onPress={handleContinue}>
-                        <ButtonText>Entrar Agora</ButtonText>
-                    </Button>
+        <TelaAcesso respiroTopo={48} espaco={32}>
+            <BlocoEstado style={{ marginTop: 120 }}>
+                <IconeEstado tom="sucesso">
+                    <Icon name="check" size={44} strokeWidth={2.4} color={theme.colors.success} />
+                </IconeEstado>
+                <TituloEstado accessibilityRole="header">Senha alterada</TituloEstado>
+                <TextoEstado>Sua senha foi alterada com sucesso. Você será levado ao painel em:</TextoEstado>
+                <View accessibilityLiveRegion="polite">
+                    <Contagem>{countdown}s</Contagem>
                 </View>
-            </Content>
-        </Container>
+            </BlocoEstado>
+            <Rodape>
+                <BotaoPrincipal titulo="Entrar agora" onPress={handleContinue} />
+            </Rodape>
+        </TelaAcesso>
     );
 }

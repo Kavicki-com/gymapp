@@ -1,143 +1,166 @@
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { supabase } from '@/src/services/supabase';
 import { theme } from '@/src/styles/theme';
-import { FontAwesome } from '@expo/vector-icons';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, TextInputProps, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
-import {
-    Button,
-    ButtonText,
-    Container,
-    Input,
-    SubTitle
-} from '../../../src/components/styled';
+import { Container, Input, SectionLabel } from '../../../src/components/styled';
 import { formatCNPJ, formatCPF, formatPhone } from '../../../src/utils/masks';
 
-// Copied/Adapted Styled Components from Register
-const PickerContainer = styled.View`
-    background-color: ${theme.colors.surface};
-    border-radius: 8px;
-    border-width: 1px;
-    border-color: ${theme.colors.border};
-    margin-bottom: 12px;
+/*
+ * Layout do redesign (Claude Design, "Perfil"). Carregamento, máscaras,
+ * upload da logo, gravação e exclusão de conta são os mesmos de antes; só a
+ * apresentação mudou. O topo continua sendo o header nativo da pilha (seta
+ * de voltar), por isso o título fica no corpo, ao lado da logo.
+ */
+
+const Conteudo = styled.View`
+    padding: ${theme.spacing.sm}px ${theme.spacing.xl}px 0;
+    gap: ${theme.spacing.lg}px;
 `;
 
-const PickerButton = styled(TouchableOpacity)`
-    padding: 14px;
-    flex-direction: row;
-    justify-content: space-between;
+const LogoQuadro = styled(TouchableOpacity)`
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background-color: ${theme.colors.neutralPill};
     align-items: center;
+    justify-content: center;
+    overflow: hidden;
 `;
 
-const PickerButtonText = styled.Text<{ hasValue?: boolean }>`
-    color: ${({ hasValue }) => hasValue ? theme.colors.text : theme.colors.textSecondary};
-    font-size: ${theme.fontSize.md}px;
+const LogoImagem = styled.Image`
+    width: 100%;
+    height: 100%;
 `;
 
-const PickerModal = styled(Modal)``;
-
-const ModalOverlay = styled.TouchableOpacity`
-    flex: 1;
-    background-color: rgba(0, 0, 0, 0.5);
-    justify-content: flex-end;
+const Iniciais = styled.Text`
+    font-family: ${theme.fonts.display};
+    font-size: 22px;
+    color: ${theme.colors.primary};
 `;
 
-const ModalContent = styled.View`
+const TituloTela = styled.Text`
+    font-family: ${theme.fonts.display};
+    font-size: 22px;
+    color: ${theme.colors.text};
+`;
+
+const LinkLogo = styled(TouchableOpacity)`
+    min-height: ${theme.touch}px;
+    justify-content: center;
+    align-self: flex-start;
+`;
+
+const LinkLogoTexto = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 14px;
+    color: ${theme.colors.primary};
+`;
+
+const Bloco = styled.View`
+    background-color: ${theme.colors.surface};
+    border-width: 1px;
+    border-color: ${theme.colors.divider};
+    border-radius: ${theme.borderRadius.lg}px;
+    padding: ${theme.spacing.lg}px;
+    gap: ${theme.spacing.md}px;
+`;
+
+const Rotulo = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 13px;
+    color: ${theme.colors.textSecondary};
+`;
+
+/** Campo dentro do bloco: um tom abaixo da superfície, como no design. */
+const CampoBloco = styled(Input)`
+    min-height: 46px;
+    border-radius: 12px;
+    padding-horizontal: 12px;
+    padding-vertical: 10px;
     background-color: ${theme.colors.background};
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    padding: 20px;
-    max-height: 50%;
+    font-size: 15px;
 `;
 
-const ModalTitle = styled.Text`
-    font-size: ${theme.fontSize.lg}px;
-    font-weight: bold;
-    color: ${theme.colors.text};
-    margin-bottom: 16px;
+const Dica = styled.Text`
+    font-family: ${theme.fonts.regular};
+    font-size: 12px;
+    color: ${theme.colors.textMuted};
 `;
 
-const ModalOption = styled(TouchableOpacity)`
-    padding: 16px;
-    border-bottom-width: 1px;
-    border-bottom-color: ${theme.colors.border};
+const Chip = styled(TouchableOpacity)<{ ativo: boolean }>`
+    min-height: ${theme.touch}px;
+    padding-horizontal: ${theme.spacing.md}px;
+    border-radius: 22px;
+    border-width: 1px;
+    border-color: ${({ ativo }) => (ativo ? theme.colors.text : theme.colors.border)};
+    background-color: ${({ ativo }) => (ativo ? theme.colors.text : 'transparent')};
+    align-items: center;
+    justify-content: center;
 `;
 
-const ModalOptionText = styled.Text`
-    font-size: ${theme.fontSize.md}px;
-    color: ${theme.colors.text};
+const ChipTexto = styled.Text<{ ativo: boolean }>`
+    font-family: ${theme.fonts.semibold};
+    font-size: 13px;
+    color: ${({ ativo }) => (ativo ? theme.colors.onPrimary : theme.colors.textStrong)};
 `;
 
-const TimeRow = styled.View`
-    flex-direction: row;
-    gap: 12px;
-    margin-bottom: 12px;
+const Ate = styled.Text`
+    font-family: ${theme.fonts.regular};
+    font-size: 13px;
+    color: ${theme.colors.textSecondary};
+    padding-bottom: 14px;
 `;
 
-const TimeInputContainer = styled.View`
-    flex: 1;
+const BotaoSalvar = styled(TouchableOpacity)<{ inativo?: boolean }>`
+    min-height: 56px;
+    border-radius: 16px;
+    background-color: ${theme.colors.primary};
+    align-items: center;
+    justify-content: center;
+    opacity: ${({ inativo }) => (inativo ? 0.6 : 1)};
 `;
 
-const FormLabel = styled.Text`
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSize.md}px;
-  font-weight: 500;
-  margin-bottom: 8px;
+const BotaoSalvarTexto = styled.Text`
+    font-family: ${theme.fonts.bold};
+    font-size: 16px;
+    color: ${theme.colors.onPrimary};
 `;
 
-const LogoContainer = styled(TouchableOpacity)`
-  width: 100px;
-  height: 100px;
-  background-color: ${theme.colors.surface};
-  border-radius: 50px;
-  justify-content: center;
-  align-items: center;
-  border-width: 1px;
-  border-color: ${theme.colors.border};
-  overflow: hidden;
-  align-self: center;
-  margin-bottom: ${theme.spacing.lg}px;
+const BotaoExcluir = styled(TouchableOpacity)`
+    min-height: ${theme.touch}px;
+    align-items: center;
+    justify-content: center;
 `;
 
-const HelperText = styled.Text`
-  color: ${theme.colors.primary};
-  font-size: ${theme.fontSize.sm}px;
-  text-align: center;
-  margin-top: ${theme.spacing.xs}px;
+const BotaoExcluirTexto = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 14px;
+    color: ${theme.colors.danger};
 `;
 
-const StyledImage = styled.Image`
-  width: 100%;
-  height: 100%;
-`;
+const iniciaisDe = (nome: string) =>
+    nome.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
-const Divider = styled.View`
-  height: 1px;
-  background-color: ${theme.colors.border};
-  margin-vertical: 30px;
-`;
-
-const DeleteButton = styled(TouchableOpacity)`
-  background-color: transparent;
-  border-width: 1px;
-  border-color: ${theme.colors.danger};
-  padding: 14px;
-  border-radius: 8px;
-  align-items: center;
-  flex-direction: row;
-  justify-content: center;
-`;
-
-const DeleteButtonText = styled.Text`
-  color: ${theme.colors.danger};
-  font-weight: bold;
-  font-size: ${theme.fontSize.md}px;
-  margin-left: 8px;
-`;
+/** Rótulo em cima, campo embaixo, dica opcional. `flex` para as linhas de 2. */
+function CampoRotulado({ rotulo, dica, flex, ...props }: TextInputProps & {
+    rotulo: string;
+    dica?: string;
+    flex?: boolean;
+}) {
+    return (
+        <View style={[{ gap: 6 }, flex ? { flex: 1, minWidth: 0 } : null]}>
+            <Rotulo>{rotulo}</Rotulo>
+            <CampoBloco accessibilityLabel={rotulo} {...props} />
+            {dica ? <Dica>{dica}</Dica> : null}
+        </View>
+    );
+}
 
 export default function EditProfileScreen() {
     const router = useRouter();
@@ -162,11 +185,9 @@ export default function EditProfileScreen() {
         logo_base64: '',
     });
 
-    const [showDaysPicker, setShowDaysPicker] = useState(false);
-
     const daysOptions = [
-        { label: 'Segunda à Sexta', value: 'seg_sex' },
-        { label: 'Segunda à Sábado', value: 'seg_sab' },
+        { label: 'Segunda à sexta', value: 'seg_sex' },
+        { label: 'Segunda à sábado', value: 'seg_sab' },
         { label: 'Todos os dias', value: 'todos' },
     ];
 
@@ -475,150 +496,175 @@ export default function EditProfileScreen() {
         }
     };
 
+    const insets = useSafeAreaInsets();
+
     if (fetching) return (
         <Container>
             <SkeletonLoader variant="profile" />
         </Container>
     );
 
+    const ocupado = loading || deleting;
+
     return (
         <Container>
-            <ScrollView contentContainerStyle={{ paddingVertical: 20, paddingHorizontal: 12 }}>
-                <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                    <LogoContainer onPress={pickImage}>
-                        {formData.logo_uri ? (
-                            <StyledImage source={{ uri: formData.logo_uri }} />
-                        ) : (
-                            <FontAwesome name="camera" size={30} color={theme.colors.textSecondary} />
-                        )}
-                    </LogoContainer>
-                    <HelperText>Alterar Logo</HelperText>
-                </View>
-
-                <SubTitle>Dados Pessoais</SubTitle>
-                <Input
-                    placeholder="Nome Completo"
-                    value={formData.name} onChangeText={t => updateForm('name', t)}
-                    style={{ marginBottom: 12 }}
-                />
-                <Input
-                    placeholder="Email"
-                    value={formData.email}
-                    editable={false}
-                    style={{ marginBottom: 12, opacity: 0.7 }}
-                />
-                <Input
-                    placeholder="Telefone"
-                    value={formData.phone}
-                    onChangeText={t => updateForm('phone', t)}
-                    keyboardType="phone-pad"
-                    style={{ marginBottom: 12 }}
-                />
-                <Input
-                    placeholder="CPF"
-                    value={formData.cpf} onChangeText={t => updateForm('cpf', t)}
-                    keyboardType="numeric"
-                    style={{ marginBottom: 12 }}
-                />
-                <Input
-                    placeholder="Data Nascimento (DD/MM/YYYY)"
-                    value={formData.birth_date} onChangeText={t => updateForm('birth_date', t)}
-                    style={{ marginBottom: 12 }}
-                />
-
-                <SubTitle>Dados da Academia</SubTitle>
-                <Input
-                    placeholder="Nome da Academia"
-                    value={formData.gym_name} onChangeText={t => updateForm('gym_name', t)}
-                    style={{ marginBottom: 12 }}
-                />
-                <Input
-                    placeholder="CNPJ"
-                    value={formData.cnpj} onChangeText={t => updateForm('cnpj', t)}
-                    keyboardType="numeric"
-                    style={{ marginBottom: 12 }}
-                />
-                <Input
-                    placeholder="Endereço"
-                    value={formData.address} onChangeText={t => updateForm('address', t)}
-                    style={{ marginBottom: 12 }}
-                />
-
-
-                <FormLabel>Dias de Funcionamento</FormLabel>
-                <PickerContainer>
-                    <PickerButton onPress={() => setShowDaysPicker(true)}>
-                        <PickerButtonText hasValue={!!formData.working_days}>
-                            {formData.working_days ? daysOptions.find(d => d.value === formData.working_days)?.label : 'Selecione os dias'}
-                        </PickerButtonText>
-                        <FontAwesome name="chevron-down" size={16} color={theme.colors.textSecondary} />
-                    </PickerButton>
-                </PickerContainer>
-
-                <FormLabel>Horário de Funcionamento</FormLabel>
-                <TimeRow>
-                    <TimeInputContainer>
-                        <Input
-                            placeholder="HH:MM"
-                            value={formData.opening_time}
-                            onChangeText={t => updateForm('opening_time', t)}
-                            keyboardType="numeric"
-                            maxLength={5}
-                        />
-                    </TimeInputContainer>
-                    <Text style={{ alignSelf: 'center', color: theme.colors.text }}>até</Text>
-                    <TimeInputContainer>
-                        <Input
-                            placeholder="HH:MM"
-                            value={formData.closing_time}
-                            onChangeText={t => updateForm('closing_time', t)}
-                            keyboardType="numeric"
-                            maxLength={5}
-                        />
-                    </TimeInputContainer>
-                </TimeRow>
-
-                <Button onPress={handleSave} disabled={loading || deleting} style={{ marginTop: 20 }}>
-                    {loading ? <ActivityIndicator color="black" /> : <ButtonText>Salvar Alterações</ButtonText>}
-                </Button>
-
-                <Divider />
-
-                <DeleteButton onPress={handleDeleteAccount} disabled={deleting}>
-                    {deleting ? (
-                        <ActivityIndicator color={theme.colors.danger} />
-                    ) : (
-                        <>
-                            <FontAwesome name="trash" size={18} color={theme.colors.danger} />
-                            <DeleteButtonText>Excluir Minha Conta</DeleteButtonText>
-                        </>
-                    )}
-                </DeleteButton>
-            </ScrollView>
-
-            <PickerModal
-                transparent={true}
-                visible={showDaysPicker}
-                animationType="slide"
-                onRequestClose={() => setShowDaysPicker(false)}
+            <ScrollView
+                keyboardShouldPersistTaps="handled"
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
             >
-                <ModalOverlay activeOpacity={1} onPress={() => setShowDaysPicker(false)}>
-                    <ModalContent>
-                        <ModalTitle>Dias de Funcionamento</ModalTitle>
-                        {daysOptions.map((option) => (
-                            <ModalOption
-                                key={option.value}
-                                onPress={() => {
-                                    updateForm('working_days', option.value);
-                                    setShowDaysPicker(false);
-                                }}
+                <Conteudo>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                        <LogoQuadro onPress={pickImage} accessibilityRole="button" accessibilityLabel="Alterar logo">
+                            {formData.logo_uri ? (
+                                <LogoImagem source={{ uri: formData.logo_uri }} />
+                            ) : (
+                                <Iniciais>{iniciaisDe(formData.gym_name)}</Iniciais>
+                            )}
+                        </LogoQuadro>
+                        <View style={{ flex: 1 }}>
+                            <TituloTela accessibilityRole="header">Perfil da academia</TituloTela>
+                            <LinkLogo onPress={pickImage} accessibilityRole="button">
+                                <LinkLogoTexto>Alterar logo</LinkLogoTexto>
+                            </LinkLogo>
+                        </View>
+                    </View>
+
+                    <Bloco accessibilityLabel="Dados da academia">
+                        <SectionLabel>Academia</SectionLabel>
+                        <CampoRotulado
+                            rotulo="Nome da academia"
+                            placeholder="Nome da academia"
+                            value={formData.gym_name} onChangeText={t => updateForm('gym_name', t)}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <CampoRotulado
+                                flex
+                                rotulo="CNPJ"
+                                placeholder="00.000.000/0000-00"
+                                value={formData.cnpj} onChangeText={t => updateForm('cnpj', t)}
+                                keyboardType="numeric"
+                            />
+                            <CampoRotulado
+                                flex
+                                rotulo="Telefone"
+                                placeholder="(21) 90000-0000"
+                                value={formData.phone}
+                                onChangeText={t => updateForm('phone', t)}
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+                        <CampoRotulado
+                            rotulo="Endereço"
+                            placeholder="Rua, número, bairro"
+                            value={formData.address} onChangeText={t => updateForm('address', t)}
+                        />
+
+                        <View style={{ gap: theme.spacing.sm }}>
+                            <Rotulo>Dias de funcionamento</Rotulo>
+                            <View
+                                style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}
+                                accessibilityRole="radiogroup"
+                                accessibilityLabel="Dias de funcionamento"
                             >
-                                <ModalOptionText>{option.label}</ModalOptionText>
-                            </ModalOption>
-                        ))}
-                    </ModalContent>
-                </ModalOverlay>
-            </PickerModal>
+                                {daysOptions.map(option => {
+                                    const ativo = formData.working_days === option.value;
+                                    return (
+                                        <Chip
+                                            key={option.value}
+                                            ativo={ativo}
+                                            onPress={() => updateForm('working_days', option.value)}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ checked: ativo }}
+                                            accessibilityLabel={option.label}
+                                        >
+                                            <ChipTexto ativo={ativo}>{option.label}</ChipTexto>
+                                        </Chip>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10 }}>
+                            <CampoRotulado
+                                flex
+                                rotulo="Abre"
+                                placeholder="HH:MM"
+                                value={formData.opening_time}
+                                onChangeText={t => updateForm('opening_time', t)}
+                                keyboardType="numeric"
+                                maxLength={5}
+                            />
+                            <Ate>até</Ate>
+                            <CampoRotulado
+                                flex
+                                rotulo="Fecha"
+                                placeholder="HH:MM"
+                                value={formData.closing_time}
+                                onChangeText={t => updateForm('closing_time', t)}
+                                keyboardType="numeric"
+                                maxLength={5}
+                            />
+                        </View>
+                    </Bloco>
+
+                    <Bloco accessibilityLabel="Seus dados">
+                        <SectionLabel>Seus dados</SectionLabel>
+                        <CampoRotulado
+                            rotulo="Nome completo"
+                            placeholder="Seu nome"
+                            value={formData.name} onChangeText={t => updateForm('name', t)}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <CampoRotulado
+                                flex
+                                rotulo="CPF"
+                                placeholder="000.000.000-00"
+                                value={formData.cpf} onChangeText={t => updateForm('cpf', t)}
+                                keyboardType="numeric"
+                            />
+                            <CampoRotulado
+                                flex
+                                rotulo="Nascimento"
+                                placeholder="DD/MM/AAAA"
+                                value={formData.birth_date} onChangeText={t => updateForm('birth_date', t)}
+                            />
+                        </View>
+                        <CampoRotulado
+                            rotulo="E-mail"
+                            placeholder="E-mail"
+                            value={formData.email}
+                            editable={false}
+                            style={{ opacity: 0.7 }}
+                            dica="O e-mail de acesso não pode ser alterado aqui."
+                        />
+                    </Bloco>
+
+                    <BotaoSalvar
+                        onPress={handleSave}
+                        disabled={ocupado}
+                        inativo={ocupado}
+                        accessibilityRole="button"
+                        accessibilityLabel="Salvar alterações"
+                        accessibilityState={{ disabled: ocupado, busy: loading }}
+                    >
+                        {loading
+                            ? <ActivityIndicator color={theme.colors.onPrimary} />
+                            : <BotaoSalvarTexto>Salvar alterações</BotaoSalvarTexto>}
+                    </BotaoSalvar>
+
+                    <BotaoExcluir
+                        onPress={handleDeleteAccount}
+                        disabled={deleting}
+                        accessibilityRole="button"
+                        accessibilityLabel="Excluir minha conta"
+                    >
+                        {deleting
+                            ? <ActivityIndicator color={theme.colors.danger} />
+                            : <BotaoExcluirTexto>Excluir minha conta</BotaoExcluirTexto>}
+                    </BotaoExcluir>
+                </Conteudo>
+            </ScrollView>
         </Container>
     );
 }
