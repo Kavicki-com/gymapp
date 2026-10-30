@@ -1,13 +1,13 @@
-import { AlertItem } from '@/components/AlertItem';
-import { DashboardSection } from '@/components/DashboardSection';
 import { CHART_COLORS, DonutChart } from '@/components/DonutChart';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
+import { Icon, IconName } from '@/src/components/Icon';
+import { Pill, PillTone } from '@/src/components/Pill';
+import { BlockTitle, Divider, HeroNumber, Section, SectionLabel } from '@/src/components/styled';
 import { supabase } from '@/src/services/supabase';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
 import { theme } from '@/src/styles/theme';
 import { getCurrentGymId } from '@/src/utils/auth';
 import { formatCurrency } from '@/src/utils/masks';
-import { FontAwesome } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { RefreshControl, TouchableOpacity, View } from 'react-native';
@@ -18,137 +18,209 @@ import styled from 'styled-components/native';
    cópia da mesma tela — que foi justamente o que o commit 64a040c removeu. */
 const PREVIA_ATRASO = 3;
 
-const ScrollContainer = styled.ScrollView`
-  flex: 1;
-  background-color: ${theme.colors.background};
-  padding: ${theme.spacing.lg}px;
+/* Layout do redesign (Claude Design, board "Início"). A coleta de dados e as
+   contas são as mesmas de antes; só a apresentação mudou. */
+
+const Conteudo = styled.View`
+  padding: ${theme.spacing.lg}px ${theme.spacing.xl}px 40px;
+  gap: ${theme.spacing.xl}px;
 `;
 
-const HeaderTitle = styled.Text`
-  font-size: ${theme.fontSize.xxxl}px;
-  font-weight: bold;
-  color: ${theme.colors.text};
-  margin-bottom: ${theme.spacing.sm}px;
-`;
-
-const HeaderSubtitle = styled.Text`
-  color: ${theme.colors.textSecondary};
-  margin-bottom: ${theme.spacing.xl}px;
-`;
-
-const StatsGrid = styled.View`
+const Topo = styled.View`
   flex-direction: row;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
+  gap: ${theme.spacing.md}px;
 `;
 
-/* Três lado a lado: 31% cada, com o respiro do space-between entre eles.
-   O padding é menor que o do resto do dashboard porque a 31% de um celular
-   sobram ~90px úteis — com o padding largo, o rótulo quebrava em três linhas. */
-const CardContainer = styled.View`
-  background-color: ${theme.colors.surface};
-  padding: ${theme.spacing.md}px ${theme.spacing.sm}px;
-  border-radius: ${theme.borderRadius.lg}px;
-  margin-bottom: ${theme.spacing.lg}px;
-  width: 31.5%;
-  align-items: center;
+const Data = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 13px;
+  color: ${theme.colors.textSecondary};
 `;
 
-const StatValue = styled.Text`
-  color: ${theme.colors.text};
+const NomeAcademia = styled.Text`
+  font-family: ${theme.fonts.display};
   font-size: ${theme.fontSize.xxl}px;
-  font-weight: bold;
+  color: ${theme.colors.text};
 `;
 
-const StatLabel = styled.Text`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.sm}px;
-`;
-
-/* Rótulo do card compacto: menor e centrado, para caber em duas linhas. */
-const StatCardLabel = styled.Text`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.xs}px;
-  text-align: center;
-  margin-top: 2px;
-`;
-
-const IconContainer = styled.View`
-  margin-bottom: ${theme.spacing.xs}px;
-`;
-
-const Row = styled.View`
-  flex-direction: row;
+const Avatar = styled(TouchableOpacity)`
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border-width: 1px;
+  border-color: ${theme.colors.border};
+  background-color: ${theme.colors.surface};
   align-items: center;
+  justify-content: center;
 `;
 
-const ProgressContainer = styled.View`
+const AvatarTexto = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 14px;
+  color: ${theme.colors.text};
+`;
+
+const Apoio = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 13px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const Barra = styled.View`
   height: 8px;
-  background-color: ${theme.colors.border};
   border-radius: 4px;
-  margin-top: ${theme.spacing.sm}px;
+  background-color: ${theme.colors.border};
   overflow: hidden;
 `;
 
-const ProgressBar = styled.View<{ width: number; color: string }>`
+const BarraCheia = styled.View<{ pct: number }>`
   height: 100%;
-  width: ${({ width }) => width}%;
-  background-color: ${({ color }) => color};
+  width: ${({ pct }) => pct}%;
   border-radius: 4px;
+  background-color: ${theme.colors.primary};
 `;
 
-const HealthRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: ${theme.spacing.sm}px;
+const MiniCartao = styled.View`
+  flex: 1;
+  background-color: ${theme.colors.elevated};
+  border-radius: ${theme.borderRadius.md}px;
+  padding: ${theme.spacing.md}px 14px;
+  gap: 4px;
 `;
 
-const HealthLabel = styled.Text`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.sm}px;
-`;
-
-const HealthValue = styled.Text<{ color?: string }>`
-  color: ${({ color }) => color || theme.colors.text};
-  font-size: ${theme.fontSize.md}px;
-  font-weight: bold;
-`;
-
-const MarginValue = styled.Text<{ positive: boolean }>`
-  color: ${({ positive }) => positive ? theme.colors.success : theme.colors.danger};
-  font-size: ${theme.fontSize.xl}px;
-  font-weight: bold;
-  text-align: center;
-  margin-top: ${theme.spacing.sm}px;
-`;
-
-/* Contagem à esquerda, valor à direita — a mesma leitura das linhas de aluno
-   logo abaixo, que também têm nome à esquerda e valor à direita. */
-const AvisoAtraso = styled(TouchableOpacity)`
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 4px 0 10px;
-`;
-
-const AvisoValor = styled.Text`
+const MiniValor = styled.Text<{ cor: string }>`
+  font-family: ${theme.fonts.display};
   font-size: ${theme.fontSize.lg}px;
-  font-weight: bold;
-  color: ${theme.colors.danger};
+  color: ${({ cor }) => cor};
 `;
 
-const AvisoDetalhe = styled.Text`
-  font-size: ${theme.fontSize.sm}px;
-  color: ${theme.colors.textSecondary};
-  flex-shrink: 1;
-  padding-right: 8px;
+const IconeQuadrado = styled.View<{ bg: string }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background-color: ${({ bg }) => bg};
+  align-items: center;
+  justify-content: center;
 `;
 
-const ViewAllText = styled.Text`
-  color: ${theme.colors.primary};
-  font-weight: bold;
+const TituloLinha = styled.Text`
+  font-family: ${theme.fonts.semibold};
   font-size: ${theme.fontSize.md}px;
+  color: ${theme.colors.text};
 `;
+
+const Nome = styled.Text`
+  font-family: ${theme.fonts.medium};
+  font-size: 14px;
+  color: ${theme.colors.text};
+`;
+
+const Valor = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 14px;
+  color: ${theme.colors.text};
+`;
+
+const ValorDestaque = styled.Text<{ cor?: string }>`
+  font-family: ${theme.fonts.display};
+  font-size: ${theme.fontSize.lg}px;
+  color: ${({ cor }) => cor || theme.colors.text};
+`;
+
+const LinhaLista = styled(TouchableOpacity)`
+  flex-direction: row;
+  align-items: center;
+  gap: ${theme.spacing.md}px;
+  min-height: 52px;
+  border-top-width: 1px;
+  border-top-color: ${theme.colors.divider};
+`;
+
+const BotaoPrincipal = styled(TouchableOpacity)`
+  min-height: 52px;
+  border-radius: ${theme.borderRadius.md}px;
+  background-color: ${theme.colors.primary};
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm}px;
+`;
+
+const BotaoPrincipalTexto = styled.Text`
+  font-family: ${theme.fonts.bold};
+  font-size: ${theme.fontSize.md}px;
+  color: ${theme.colors.onPrimary};
+`;
+
+const LinhaSaude = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+`;
+
+const Rotulo = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  color: ${theme.colors.textSecondary};
+`;
+
+const AtalhoCartao = styled(TouchableOpacity)`
+  flex: 1;
+  background-color: ${theme.colors.surface};
+  border-width: 1px;
+  border-color: ${theme.colors.divider};
+  border-radius: 16px;
+  padding: 14px;
+  gap: 2px;
+`;
+
+const AtalhoNumero = styled.Text`
+  font-family: ${theme.fonts.display};
+  font-size: 22px;
+  color: ${theme.colors.text};
+`;
+
+const AtalhoRotulo = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 12px;
+  color: ${theme.colors.textSecondary};
+`;
+
+/** "quinta, 30 de outubro" → "Quinta, 30 de outubro", sem o "-feira". */
+const dataDeHoje = () => {
+  const t = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+    .replace('-feira', '');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
+const mesAtual = () => new Date().toLocaleDateString('pt-BR', { month: 'long' });
+
+const iniciaisDe = (nome: string) =>
+  nome.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase() || 'GA';
+
+const meses = (n: number) => (n === 1 ? '1 mês' : `${n} meses`);
+
+function CabecalhoBloco({ icone, cor, fundo, titulo, apoio, direita }: {
+  icone: IconName;
+  cor: string;
+  fundo: string;
+  titulo: string;
+  apoio?: string;
+  direita?: React.ReactNode;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 8 }}>
+      <IconeQuadrado bg={fundo}><Icon name={icone} size={20} color={cor} /></IconeQuadrado>
+      <View style={{ flex: 1, gap: 2 }}>
+        <TituloLinha>{titulo}</TituloLinha>
+        {apoio ? <Apoio>{apoio}</Apoio> : null}
+      </View>
+      {direita}
+    </View>
+  );
+}
 
 interface DashboardStats {
   clients: number;
@@ -211,7 +283,6 @@ export default function DashboardScreen() {
   const [overdueClients, setOverdueClients] = useState<OverdueClient[]>([]);
   const [upcomingSalaries, setUpcomingSalaries] = useState<UpcomingSalary[]>([]);
   const [birthdays, setBirthdays] = useState<Birthday[]>([]);
-  const [showOverdueModal, setShowOverdueModal] = useState(false);
 
   // Financial health
   const [totalSalaries, setTotalSalaries] = useState(0);
@@ -425,16 +496,6 @@ export default function DashboardScreen() {
     fetchData();
   };
 
-  const StatCard = ({ title, value, icon, onPress }: { title: string; value: number; icon: string; onPress?: () => void }) => (
-    <CardContainer as={onPress ? TouchableOpacity : View} onPress={onPress} activeOpacity={0.7}>
-      <IconContainer>
-        <FontAwesome name={icon as any} size={20} color={theme.colors.primary} />
-      </IconContainer>
-      <StatValue>{value}</StatValue>
-      <StatCardLabel numberOfLines={2}>{title}</StatCardLabel>
-    </CardContainer>
-  );
-
   const revenuePercentage = monthlyRevenue.expected > 0
     ? Math.min(100, Math.round((monthlyRevenue.received / monthlyRevenue.expected) * 100))
     : 0;
@@ -454,181 +515,234 @@ export default function DashboardScreen() {
 
   const previaAtraso = emAtraso.slice(0, PREVIA_ATRASO);
 
+
+  const totalSalariosProximos = upcomingSalaries.reduce((sum, s) => sum + s.salary, 0);
+  const tomDoSalario = (dias: number): PillTone => (dias <= 3 ? 'soon' : 'neutral');
+
   return (
-    <>
-      <ScrollContainer
-        refreshControl={<RefreshControl refreshing={loading || refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-      >
-        <HeaderTitle>Bem vindo, {gymName || 'Academia'}!</HeaderTitle>
-        <HeaderSubtitle>Resumo geral da sua academia.</HeaderSubtitle>
-
-        {loading ? (
-          <>
-            <StatsGrid>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <SkeletonLoader key={i} variant="card" />
-              ))}
-            </StatsGrid>
-            <SkeletonLoader variant="card" />
-            <SkeletonLoader variant="card" />
-          </>
-        ) : (
-          <>
-            {/* Basic Stats */}
-            <StatsGrid>
-              <StatCard title="Clientes" value={stats.clients} icon="users" onPress={() => router.push('/(drawer)/(tabs)/clients')} />
-              <StatCard title="Colaboradores" value={stats.employees} icon="id-card" onPress={() => router.push('/(drawer)/(tabs)/employees')} />
-              <StatCard title="Planos" value={stats.plans} icon="money" onPress={() => router.push('/(drawer)/(tabs)/plans')} />
-            </StatsGrid>
-
-            {/* Donut Chart - Clients by Plan */}
-            {clientsByPlan.length > 0 && (
-              <DashboardSection title="Clientes por Plano" icon="pie-chart">
-                <DonutChart data={clientsByPlan} />
-              </DashboardSection>
-            )}
-
-            {/* Vencimentos — aviso e prévia dos PREVIA_ATRASO que mais devem.
-                A lista que cobra, com a mensagem pronta, o Pix e o registro do
-                que já foi feito, vive na aba Cobranças. Aqui é só reconhecer os
-                nomes e ir para lá: sem nomes, o dono precisa abrir a outra aba
-                só para saber se vale a pena abrir a outra aba. */}
-            <DashboardSection
-              title="Vencimentos"
-              icon="exclamation-triangle"
-              count={overdueCount}
-              isEmpty={overdueCount === 0}
-              emptyText="Todos os pagamentos em dia! 🎉"
-            >
-              <AvisoAtraso onPress={() => router.push('/collections')} activeOpacity={0.7}>
-                <AvisoDetalhe numberOfLines={1}>
-                  {overdueCount === 1 ? '1 cliente em atraso' : `${overdueCount} clientes em atraso`}
-                </AvisoDetalhe>
-                <AvisoValor>{formatCurrency(totalOverdueValue)}</AvisoValor>
-              </AvisoAtraso>
-
-              {/* Sem botão de cobrar, sem baixa, sem atalho para a ficha: tocar
-                  em qualquer linha leva para Cobranças. Ação nenhuma aqui é de
-                  propósito — a mensagem com Pix e o registro do que já foi
-                  cobrado só existem lá, e duplicar meia ação aqui deixaria o
-                  dono achando que cobrou quando não cobrou. */}
-              {previaAtraso.map(c => (
-                <AlertItem
-                  key={c.id}
-                  title={c.name}
-                  subtitle={`${c.planName} · ${c.overdueMonthsCount === 1 ? '1 mês' : `${c.overdueMonthsCount} meses`}`}
-                  value={formatCurrency(c.planPrice * c.overdueMonthsCount)}
-                  status="danger"
-                  onPress={() => router.push('/collections')}
-                />
-              ))}
-
-              <TouchableOpacity
-                onPress={() => router.push('/collections')}
-                activeOpacity={0.7}
-                style={{ paddingTop: 12, alignItems: 'center' }}
-                accessibilityRole="button"
-                accessibilityLabel="Abrir a aba Cobranças"
-              >
-                <ViewAllText>
-                  {overdueCount > previaAtraso.length
-                    ? `Ver os ${overdueCount} em Cobranças`
-                    : 'Ver em Cobranças'}
-                </ViewAllText>
-              </TouchableOpacity>
-            </DashboardSection>
-
-            {/* Monthly Revenue */}
-            <DashboardSection title="Receita do Mês" icon="bar-chart">
-              <Row style={{ justifyContent: 'space-between' }}>
-                <StatLabel>Recebido</StatLabel>
-                <StatValue>{formatCurrency(monthlyRevenue.received)}</StatValue>
-              </Row>
-              <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
-                <StatLabel>Esperado</StatLabel>
-                <StatLabel>{formatCurrency(monthlyRevenue.expected)}</StatLabel>
-              </Row>
-              <ProgressContainer>
-                <ProgressBar
-                  width={revenuePercentage}
-                  color={revenuePercentage >= 70 ? theme.colors.success : theme.colors.primary}
-                />
-              </ProgressContainer>
-              <StatLabel style={{ textAlign: 'center', marginTop: 8 }}>{revenuePercentage}% recebido</StatLabel>
-            </DashboardSection>
-
-            {/* Financial Health */}
-            <DashboardSection title="Saúde Financeira" icon="heartbeat">
-              <HealthRow>
-                <HealthLabel>Receita Esperada</HealthLabel>
-                <HealthValue>{formatCurrency(monthlyRevenue.expected)}</HealthValue>
-              </HealthRow>
-              <HealthRow>
-                <HealthLabel>Total de Salários</HealthLabel>
-                <HealthValue color={theme.colors.danger}>- {formatCurrency(totalSalaries)}</HealthValue>
-              </HealthRow>
-              <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }}>
-                <HealthLabel style={{ textAlign: 'center' }}>Margem</HealthLabel>
-                <MarginValue positive={margin >= 0}>
-                  {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
-                </MarginValue>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <ScrollArea
+          refreshControl={<RefreshControl refreshing={loading || refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+        >
+          <Conteudo>
+            <Topo>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Data>{dataDeHoje()}</Data>
+                <NomeAcademia numberOfLines={1}>{gymName || 'Sua academia'}</NomeAcademia>
               </View>
-            </DashboardSection>
-
-            {/* Employee Salaries */}
-            <DashboardSection
-              title="Salários a Pagar"
-              icon="credit-card"
-              count={upcomingSalaries.length}
-              isEmpty={upcomingSalaries.length === 0}
-              emptyText="Nenhum pagamento próximo"
-            >
-              {upcomingSalaries.length > 0 && (
-                <View style={{ marginBottom: 8 }}>
-                  <StatLabel>
-                    Total: {formatCurrency(upcomingSalaries.reduce((sum, s) => sum + s.salary, 0))}
-                  </StatLabel>
-                </View>
-              )}
-              {upcomingSalaries.map(emp => (
-                <AlertItem
-                  key={emp.id}
-                  title={emp.name}
-                  subtitle={`Dia ${emp.paymentDay}`}
-                  value={formatCurrency(emp.salary)}
-                  statusText={emp.daysUntil === 0 ? 'Hoje' : `Em ${emp.daysUntil}d`}
-                  status={emp.daysUntil <= 3 ? 'warning' : 'info'}
-                  onPress={() => router.push({ pathname: '/employee-details', params: { id: emp.id } })}
-                />
-              ))}
-            </DashboardSection>
-
-            {/* Birthdays */}
-            {birthdays.length > 0 && (
-              <DashboardSection
-                title="Aniversariantes"
-                icon="birthday-cake"
-                count={birthdays.length}
+              <Avatar
+                onPress={() => router.push('/(drawer)/(tabs)/more')}
+                accessibilityRole="button"
+                accessibilityLabel="Perfil e configurações"
               >
-                {birthdays.map(bday => (
-                  <AlertItem
-                    key={`${bday.type}-${bday.id}`}
-                    title={bday.name}
-                    subtitle={bday.type === 'client' ? 'Cliente' : 'Colaborador'}
-                    statusText={bday.daysUntil === 0 ? 'Hoje! 🎉' : `Em ${bday.daysUntil}d`}
-                    status={bday.daysUntil === 0 ? 'success' : 'info'}
-                    icon="birthday-cake"
-                    onPress={() => router.push({
-                      pathname: bday.type === 'client' ? '/client-details' : '/employee-details',
-                      params: { id: bday.id }
-                    })}
+                <AvatarTexto>{iniciaisDe(gymName)}</AvatarTexto>
+              </Avatar>
+            </Topo>
+
+            {loading ? (
+              <>
+                <SkeletonLoader variant="card" />
+                <SkeletonLoader variant="card" />
+                <SkeletonLoader variant="card" />
+              </>
+            ) : (
+              <>
+                {/* Receita do mês */}
+                <Section style={{ padding: theme.spacing.xl, gap: theme.spacing.lg }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <SectionLabel>{mesAtual()}</SectionLabel>
+                    <Apoio>{revenuePercentage}% recebido</Apoio>
+                  </View>
+                  <View style={{ gap: 4 }}>
+                    <HeroNumber adjustsFontSizeToFit numberOfLines={1}>{formatCurrency(monthlyRevenue.received)}</HeroNumber>
+                    <Rotulo>de {formatCurrency(monthlyRevenue.expected)} esperados no mês</Rotulo>
+                  </View>
+                  <Barra><BarraCheia pct={revenuePercentage} /></Barra>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <MiniCartao>
+                      <Apoio style={{ fontSize: 12 }}>Em atraso</Apoio>
+                      <MiniValor cor={theme.colors.danger}>{formatCurrency(totalOverdueValue)}</MiniValor>
+                    </MiniCartao>
+                    <MiniCartao>
+                      <Apoio style={{ fontSize: 12 }}>Margem prevista</Apoio>
+                      <MiniValor cor={margin >= 0 ? theme.colors.success : theme.colors.danger}>
+                        {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
+                      </MiniValor>
+                    </MiniCartao>
+                  </View>
+                </Section>
+
+                <BlockTitle style={{ marginBottom: -8 }}>Pra resolver hoje</BlockTitle>
+
+                {/* Atraso — aviso e prévia dos PREVIA_ATRASO que mais devem.
+                    A lista que cobra, com a mensagem pronta, o Pix e o registro
+                    do que já foi feito, vive na aba Cobranças. Aqui é só
+                    reconhecer os nomes e ir para lá. Sem baixa nem atalho para
+                    a ficha, de propósito: meia ação aqui deixaria o dono achando
+                    que cobrou quando não cobrou. */}
+                <Section style={{ gap: theme.spacing.md }}>
+                  <CabecalhoBloco
+                    icone="clock"
+                    cor={overdueCount > 0 ? theme.colors.danger : theme.colors.success}
+                    fundo={overdueCount > 0 ? theme.colors.dangerSoft : theme.colors.successSoft}
+                    titulo={overdueCount === 0
+                      ? 'Ninguém em atraso'
+                      : overdueCount === 1 ? '1 aluno em atraso' : `${overdueCount} alunos em atraso`}
+                    apoio={overdueCount === 0 ? 'Todos os pagamentos em dia.' : undefined}
+                    direita={overdueCount > 0
+                      ? <ValorDestaque cor={theme.colors.danger}>{formatCurrency(totalOverdueValue)}</ValorDestaque>
+                      : undefined}
                   />
-                ))}
-              </DashboardSection>
+                  {overdueCount > 0 && (
+                    <>
+                      <View>
+                        {previaAtraso.map(c => (
+                          <LinhaLista
+                            key={c.id}
+                            onPress={() => router.push('/collections')}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${c.name}, ${meses(c.overdueMonthsCount)} em atraso`}
+                          >
+                            <Nome style={{ flex: 1 }} numberOfLines={1}>
+                              {c.name} <Apoio style={{ fontSize: 14 }}>· {meses(c.overdueMonthsCount)}</Apoio>
+                            </Nome>
+                            <Valor>{formatCurrency(c.planPrice * c.overdueMonthsCount)}</Valor>
+                          </LinhaLista>
+                        ))}
+                      </View>
+                      <BotaoPrincipal
+                        onPress={() => router.push('/collections')}
+                        accessibilityRole="button"
+                        accessibilityLabel="Abrir a aba Cobranças"
+                      >
+                        <BotaoPrincipalTexto>
+                          {overdueCount > previaAtraso.length ? `Cobrar os ${overdueCount}` : 'Começar a cobrar'}
+                        </BotaoPrincipalTexto>
+                        <Icon name="chevron-right" size={18} color={theme.colors.onPrimary} strokeWidth={2.4} />
+                      </BotaoPrincipal>
+                    </>
+                  )}
+                </Section>
+
+                {/* Salários a pagar (próximos 15 dias) */}
+                <Section style={{ gap: 4 }}>
+                  <CabecalhoBloco
+                    icone="card"
+                    cor={theme.colors.primary}
+                    fundo={theme.colors.primarySoft}
+                    titulo="Salários a pagar"
+                    apoio={upcomingSalaries.length > 0
+                      ? `Próximos 15 dias · total ${formatCurrency(totalSalariosProximos)}`
+                      : 'Nenhum pagamento nos próximos 15 dias'}
+                  />
+                  {upcomingSalaries.map(emp => (
+                    <LinhaLista
+                      key={emp.id}
+                      onPress={() => router.push({ pathname: '/employee-details', params: { id: emp.id } })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${emp.name}, dia ${emp.paymentDay}`}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Nome numberOfLines={1}>{emp.name}</Nome>
+                        <Apoio style={{ fontSize: 12 }}>Dia {emp.paymentDay}</Apoio>
+                      </View>
+                      <Valor>{formatCurrency(emp.salary)}</Valor>
+                      <Pill
+                        small
+                        tone={tomDoSalario(emp.daysUntil)}
+                        label={emp.daysUntil === 0 ? 'Hoje' : `Em ${emp.daysUntil}d`}
+                      />
+                    </LinhaLista>
+                  ))}
+                </Section>
+
+                {/* Aniversariantes (próximos 7 dias) */}
+                {birthdays.length > 0 && (
+                  <Section style={{ gap: 4 }}>
+                    <CabecalhoBloco
+                      icone="gift"
+                      cor={theme.colors.primaryHover}
+                      fundo={theme.colors.primarySoft}
+                      titulo="Aniversariantes"
+                      apoio="Próximos 7 dias"
+                    />
+                    {birthdays.map(bday => (
+                      <LinhaLista
+                        key={`${bday.type}-${bday.id}`}
+                        onPress={() => router.push({
+                          pathname: bday.type === 'client' ? '/client-details' : '/employee-details',
+                          params: { id: bday.id },
+                        })}
+                        accessibilityRole="button"
+                        accessibilityLabel={bday.name}
+                      >
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <Nome numberOfLines={1}>{bday.name}</Nome>
+                          <Apoio style={{ fontSize: 12 }}>{bday.type === 'client' ? 'Aluno' : 'Colaborador'}</Apoio>
+                        </View>
+                        <Pill
+                          small
+                          tone={bday.daysUntil === 0 ? 'ok' : 'neutral'}
+                          label={bday.daysUntil === 0 ? 'Hoje' : `Em ${bday.daysUntil}d`}
+                        />
+                      </LinhaLista>
+                    ))}
+                  </Section>
+                )}
+
+                <BlockTitle style={{ marginBottom: -8 }}>Visão geral</BlockTitle>
+
+                {clientsByPlan.length > 0 && (
+                  <Section>
+                    <DonutChart data={clientsByPlan} />
+                  </Section>
+                )}
+
+                <Section style={{ gap: 10 }}>
+                  <TituloLinha style={{ marginBottom: 4 }}>Saúde financeira</TituloLinha>
+                  <LinhaSaude>
+                    <Rotulo>Receita esperada</Rotulo>
+                    <Valor>{formatCurrency(monthlyRevenue.expected)}</Valor>
+                  </LinhaSaude>
+                  <LinhaSaude>
+                    <Rotulo>Total de salários</Rotulo>
+                    <Valor style={{ color: theme.colors.danger }}>− {formatCurrency(totalSalaries)}</Valor>
+                  </LinhaSaude>
+                  <Divider style={{ marginTop: 2 }} />
+                  <LinhaSaude style={{ paddingTop: 2 }}>
+                    <Rotulo>Margem</Rotulo>
+                    <ValorDestaque
+                      style={{ fontSize: 20 }}
+                      cor={margin >= 0 ? theme.colors.success : theme.colors.danger}
+                    >
+                      {margin >= 0 ? '+ ' : ''}{formatCurrency(margin)}
+                    </ValorDestaque>
+                  </LinhaSaude>
+                </Section>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <AtalhoCartao onPress={() => router.push('/(drawer)/(tabs)/clients')} accessibilityRole="button">
+                    <AtalhoNumero>{stats.clients}</AtalhoNumero>
+                    <AtalhoRotulo>alunos</AtalhoRotulo>
+                  </AtalhoCartao>
+                  <AtalhoCartao onPress={() => router.push('/(drawer)/(tabs)/plans')} accessibilityRole="button">
+                    <AtalhoNumero>{stats.plans}</AtalhoNumero>
+                    <AtalhoRotulo>planos</AtalhoRotulo>
+                  </AtalhoCartao>
+                  <AtalhoCartao onPress={() => router.push('/(drawer)/(tabs)/employees')} accessibilityRole="button">
+                    <AtalhoNumero>{stats.employees}</AtalhoNumero>
+                    <AtalhoRotulo>colaboradores</AtalhoRotulo>
+                  </AtalhoCartao>
+                </View>
+              </>
             )}
-          </>
-        )}
-      </ScrollContainer>
-    </>
+          </Conteudo>
+        </ScrollArea>
+    </View>
   );
 }
+
+const ScrollArea = styled.ScrollView`
+  flex: 1;
+  background-color: ${theme.colors.background};
+`;
