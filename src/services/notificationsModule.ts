@@ -13,7 +13,7 @@ let cached: Notifications | null | undefined;
  * Por que isso existe: a partir do SDK 55, o Expo Go no Android **lança** ao
  * carregar o módulo, em vez de só avisar como fazia até o SDK 54. Com o import
  * no topo de pushNotifications.ts, a exceção derrubava a cadeia inteira
- * (pushNotifications → AuthContext → CustomDrawerContent → (drawer)/_layout),
+ * (pushNotifications → AuthContext → telas),
  * e o expo-router acabava recebendo `undefined` no lugar dos módulos de rota —
  * daí "Route is missing the required default export" em arquivos que têm
  * default export, e o fatal "Cannot read property 'ErrorBoundary' of
