@@ -390,7 +390,6 @@ export default function OnboardingScreen() {
                 <Bloco>
                     <Cabecalho>
                         <BlockTitle accessibilityRole="header" style={{ fontSize: 22 }}>Quando abre</BlockTitle>
-                        <Subtitulo>Dias e horário de funcionamento. Dá para mudar quando quiser.</Subtitulo>
                     </Cabecalho>
 
                     <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="Dias de funcionamento">
