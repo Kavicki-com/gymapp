@@ -1,5 +1,6 @@
 import { appAlert } from '@/src/components/AppAlert';
 import { BottomSheet } from '@/src/components/BottomSheet';
+import { CenterModal } from '@/src/components/CenterModal';
 import { resumirCobranca } from '@/src/utils/overdue';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
@@ -1290,27 +1291,25 @@ export default function ClientDetailsScreen() {
             </ScrollView>
 
             {/* Payment Modal */}
-            {/* Tocar fora da folha fecha o teclado. Os toques dentro são
-                tratados pelos próprios campos e botões. */}
-            <BottomSheet
+            {/* Registrar pagamento é modal centralizado, não folha (pedido do
+                dono). Tocar fora fecha o teclado; fecha pelo X. */}
+            <CenterModal
                 visible={showPaymentModal}
                 onClose={closePaymentModal}
                 onBackdropPress={Keyboard.dismiss}
                 avoidKeyboard
             >
-                        <Folha>
                             <ScrollView
                                 showsVerticalScrollIndicator={false}
                                 keyboardShouldPersistTaps="handled"
                                 automaticallyAdjustKeyboardInsets
                                 contentContainerStyle={{
-                                    paddingTop: 10,
+                                    paddingTop: 20,
                                     paddingHorizontal: theme.spacing.xl,
-                                    paddingBottom: insets.bottom + 28,
+                                    paddingBottom: 24,
                                     gap: 18,
                                 }}
                             >
-                                <Alca />
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                                     <View style={{ flex: 1, gap: 2 }}>
                                         <FolhaTitulo accessibilityRole="header">{editingPayment ? 'Editar pagamento' : 'Registrar pagamento'}</FolhaTitulo>
@@ -1465,7 +1464,6 @@ export default function ClientDetailsScreen() {
                                     </BotaoFolha>
                                 </View>
                             </ScrollView>
-                        </Folha>
 
                     {Platform.OS === 'ios' && (
                         <InputAccessoryView nativeID={ACESSORIO_TECLADO}>
@@ -1487,7 +1485,7 @@ export default function ClientDetailsScreen() {
                             </View>
                         </InputAccessoryView>
                     )}
-            </BottomSheet>
+            </CenterModal>
 
             {/* Lock Subscription Modal */}
             <BottomSheet visible={showLockModal} onClose={() => setShowLockModal(false)}>
