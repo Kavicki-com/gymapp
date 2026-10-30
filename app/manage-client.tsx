@@ -311,7 +311,7 @@ export default function ManageClientScreen() {
                     </FormGroup>
 
                     <Button onPress={handleSave} disabled={loading}>
-                        {loading ? <ActivityIndicator color="#111827" /> : <ButtonText>Salvar</ButtonText>}
+                        {loading ? <ActivityIndicator color={theme.colors.onPrimary} /> : <ButtonText>Salvar</ButtonText>}
                     </Button>
                 </ScrollView>
             </Container>

@@ -81,7 +81,7 @@ export default function ForgotPasswordScreen() {
 
                     <Button onPress={handleResetPassword} disabled={loading}>
                         {loading ? (
-                            <ActivityIndicator color="#111827" />
+                            <ActivityIndicator color={theme.colors.onPrimary} />
                         ) : (
                             <ButtonText>Enviar Email</ButtonText>
                         )}

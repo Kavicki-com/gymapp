@@ -206,7 +206,7 @@ export default function LoginScreen() {
 
                     <Button onPress={handleLogin} disabled={loading}>
                         {loading ? (
-                            <ActivityIndicator color="#111827" />
+                            <ActivityIndicator color={theme.colors.onPrimary} />
                         ) : (
                             <ButtonText>Entrar</ButtonText>
                         )}

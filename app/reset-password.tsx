@@ -201,7 +201,7 @@ export default function ResetPasswordScreen() {
 
                     <Button onPress={handleUpdatePassword} disabled={loading}>
                         {loading ? (
-                            <ActivityIndicator color="#111827" />
+                            <ActivityIndicator color={theme.colors.onPrimary} />
                         ) : (
                             <ButtonText>Alterar Senha</ButtonText>
                         )}

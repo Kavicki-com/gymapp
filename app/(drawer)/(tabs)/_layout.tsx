@@ -5,7 +5,7 @@ import React from 'react';
 import { ColorValue, TouchableOpacity } from 'react-native';
 
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { useColorScheme } from '@/components/useColorScheme';
+import { theme } from '@/src/styles/theme';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
@@ -15,22 +15,22 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#EAB308', // yellow-500
-        tabBarInactiveTintColor: '#9CA3AF', // gray-400
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarLabelStyle: { fontFamily: theme.fonts.semibold, fontSize: 11 },
         tabBarStyle: {
-          backgroundColor: '#1F2937', // gray-800
-          borderTopColor: '#374151', // gray-700
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.divider,
         },
         headerStyle: {
-          backgroundColor: '#111827', // gray-900
+          backgroundColor: theme.colors.background,
         },
         headerTitleStyle: {
-          color: '#F3F4F6', // gray-100
+          color: theme.colors.text,
         },
         headerShown: useClientOnlyValue(false, true),
         headerRight: () => {
@@ -40,7 +40,7 @@ export default function TabLayout() {
               onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
               style={{ marginRight: 15 }}
             >
-              <FontAwesome name="bars" size={24} color="#F3F4F6" />
+              <FontAwesome name="bars" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           );
         },
