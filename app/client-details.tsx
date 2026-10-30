@@ -1,3 +1,4 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { BottomSheet } from '@/src/components/BottomSheet';
 import { resumirCobranca } from '@/src/utils/overdue';
 import { DateField } from '@/src/components/DateField';
@@ -22,7 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Linking from 'expo-linking';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, ActivityIndicator, Alert, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, Switch, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ActivityIndicator, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -496,7 +497,7 @@ export default function ClientDetailsScreen() {
             }
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar a ficha do aluno.');
+            appAlert('Erro', 'Não foi possível carregar a ficha do aluno.');
             router.back();
         } finally {
             setLoading(false);
@@ -546,7 +547,7 @@ export default function ClientDetailsScreen() {
     };
 
     const handleDelete = () => {
-        Alert.alert(
+        appAlert(
             'Confirmar Exclusão',
             'Deseja realmente excluir este aluno?',
             [
@@ -560,7 +561,7 @@ export default function ClientDetailsScreen() {
                             if (error) throw error;
                             router.back();
                         } catch (error: any) {
-                            Alert.alert('Erro', error.message);
+                            appAlert('Erro', error.message);
                         }
                     }
                 }
@@ -582,7 +583,7 @@ export default function ClientDetailsScreen() {
                 uploadImage(result.assets[0].base64);
             }
         } catch (error) {
-            Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
+            appAlert('Erro', 'Não foi possível selecionar a imagem.');
         }
     };
 
@@ -611,10 +612,10 @@ export default function ClientDetailsScreen() {
             if (updateError) throw updateError;
 
             setClient({ ...client, photo_url: publicUrl });
-            Alert.alert('Sucesso', 'Foto atualizada!');
+            appAlert('Sucesso', 'Foto atualizada!');
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Erro', 'Falha ao fazer upload da imagem.');
+            appAlert('Erro', 'Falha ao fazer upload da imagem.');
         } finally {
             setUploading(false);
         }
@@ -688,17 +689,17 @@ export default function ClientDetailsScreen() {
 
     const handleRegisterPayment = async () => {
         if (!paymentAmount) {
-            Alert.alert('Erro', 'Informe o valor do pagamento.');
+            appAlert('Erro', 'Informe o valor do pagamento.');
             return;
         }
 
         if (!referenceMonth || referenceMonth.length < 7) {
-            Alert.alert('Erro', 'Informe o mês de referência (MM/AAAA).');
+            appAlert('Erro', 'Informe o mês de referência (MM/AAAA).');
             return;
         }
 
         if (paymentDate && !parsePaymentDate()) {
-            Alert.alert('Erro', 'Data do pagamento inválida. Use DD/MM/AAAA.');
+            appAlert('Erro', 'Data do pagamento inválida. Use DD/MM/AAAA.');
             return;
         }
 
@@ -726,7 +727,7 @@ export default function ClientDetailsScreen() {
             return;
         }
         const plural = jaLancados.length > 1;
-        Alert.alert(
+        appAlert(
             plural ? 'Meses já lançados' : 'Mês já lançado',
             `${jaLancados.join(', ')} ${plural ? 'já foram lançados' : 'já foi lançado'} para este aluno. Lançar mesmo assim?`,
             [
@@ -790,12 +791,12 @@ export default function ClientDetailsScreen() {
 
             const months = refMonths.length;
             const totalPaid = finalAmount * months;
-            Alert.alert('Sucesso', `${months > 1 ? `${months} pagamentos registrados` : 'Pagamento registrado'}! Total: R$ ${totalPaid.toFixed(2)}`);
+            appAlert('Sucesso', `${months > 1 ? `${months} pagamentos registrados` : 'Pagamento registrado'}! Total: R$ ${totalPaid.toFixed(2)}`);
             closePaymentModal();
             fetchClientDetails();
             fetchPayments();
         } catch (error: any) {
-            Alert.alert('Erro', 'Falha ao registrar pagamento: ' + error.message);
+            appAlert('Erro', 'Falha ao registrar pagamento: ' + error.message);
         } finally {
             setRegisteringPayment(false);
         }
@@ -827,19 +828,19 @@ export default function ClientDetailsScreen() {
                     .eq('id', editingPayment.id);
                 if (error) throw error;
 
-                Alert.alert('Sucesso', 'Pagamento atualizado.');
+                appAlert('Sucesso', 'Pagamento atualizado.');
                 closePaymentModal();
                 fetchClientDetails();
                 fetchPayments();
             } catch (error: any) {
-                Alert.alert('Erro', 'Falha ao atualizar pagamento: ' + error.message);
+                appAlert('Erro', 'Falha ao atualizar pagamento: ' + error.message);
             } finally {
                 setRegisteringPayment(false);
             }
         };
 
         if (conflito) {
-            Alert.alert(
+            appAlert(
                 'Mês já lançado',
                 `${referenceMonth} já foi lançado para este aluno. Salvar mesmo assim?`,
                 [
@@ -859,7 +860,7 @@ export default function ClientDetailsScreen() {
         const quando = p.payment_date
             ? new Date(p.payment_date).toLocaleDateString('pt-BR')
             : 'sem data';
-        Alert.alert(
+        appAlert(
             'Excluir pagamento',
             `${formatCurrency(p.amount || 0)} · ${p.reference_month ? `ref. ${p.reference_month}` : 'sem mês de referência'} · ${quando}\n\nO valor sai do histórico e das contas deste aluno.`,
             [
@@ -877,7 +878,7 @@ export default function ClientDetailsScreen() {
                             fetchClientDetails();
                             fetchPayments();
                         } catch (error: any) {
-                            Alert.alert('Erro', 'Falha ao excluir pagamento: ' + error.message);
+                            appAlert('Erro', 'Falha ao excluir pagamento: ' + error.message);
                         } finally {
                             setDeletingPaymentId(null);
                         }
@@ -899,7 +900,7 @@ export default function ClientDetailsScreen() {
 
     const handleLockSubscription = async () => {
         if (!lockUntilDate || lockUntilDate.length < 10) {
-            Alert.alert('Erro', 'Informe a data de retorno (DD/MM/AAAA).');
+            appAlert('Erro', 'Informe a data de retorno (DD/MM/AAAA).');
             return;
         }
 
@@ -918,19 +919,19 @@ export default function ClientDetailsScreen() {
 
             if (error) throw error;
 
-            Alert.alert('Sucesso', `Mensalidade trancada até ${lockUntilDate}.`);
+            appAlert('Sucesso', `Mensalidade trancada até ${lockUntilDate}.`);
             setShowLockModal(false);
             setLockUntilDate('');
             fetchClientDetails();
         } catch (error: any) {
-            Alert.alert('Erro', 'Falha ao trancar mensalidade: ' + error.message);
+            appAlert('Erro', 'Falha ao trancar mensalidade: ' + error.message);
         } finally {
             setLocking(false);
         }
     };
 
     const handleUnlockSubscription = async () => {
-        Alert.alert(
+        appAlert(
             'Destrancar Mensalidade',
             'Deseja reativar a mensalidade deste aluno?',
             [
@@ -948,10 +949,10 @@ export default function ClientDetailsScreen() {
                                 .eq('id', id);
 
                             if (error) throw error;
-                            Alert.alert('Sucesso', 'Mensalidade reativada!');
+                            appAlert('Sucesso', 'Mensalidade reativada!');
                             fetchClientDetails();
                         } catch (error: any) {
-                            Alert.alert('Erro', error.message);
+                            appAlert('Erro', error.message);
                         }
                     }
                 }
@@ -961,7 +962,7 @@ export default function ClientDetailsScreen() {
 
     const handleWhatsApp = () => {
         if (!client.phone) {
-            Alert.alert('Erro', 'Aluno sem telefone cadastrado.');
+            appAlert('Erro', 'Aluno sem telefone cadastrado.');
             return;
         }
 
@@ -971,7 +972,7 @@ export default function ClientDetailsScreen() {
         const link = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
 
         Linking.openURL(link).catch(() => {
-            Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+            appAlert('Erro', 'Não foi possível abrir o WhatsApp.');
         });
     };
 

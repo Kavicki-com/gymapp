@@ -9,6 +9,7 @@ import {
     Pressable,
     StyleSheet,
 } from 'react-native';
+import { avisarFolhaFechando } from './AppAlert';
 
 /**
  * Folha inferior com o movimento de folha: o fundo escurece aos poucos e a
@@ -44,6 +45,7 @@ export function BottomSheet({ visible, onClose, onBackdropPress, avoidKeyboard, 
                 useNativeDriver: true,
             }).start();
         } else if (montado) {
+            avisarFolhaFechando(220 + 120);
             Animated.timing(progresso, {
                 toValue: 0,
                 duration: 220,

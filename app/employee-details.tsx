@@ -1,3 +1,4 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { BottomSheet } from '@/src/components/BottomSheet';
 import { DateField } from '@/src/components/DateField';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
@@ -23,7 +24,7 @@ import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, InputAccessoryView, Keyboard, Modal, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 
@@ -314,7 +315,7 @@ export default function EmployeeDetailsScreen() {
             }
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar os detalhes do colaborador.');
+            appAlert('Erro', 'Não foi possível carregar os detalhes do colaborador.');
             router.back();
         } finally {
             setLoading(false);
@@ -340,7 +341,7 @@ export default function EmployeeDetailsScreen() {
     };
 
     const handleDelete = () => {
-        Alert.alert(
+        appAlert(
             'Confirmar Exclusão',
             'Deseja realmente excluir este colaborador?',
             [
@@ -354,7 +355,7 @@ export default function EmployeeDetailsScreen() {
                             if (error) throw error;
                             router.back();
                         } catch (error: any) {
-                            Alert.alert('Erro', error.message);
+                            appAlert('Erro', error.message);
                         }
                     }
                 }
@@ -376,7 +377,7 @@ export default function EmployeeDetailsScreen() {
                 uploadImage(result.assets[0].base64);
             }
         } catch (error) {
-            Alert.alert('Erro', 'Não foi possível selecionar a imagem.');
+            appAlert('Erro', 'Não foi possível selecionar a imagem.');
         }
     };
 
@@ -405,10 +406,10 @@ export default function EmployeeDetailsScreen() {
             if (updateError) throw updateError;
 
             setEmployee({ ...employee, photo_url: publicUrl });
-            Alert.alert('Sucesso', 'Foto atualizada!');
+            appAlert('Sucesso', 'Foto atualizada!');
         } catch (error: any) {
             console.error(error);
-            Alert.alert('Erro', 'Falha ao fazer upload da imagem.');
+            appAlert('Erro', 'Falha ao fazer upload da imagem.');
         } finally {
             setUploading(false);
         }
@@ -416,7 +417,7 @@ export default function EmployeeDetailsScreen() {
 
     const handleRegisterPayment = async () => {
         if (!paymentAmount) {
-            Alert.alert('Erro', 'Informe o valor do pagamento.');
+            appAlert('Erro', 'Informe o valor do pagamento.');
             return;
         }
 
@@ -443,13 +444,13 @@ export default function EmployeeDetailsScreen() {
 
             if (error) throw error;
 
-            Alert.alert('Sucesso', 'Pagamento registrado!');
+            appAlert('Sucesso', 'Pagamento registrado!');
             setShowPaymentModal(false);
             setPaymentDate('');
             setPaymentDescription('');
             fetchPayments();
         } catch (error: any) {
-            Alert.alert('Erro', 'Falha ao registrar pagamento: ' + error.message);
+            appAlert('Erro', 'Falha ao registrar pagamento: ' + error.message);
         } finally {
             setRegisteringPayment(false);
         }

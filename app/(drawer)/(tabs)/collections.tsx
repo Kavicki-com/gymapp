@@ -1,3 +1,4 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { CollectionsLocked } from '@/src/components/CollectionsLocked';
 import { CobrancaConfig } from '@/src/components/cobrancas/CobrancaConfig';
@@ -28,7 +29,7 @@ import {
 import * as Linking from 'expo-linking';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, BackHandler, FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { BackHandler, FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 
 /**
@@ -339,7 +340,7 @@ export default function CollectionsScreen() {
 
     const cobrar = async (d: Devedor) => {
         if (!d.telefone) {
-            Alert.alert('Sem telefone', `${d.nome} não tem telefone cadastrado.`);
+            appAlert('Sem telefone', `${d.nome} não tem telefone cadastrado.`);
             return;
         }
         const fone = d.telefone.replace(/\D/g, '');
@@ -361,7 +362,7 @@ export default function CollectionsScreen() {
 
         await registrarContato(d);
         Linking.openURL(`https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`)
-            .catch(() => Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'));
+            .catch(() => appAlert('Erro', 'Não foi possível abrir o WhatsApp.'));
     };
 
     // Uma linha por competência, e não uma linha com a soma: a regra de atraso
@@ -387,7 +388,7 @@ export default function CollectionsScreen() {
             carregar();
             return true;
         } catch (e: any) {
-            Alert.alert('Erro', 'Falha ao registrar: ' + e.message);
+            appAlert('Erro', 'Falha ao registrar: ' + e.message);
             return false;
         } finally {
             setLancando(null);

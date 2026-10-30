@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 import type * as NotificationsTypes from 'expo-notifications';
+import { AppAlertHost } from '../src/components/AppAlert';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { getNotifications } from '../src/services/notificationsModule';
 import { supabase } from '../src/services/supabase';
@@ -95,6 +96,7 @@ function RootLayoutNav() {
             <Stack.Screen name="client-details" options={{ headerShown: false }} />
             <Stack.Screen name="employee-details" options={{ headerShown: false }} />
           </Stack>
+          <AppAlertHost />
         </GestureHandlerRootView>
       </ThemeProvider>
     </AuthProvider>
