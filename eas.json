@@ -26,7 +26,6 @@
       "extends": "base",
       "distribution": "internal",
       "environment": "preview",
-      "channel": "preview",
       "android": {
         "buildType": "apk"
       }
@@ -34,8 +33,7 @@
     "production": {
       "extends": "base",
       "autoIncrement": true,
-      "environment": "production",
-      "channel": "production"
+      "environment": "production"
     }
   },
   "submit": {
