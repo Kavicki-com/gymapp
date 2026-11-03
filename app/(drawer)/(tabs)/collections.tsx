@@ -20,6 +20,7 @@ import { formatCurrency } from '@/src/utils/masks';
 import { agruparCompetencias, resumirCobranca } from '@/src/utils/overdue';
 import { MENSAGEM_PADRAO, montarMensagem } from '@/src/utils/mensagemCobranca';
 import { gerarPixBrCode } from '@/src/utils/pixBrCode';
+import { linkDoPix } from '@/src/utils/pixLink';
 import {
     TipoChavePix,
     detectarTipo,
@@ -358,7 +359,8 @@ export default function CollectionsScreen() {
                 cidade: academia.pixCity || undefined,
                 valor: d.total,
             });
-            msg += `\n\nSe preferir, é só copiar o código Pix abaixo e colar no seu banco (valor já preenchido):\n\n${codigo}`;
+            // Link, nunca o código cru: BR Code no texto do WhatsApp não chega.
+            msg += `\n\nPara pagar por Pix (valor já preenchido), toque no link e copie o código:\n${linkDoPix(codigo)}`;
         }
 
         await registrarContato(d);

@@ -173,7 +173,7 @@ export function CobrancaConfig({
                         </View>
                     </View>
                     <Apoio>
-                        O Pix copia e cola é anexado no fim, com o valor já preenchido. Não precisa
+                        O link do Pix é anexado no fim, com o valor já preenchido. Não precisa
                         colocar nada aqui.
                     </Apoio>
                 </Section>

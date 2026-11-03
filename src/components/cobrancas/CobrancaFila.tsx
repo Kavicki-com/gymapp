@@ -249,7 +249,7 @@ export function CobrancaFila({
                     {temPix && (
                         <Anexo>
                             <IconeCopiar color={BALAO.anexo} />
-                            <AnexoTexto>Pix copia e cola anexado</AnexoTexto>
+                            <AnexoTexto>Link do Pix anexado</AnexoTexto>
                         </Anexo>
                     )}
                 </Balao>
