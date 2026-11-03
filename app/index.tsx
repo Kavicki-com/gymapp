@@ -1,32 +1,51 @@
+import { appAlert } from '@/src/components/AppAlert';
 import { useIsFocused } from "expo-router/react-navigation";
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
+import {
+    BotaoPrincipal,
+    BotaoTexto,
+    BotaoTextoRotulo,
+    Cabecalho,
+    Campo,
+    Formulario,
+    Rodape,
+    TelaAcesso,
+    TextoRodape,
+    Titulo,
+} from '../src/components/acesso';
 import { Logo } from '../src/components/Logo';
 import { PasswordInput } from '../src/components/PasswordInput';
 import { PrivacyPolicyModal } from '../src/components/PrivacyPolicyModal';
-import {
-    Button,
-    ButtonText,
-    Card,
-    CenteredContainer,
-    FormGroup,
-    HighlightText,
-    Input,
-    Label,
-    LinkText
-} from '../src/components/styled';
+import { CenteredContainer, HighlightText, Input } from '../src/components/styled';
 import { useAuth } from '../src/contexts/AuthContext';
 import { supabase } from '../src/services/supabase';
 import { theme } from '../src/styles/theme';
 import { translateError } from '../src/utils/errorMessages';
 
-const FooterLink = styled(TouchableOpacity)`
-  margin-top: ${theme.spacing.lg}px;
+/* Layout do redesign (Claude Design, "Entrar"). Sessão, perfil e navegação
+   são os mesmos de antes; só a apresentação mudou. */
+
+const Marca = styled.Text`
+  font-family: ${theme.fonts.displayHeavy};
+  font-size: 24px;
+  letter-spacing: -0.2px;
+  color: ${theme.colors.text};
 `;
 
+const TituloLogin = styled(Titulo)`
+  font-size: 32px;
+  line-height: 36px;
+`;
 
+const LinkPolitica = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 13px;
+  color: ${theme.colors.textMuted};
+  text-decoration-line: underline;
+`;
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -73,7 +92,7 @@ export default function LoginScreen() {
 
             if (userError && isNetworkError(userError)) {
                 console.warn('LoginScreen: sem conexão para validar a sessão', userError);
-                Alert.alert('Sem conexão', 'Não foi possível confirmar seu login agora. Verifique sua internet e tente de novo.');
+                appAlert('Sem conexão', 'Não foi possível confirmar seu login agora. Verifique sua internet e tente de novo.');
                 return;
             }
 
@@ -95,7 +114,7 @@ export default function LoginScreen() {
             // faria uma academia já cadastrada recomeçar o cadastro.
             if (error && error.code !== 'PGRST116') {
                 console.warn('LoginScreen: falha ao buscar perfil', error);
-                Alert.alert('Sem conexão', 'Não foi possível carregar seus dados agora. Verifique sua internet e tente de novo.');
+                appAlert('Sem conexão', 'Não foi possível carregar seus dados agora. Verifique sua internet e tente de novo.');
                 return;
             }
 
@@ -120,7 +139,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Erro', 'Preencha todos os campos');
+            appAlert('Erro', 'Preencha todos os campos');
             return;
         }
         setLoading(true);
@@ -128,7 +147,7 @@ export default function LoginScreen() {
 
         if (error) {
             setLoading(false);
-            Alert.alert('Erro no Login', translateError(error));
+            appAlert('Erro no Login', translateError(error));
         } else {
             // Check for profile immediately to decide navigation
             const { data: { user } } = await supabase.auth.getUser();
@@ -161,73 +180,71 @@ export default function LoginScreen() {
     }
 
     return (
-        <CenteredContainer>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Stack.Screen options={{ headerShown: false }} />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1, width: '100%', justifyContent: 'center' }}
-            >
-                <Logo
-                    width={100}
-                    height={100}
-                    style={{ alignSelf: 'center', marginBottom: theme.spacing.xl }}
-                />
-                <Card>
+            <TelaAcesso respiroTopo={48} espaco={40}>
+                <Cabecalho style={{ gap: 24 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Logo width={40} height={40} color={theme.colors.primary} />
+                        <Marca>GymApp</Marca>
+                    </View>
+                    <TituloLogin accessibilityRole="header">Sua academia,{'\n'}em dia.</TituloLogin>
+                </Cabecalho>
 
-
-
-                    <FormGroup>
-                        <Label>Email</Label>
+                <Formulario>
+                    <Campo rotulo="E-mail">
                         <Input
-                            placeholder="your@email.com"
-                            placeholderTextColor={theme.colors.textSecondary}
+                            placeholder="voce@academia.com.br"
                             value={email}
                             onChangeText={setEmail}
                             autoCapitalize="none"
                             keyboardType="email-address"
+                            autoComplete="email"
+                            textContentType="emailAddress"
                         />
-                    </FormGroup>
+                    </Campo>
 
-                    <FormGroup>
-                        <Label>Senha</Label>
+                    <Campo rotulo="Senha">
                         <PasswordInput
-                            placeholder="*******"
-                            placeholderTextColor={theme.colors.textSecondary}
+                            placeholder="Sua senha"
                             value={password}
                             onChangeText={setPassword}
+                            autoComplete="current-password"
+                            textContentType="password"
                         />
-                    </FormGroup>
+                    </Campo>
 
-                    <View style={{ alignItems: 'flex-end', marginBottom: 24 }}>
-                        <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-                            <LinkText style={{ textAlign: 'right' }}>Esqueceu a senha?</LinkText>
-                        </TouchableOpacity>
-                    </View>
+                    <BotaoTexto
+                        onPress={() => router.push('/forgot-password')}
+                        style={{ alignSelf: 'flex-end', marginTop: -8 }}
+                        accessibilityRole="link"
+                    >
+                        <BotaoTextoRotulo>Esqueci a senha</BotaoTextoRotulo>
+                    </BotaoTexto>
 
-                    <Button onPress={handleLogin} disabled={loading}>
-                        {loading ? (
-                            <ActivityIndicator color="#111827" />
-                        ) : (
-                            <ButtonText>Entrar</ButtonText>
-                        )}
-                    </Button>
+                    <BotaoPrincipal titulo="Entrar" onPress={handleLogin} carregando={loading} />
+                </Formulario>
 
-                    <FooterLink onPress={() => router.push('/register')}>
-                        <LinkText>
-                            Não tem uma conta? <HighlightText>Cadastre-se</HighlightText>
-                        </LinkText>
-                    </FooterLink>
-
-                    <FooterLink onPress={() => setShowPrivacyPolicy(true)}>
-                        <LinkText style={{ fontSize: 12 }}>Política de Privacidade</LinkText>
-                    </FooterLink>
-                </Card>
-            </KeyboardAvoidingView>
+                <Rodape gap={4}>
+                    <TouchableOpacity
+                        onPress={() => router.push('/register')}
+                        accessibilityRole="link"
+                        style={{ minHeight: theme.touch, justifyContent: 'center' }}
+                    >
+                        <TextoRodape>
+                            Ainda não usa o GymApp? <HighlightText>Criar conta grátis</HighlightText>
+                        </TextoRodape>
+                    </TouchableOpacity>
+                    <BotaoTexto onPress={() => setShowPrivacyPolicy(true)} accessibilityRole="button">
+                        <LinkPolitica>Política de Privacidade</LinkPolitica>
+                    </BotaoTexto>
+                </Rodape>
+            </TelaAcesso>
 
             <PrivacyPolicyModal
                 visible={showPrivacyPolicy}
                 onClose={() => setShowPrivacyPolicy(false)}
             />
-        </CenteredContainer>
+        </View>
     );
 }

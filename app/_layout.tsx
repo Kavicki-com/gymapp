@@ -1,5 +1,7 @@
+import { Archivo_700Bold, Archivo_800ExtraBold } from '@expo-google-fonts/archivo';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-navigation";
+import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -9,11 +11,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 import type * as NotificationsTypes from 'expo-notifications';
+import { AppAlertHost } from '../src/components/AppAlert';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { getNotifications } from '../src/services/notificationsModule';
 import { supabase } from '../src/services/supabase';
-
-import { useColorScheme } from '@/components/useColorScheme';
+import { theme } from '../src/styles/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -32,6 +34,12 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Archivo_700Bold,
+    Archivo_800ExtraBold,
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -52,12 +60,25 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+// O app é escuro sempre. O tema do navigation pinta o fundo entre
+// transições — sem isto, aparece um flash do fundo padrão (preto ou branco).
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: theme.colors.primary,
+    background: theme.colors.background,
+    card: theme.colors.surface,
+    text: theme.colors.text,
+    border: theme.colors.divider,
+  },
+};
+
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
 
   return (
     <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={navTheme}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <DeepLinkHandler />
           <NotificationHandler />
@@ -75,6 +96,7 @@ function RootLayoutNav() {
             <Stack.Screen name="client-details" options={{ headerShown: false }} />
             <Stack.Screen name="employee-details" options={{ headerShown: false }} />
           </Stack>
+          <AppAlertHost />
         </GestureHandlerRootView>
       </ThemeProvider>
     </AuthProvider>

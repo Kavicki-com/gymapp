@@ -1,25 +1,27 @@
+import { appAlert } from '@/src/components/AppAlert';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
-import styled from 'styled-components/native';
+import { TouchableOpacity, View } from 'react-native';
 import {
-    Button,
-    ButtonText,
-    Card,
-    CenteredContainer,
-    FormGroup,
-    Input,
-    Label,
-    LinkText,
-    Title
-} from '../src/components/styled';
+    BotaoPrincipal,
+    BotaoVoltar,
+    Cabecalho,
+    Campo,
+    Formulario,
+    Rodape,
+    Subtitulo,
+    TelaAcesso,
+    TextoRodape,
+    Titulo,
+} from '../src/components/acesso';
+import { HighlightText, Input } from '../src/components/styled';
 import { supabase } from '../src/services/supabase';
 import { theme } from '../src/styles/theme';
 
-const BackButton = styled(TouchableOpacity)`
-    margin-top: ${theme.spacing.lg}px;
-`;
+/* Layout do redesign (Claude Design, "Esqueceu a senha?"). O envio do link e
+   os avisos são os mesmos de antes (o "link enviado" continua no alerta, que
+   já volta para o login). */
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -28,7 +30,7 @@ export default function ForgotPasswordScreen() {
 
     const handleResetPassword = async () => {
         if (!email) {
-            Alert.alert('Erro', 'Por favor, informe seu email.');
+            appAlert('Erro', 'Por favor, informe seu email.');
             return;
         }
 
@@ -43,55 +45,58 @@ export default function ForgotPasswordScreen() {
             });
 
             if (error) {
-                Alert.alert('Erro', 'Não foi possível enviar o email. Verifique o email informado.');
+                appAlert('Erro', 'Não foi possível enviar o email. Verifique o email informado.');
             } else {
-                Alert.alert(
+                appAlert(
                     'Email Enviado',
                     'Verifique sua caixa de entrada para redefinir sua senha.',
                     [{ text: 'OK', onPress: () => router.back() }]
                 );
             }
         } catch (error: any) {
-            Alert.alert('Erro', 'Ocorreu um erro ao enviar o email. Tente novamente.');
+            appAlert('Erro', 'Ocorreu um erro ao enviar o email. Tente novamente.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <CenteredContainer>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1, width: '100%', justifyContent: 'center' }}
-            >
-                <Card>
-                    <Title>Recuperar Senha</Title>
+        <TelaAcesso>
+            <View style={{ flexDirection: 'row' }}>
+                <BotaoVoltar onPress={() => router.back()} rotulo="Voltar para Entrar" />
+            </View>
 
-                    <FormGroup>
-                        <Label>Email</Label>
-                        <Input
-                            placeholder="seu@email.com"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
-                    </FormGroup>
+            <Cabecalho>
+                <Titulo accessibilityRole="header">Esqueceu a senha?</Titulo>
+                <Subtitulo>Informe o e-mail da conta. Vamos mandar um link para você criar uma senha nova.</Subtitulo>
+            </Cabecalho>
 
-                    <Button onPress={handleResetPassword} disabled={loading}>
-                        {loading ? (
-                            <ActivityIndicator color="#111827" />
-                        ) : (
-                            <ButtonText>Enviar Email</ButtonText>
-                        )}
-                    </Button>
+            <Formulario>
+                <Campo rotulo="E-mail">
+                    <Input
+                        placeholder="voce@academia.com.br"
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        autoComplete="email"
+                        textContentType="emailAddress"
+                    />
+                </Campo>
+                <BotaoPrincipal titulo="Enviar link" onPress={handleResetPassword} carregando={loading} />
+            </Formulario>
 
-                    <BackButton onPress={() => router.back()}>
-                        <LinkText>Voltar ao Login</LinkText>
-                    </BackButton>
-                </Card>
-            </KeyboardAvoidingView>
-        </CenteredContainer>
+            <Rodape>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    accessibilityRole="link"
+                    style={{ minHeight: theme.touch, justifyContent: 'center' }}
+                >
+                    <TextoRodape>
+                        Lembrou? <HighlightText>Voltar para Entrar</HighlightText>
+                    </TextoRodape>
+                </TouchableOpacity>
+            </Rodape>
+        </TelaAcesso>
     );
 }

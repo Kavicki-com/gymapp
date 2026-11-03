@@ -2,7 +2,7 @@
  * Modelo da mensagem de cobrança, editável por academia.
  *
  * Cobrança é assunto delicado e cada dono fala de um jeito — o texto que vinha
- * no app era o meu, não o dele. O Pix copia e cola NÃO faz parte do modelo:
+ * no app era o meu, não o dele. O link do Pix NÃO faz parte do modelo:
  * é anexado depois, para o dono não precisar saber colar marcador nenhum e
  * para não conseguir quebrar o código sem querer.
  */

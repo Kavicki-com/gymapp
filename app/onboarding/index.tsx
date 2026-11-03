@@ -1,142 +1,160 @@
-import { FontAwesome } from '@expo/vector-icons';
+import { appAlert } from '@/src/components/AppAlert';
 import { decode } from 'base64-arraybuffer';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import styled from 'styled-components/native';
 import {
-    Button,
-    ButtonText,
-    Container,
-    Input,
-    Title
-} from '../../src/components/styled';
+    BotaoPrincipal,
+    Cabecalho,
+    Campo,
+    Dica,
+    Formulario,
+    IconeAcesso,
+    Rodape,
+    Subtitulo,
+    TelaAcesso,
+    Titulo,
+} from '../../src/components/acesso';
+import { BlockTitle, Container, Input, SectionLabel } from '../../src/components/styled';
 import { useAuth } from '../../src/contexts/AuthContext';
 import { supabase } from '../../src/services/supabase';
 import { theme } from '../../src/styles/theme';
 import { formatCEP, formatCNPJ, formatDate } from '../../src/utils/masks';
 
-const LogoContainer = styled(TouchableOpacity)`
-  width: 100px;
-  height: 100px;
-  background-color: ${theme.colors.surface};
-  border-radius: 50px;
-  justify-content: center;
-  align-items: center;
-  border-width: 1px;
-  border-color: ${theme.colors.border};
-  overflow: hidden;
-  align-self: center;
-  margin-bottom: ${theme.spacing.lg}px;
+/*
+ * Layout do redesign (Claude Design, "Onboarding"). O design divide o
+ * cadastro em 3 passos; aqui os três blocos ficam na mesma tela, em
+ * sequência, porque os campos, a validação e o único insert no fim são os
+ * mesmos de antes. Os dias passaram do seletor em modal para opções na
+ * própria tela, com os mesmos valores.
+ */
+
+const TituloOnboarding = styled(Titulo)`
+    font-size: 28px;
+    line-height: 34px;
 `;
 
-const HelperText = styled.Text`
-  color: ${theme.colors.primary};
-  font-size: ${theme.fontSize.sm}px;
-  text-align: center;
-  margin-top: ${theme.spacing.xs}px;
+const Bloco = styled.View`
+    gap: ${theme.spacing.lg}px;
 `;
 
-const StyledImage = styled.Image`
-  width: 100%;
-  height: 100%;
-`;
-const Label = styled.Text`
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSize.md}px;
-  font-weight: 500;
-`;
-
-const FormArea = styled.View`
-    padding-top: 32px;
-    padding-bottom: 16px;
-    padding-horizontal: 12px;
-`;
-
-const ButtonContainer = styled.View`
-    padding: 20px 12px;
-    padding-bottom: 30px;
-`;
-
-const PickerContainer = styled.View`
+const LogoQuadro = styled(TouchableOpacity)`
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    border-width: 1px;
+    border-style: dashed;
+    border-color: #3A3F45;
     background-color: ${theme.colors.surface};
-    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+`;
+
+const LogoImagem = styled.Image`
+    width: 100%;
+    height: 100%;
+`;
+
+const BotaoLogo = styled(TouchableOpacity)`
+    min-height: ${theme.touch}px;
+    padding-horizontal: ${theme.spacing.lg}px;
+    border-radius: 12px;
     border-width: 1px;
     border-color: ${theme.colors.border};
-    margin-bottom: 12px;
+    background-color: ${theme.colors.surface};
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
 `;
 
-const PickerButton = styled(TouchableOpacity)`
-    padding: 14px;
+const BotaoLogoTexto = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 14px;
+    color: ${theme.colors.text};
+`;
+
+const OpcaoDias = styled(TouchableOpacity)<{ ativo: boolean }>`
+    min-height: 52px;
+    padding-horizontal: ${theme.spacing.lg}px;
+    border-radius: ${theme.borderRadius.md}px;
+    border-width: 1px;
+    border-color: ${({ ativo }) => (ativo ? theme.colors.primary : theme.colors.border)};
+    background-color: ${({ ativo }) => (ativo ? theme.colors.primarySoft : theme.colors.surface)};
     flex-direction: row;
+    align-items: center;
     justify-content: space-between;
-    align-items: center;
 `;
 
-const PickerButtonText = styled.Text<{ hasValue?: boolean }>`
-    color: ${({ hasValue }) => hasValue ? theme.colors.text : theme.colors.textSecondary};
-    font-size: ${theme.fontSize.md}px;
-`;
-
-const PickerModal = styled(Modal)``;
-
-const ModalOverlay = styled.TouchableOpacity`
-    flex: 1;
-    background-color: rgba(0, 0, 0, 0.5);
-    justify-content: flex-end;
-`;
-
-const ModalContent = styled.View`
-    background-color: ${theme.colors.background};
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    padding: 20px;
-    padding-bottom: 40px;
-    max-height: 50%;
-`;
-
-const ModalTitle = styled.Text`
-    font-size: ${theme.fontSize.lg}px;
-    font-weight: bold;
-    color: ${theme.colors.text};
-    margin-bottom: 16px;
-`;
-
-const ModalOption = styled(TouchableOpacity)`
-    padding: 16px;
-    border-bottom-width: 1px;
-    border-bottom-color: ${theme.colors.border};
-`;
-
-const ModalOptionText = styled.Text`
-    font-size: ${theme.fontSize.md}px;
+const OpcaoDiasTexto = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 15px;
     color: ${theme.colors.text};
 `;
 
-const TimeRow = styled.View`
-    flex-direction: row;
-    gap: 12px;
-    margin-bottom: 12px;
-`;
-
-const TimeInputContainer = styled.View`
-    flex: 1;
-`;
-
-const HeaderContainer = styled.View`
-    padding-top: 50px;
-    padding-bottom: 20px;
-    padding-horizontal: 20px;
-    align-items: center;
-`;
-
-const WelcomeText = styled.Text`
-    font-size: ${theme.fontSize.md}px;
+const OpcaoDiasApoio = styled.Text`
+    font-family: ${theme.fonts.medium};
+    font-size: 13px;
     color: ${theme.colors.textSecondary};
-    text-align: center;
-    margin-top: 8px;
 `;
+
+const RotuloPequeno = styled.Text`
+    font-family: ${theme.fonts.regular};
+    font-size: 12px;
+    color: ${theme.colors.textSecondary};
+`;
+
+const RotuloGrupo = styled.Text`
+    font-family: ${theme.fonts.semibold};
+    font-size: 13px;
+    color: ${theme.colors.textStrong};
+`;
+
+const Ate = styled.Text`
+    font-family: ${theme.fonts.regular};
+    font-size: 14px;
+    color: ${theme.colors.textSecondary};
+    padding-top: 22px;
+`;
+
+const Proximos = styled.View`
+    gap: ${theme.spacing.md}px;
+    padding: ${theme.spacing.lg}px;
+    border-radius: ${theme.borderRadius.lg}px;
+    background-color: ${theme.colors.surface};
+    border-width: 1px;
+    border-color: ${theme.colors.divider};
+`;
+
+const ProximoNumero = styled.View`
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: ${theme.colors.neutralPill};
+    align-items: center;
+    justify-content: center;
+`;
+
+const ProximoNumeroTexto = styled.Text`
+    font-family: ${theme.fonts.bold};
+    font-size: 12px;
+    color: ${theme.colors.text};
+`;
+
+const ProximoTexto = styled.Text`
+    flex: 1;
+    font-family: ${theme.fonts.regular};
+    font-size: 14px;
+    color: ${theme.colors.text};
+`;
+
+const PROXIMOS_PASSOS = [
+    'Crie seus planos',
+    'Cadastre os alunos (ou peça a migração grátis)',
+    'Cadastre sua chave Pix',
+];
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -158,12 +176,10 @@ export default function OnboardingScreen() {
         owner_birth_date: '',
     });
 
-    const [showDaysPicker, setShowDaysPicker] = useState(false);
-
     const daysOptions = [
-        { label: 'Segunda à Sexta', value: 'seg_sex' },
-        { label: 'Segunda à Sábado', value: 'seg_sab' },
-        { label: 'Todos os dias', value: 'todos' },
+        { label: 'Segunda à sexta', value: 'seg_sex', hint: '5 dias' },
+        { label: 'Segunda à sábado', value: 'seg_sab', hint: '6 dias' },
+        { label: 'Todos os dias', value: 'todos', hint: '7 dias' },
     ];
 
     const formatTime = (text: string) => {
@@ -197,10 +213,10 @@ export default function OnboardingScreen() {
                     const fullAddress = `${data.logradouro}, ${data.bairro} - ${data.localidade}/${data.uf}`;
                     setFormData(prev => ({ ...prev, address: fullAddress }));
                 } else {
-                    Alert.alert('CEP não encontrado', 'Verifique o CEP digitado.');
+                    appAlert('CEP não encontrado', 'Verifique o CEP digitado.');
                 }
             } catch (error) {
-                Alert.alert('Erro', 'Falha ao buscar CEP.');
+                appAlert('Erro', 'Falha ao buscar CEP.');
             } finally {
                 setLoadingCep(false);
             }
@@ -243,7 +259,7 @@ export default function OnboardingScreen() {
 
     const handleFinish = async () => {
         if (!formData.gym_name || !formData.address) {
-            Alert.alert('Erro', 'Preencha Nome da Academia e Endereço.');
+            appAlert('Erro', 'Preencha Nome da Academia e Endereço.');
             return;
         }
 
@@ -292,7 +308,7 @@ export default function OnboardingScreen() {
             router.replace('/(drawer)/(tabs)');
 
         } catch (error: any) {
-            Alert.alert('Erro', error.message);
+            appAlert('Erro', error.message);
         } finally {
             setLoading(false);
         }
@@ -301,154 +317,170 @@ export default function OnboardingScreen() {
     return (
         <Container>
             <Stack.Screen options={{ headerShown: false }} />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-                <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-                    <HeaderContainer>
-                        <Title>Configurar Academia</Title>
-                        <WelcomeText>Bem-vindo! Preencha os dados da sua academia para começar.</WelcomeText>
-                    </HeaderContainer>
+            <TelaAcesso respiroTopo={24} espaco={32}>
+                <Bloco>
+                    <Cabecalho>
+                        <TituloOnboarding accessibilityRole="header">Sua academia</TituloOnboarding>
+                        <Subtitulo>É assim que ela aparece no app e nas mensagens de cobrança.</Subtitulo>
+                    </Cabecalho>
 
-                    <FormArea>
-                        <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                            <LogoContainer onPress={pickImage}>
+                    <Formulario>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.lg }}>
+                            <LogoQuadro
+                                onPress={pickImage}
+                                accessibilityRole="button"
+                                accessibilityLabel={formData.logo_uri ? 'Trocar logo' : 'Adicionar logo'}
+                            >
                                 {formData.logo_uri ? (
-                                    <StyledImage source={{ uri: formData.logo_uri }} />
+                                    <LogoImagem source={{ uri: formData.logo_uri }} />
                                 ) : (
-                                    <FontAwesome name="camera" size={30} color={theme.colors.textSecondary} />
+                                    <IconeAcesso nome="imagem" size={26} color={theme.colors.textMuted} />
                                 )}
-                            </LogoContainer>
-                            <HelperText>Logo da Academia</HelperText>
-                        </View>
-
-                        <Input
-                            placeholder="Nome da Academia"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={formData.gym_name} onChangeText={t => updateForm('gym_name', t)}
-                            style={{ marginBottom: 12 }}
-                        />
-                        <Input
-                            placeholder="CNPJ (Opcional)"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={formData.cnpj} onChangeText={t => updateForm('cnpj', t)}
-                            keyboardType="numeric"
-                            style={{ marginBottom: 12 }}
-                        />
-
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                            <View style={{ flex: 1 }}>
-                                <Input
-                                    placeholder="CEP"
-                                    placeholderTextColor={theme.colors.textSecondary}
-                                    value={formData.cep}
-                                    onChangeText={t => updateForm('cep', t)}
-                                    onBlur={handleCepBlur}
-                                    keyboardType="numeric"
-                                    maxLength={9}
-                                    style={{ marginBottom: 12 }}
-                                />
+                            </LogoQuadro>
+                            <View style={{ gap: 4, flex: 1 }}>
+                                <BotaoLogo onPress={pickImage} accessibilityRole="button">
+                                    <BotaoLogoTexto>{formData.logo_uri ? 'Trocar logo' : 'Adicionar logo'}</BotaoLogoTexto>
+                                </BotaoLogo>
+                                <Dica>Opcional · dá pra fazer depois</Dica>
                             </View>
-                            {loadingCep && (
-                                <View style={{ justifyContent: 'center', marginBottom: 12 }}>
-                                    <ActivityIndicator color={theme.colors.primary} />
-                                </View>
-                            )}
                         </View>
 
-                        <Input
-                            placeholder="Endereço"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={formData.address} onChangeText={t => updateForm('address', t)}
-                            style={{ marginBottom: 12 }}
-                            multiline
-                        />
+                        <Campo rotulo="Nome da academia" obrigatorio>
+                            <Input
+                                placeholder="Ex.: Academia Força Total"
+                                value={formData.gym_name} onChangeText={t => updateForm('gym_name', t)}
+                            />
+                        </Campo>
 
-                        <Label style={{ marginBottom: 8, marginTop: 12 }}>Dados do Responsável</Label>
-                        <Input
-                            placeholder="CPF do Proprietário (Opcional)"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={formData.owner_cpf} onChangeText={t => updateForm('owner_cpf', t)}
-                            keyboardType="numeric"
-                            style={{ marginBottom: 12 }}
-                        />
-                        <Input
-                            placeholder="Data de Nascimento (Opcional)"
-                            placeholderTextColor={theme.colors.textSecondary}
-                            value={formData.owner_birth_date} onChangeText={t => updateForm('owner_birth_date', t)}
-                            keyboardType="numeric"
-                            maxLength={10}
-                            style={{ marginBottom: 12 }}
-                        />
+                        <Campo rotulo="CEP" dica="Preenchemos o endereço a partir do CEP.">
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Input
+                                        placeholder="00000-000"
+                                        value={formData.cep}
+                                        onChangeText={t => updateForm('cep', t)}
+                                        onBlur={handleCepBlur}
+                                        keyboardType="numeric"
+                                        maxLength={9}
+                                    />
+                                </View>
+                                {loadingCep && (
+                                    <ActivityIndicator color={theme.colors.primary} accessibilityLabel="Buscando CEP" />
+                                )}
+                            </View>
+                        </Campo>
 
-                        <Label style={{ marginBottom: 8 }}>Dias de Funcionamento</Label>
-                        <PickerContainer>
-                            <PickerButton onPress={() => setShowDaysPicker(true)}>
-                                <PickerButtonText hasValue={!!formData.working_days}>
-                                    {formData.working_days ? daysOptions.find(d => d.value === formData.working_days)?.label : 'Selecione os dias'}
-                                </PickerButtonText>
-                                <FontAwesome name="chevron-down" size={16} color={theme.colors.textSecondary} />
-                            </PickerButton>
-                        </PickerContainer>
+                        <Campo rotulo="Endereço" obrigatorio>
+                            <Input
+                                placeholder="Rua, número e bairro"
+                                value={formData.address} onChangeText={t => updateForm('address', t)}
+                                multiline
+                            />
+                        </Campo>
 
-                        <Label style={{ marginBottom: 8 }}>Horário de Funcionamento</Label>
-                        <TimeRow>
-                            <TimeInputContainer>
+                        <Campo rotulo="CNPJ" opcional>
+                            <Input
+                                placeholder="00.000.000/0000-00"
+                                value={formData.cnpj} onChangeText={t => updateForm('cnpj', t)}
+                                keyboardType="numeric"
+                            />
+                        </Campo>
+                    </Formulario>
+                </Bloco>
+
+                <Bloco>
+                    <Cabecalho>
+                        <BlockTitle accessibilityRole="header" style={{ fontSize: 22 }}>Quando abre</BlockTitle>
+                    </Cabecalho>
+
+                    <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="Dias de funcionamento">
+                        <RotuloGrupo>Dias</RotuloGrupo>
+                        {daysOptions.map(option => {
+                            const ativo = formData.working_days === option.value;
+                            return (
+                                <OpcaoDias
+                                    key={option.value}
+                                    ativo={ativo}
+                                    onPress={() => updateForm('working_days', option.value)}
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ checked: ativo }}
+                                    accessibilityLabel={option.label}
+                                >
+                                    <OpcaoDiasTexto>{option.label}</OpcaoDiasTexto>
+                                    <OpcaoDiasApoio>{option.hint}</OpcaoDiasApoio>
+                                </OpcaoDias>
+                            );
+                        })}
+                    </View>
+
+                    <View style={{ gap: 10 }}>
+                        <RotuloGrupo>Horário</RotuloGrupo>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={{ flex: 1, gap: 6 }}>
+                                <RotuloPequeno>Abre</RotuloPequeno>
                                 <Input
                                     placeholder="HH:MM"
-                                    placeholderTextColor={theme.colors.textSecondary}
                                     value={formData.opening_time}
                                     onChangeText={t => updateForm('opening_time', t)}
                                     keyboardType="numeric"
                                     maxLength={5}
+                                    accessibilityLabel="Abre"
                                 />
-                            </TimeInputContainer>
-                            <Text style={{ alignSelf: 'center', color: theme.colors.text }}>até</Text>
-                            <TimeInputContainer>
+                            </View>
+                            <Ate>até</Ate>
+                            <View style={{ flex: 1, gap: 6 }}>
+                                <RotuloPequeno>Fecha</RotuloPequeno>
                                 <Input
                                     placeholder="HH:MM"
-                                    placeholderTextColor={theme.colors.textSecondary}
                                     value={formData.closing_time}
                                     onChangeText={t => updateForm('closing_time', t)}
                                     keyboardType="numeric"
                                     maxLength={5}
+                                    accessibilityLabel="Fecha"
                                 />
-                            </TimeInputContainer>
-                        </TimeRow>
-                    </FormArea>
+                            </View>
+                        </View>
+                    </View>
+                </Bloco>
 
-                    <ButtonContainer>
-                        <Button onPress={handleFinish} disabled={loading}>
-                            {loading ? <ActivityIndicator color="#fff" /> : <ButtonText>Começar</ButtonText>}
-                        </Button>
-                    </ButtonContainer>
-                </ScrollView>
-            </KeyboardAvoidingView>
+                <Bloco>
+                    <Cabecalho>
+                        <BlockTitle accessibilityRole="header" style={{ fontSize: 22 }}>Responsável</BlockTitle>
+                    </Cabecalho>
 
-            <PickerModal
-                transparent={true}
-                visible={showDaysPicker}
-                animationType="slide"
-                onRequestClose={() => setShowDaysPicker(false)}
-            >
-                <ModalOverlay activeOpacity={1} onPress={() => setShowDaysPicker(false)}>
-                    <ModalContent>
-                        <ModalTitle>Dias de Funcionamento</ModalTitle>
-                        {daysOptions.map((option) => (
-                            <ModalOption
-                                key={option.value}
-                                onPress={() => {
-                                    updateForm('working_days', option.value);
-                                    setShowDaysPicker(false);
-                                }}
-                            >
-                                <ModalOptionText>{option.label}</ModalOptionText>
-                            </ModalOption>
+                    <Formulario>
+                        <Campo rotulo="CPF do proprietário">
+                            <Input
+                                placeholder="000.000.000-00"
+                                value={formData.owner_cpf} onChangeText={t => updateForm('owner_cpf', t)}
+                                keyboardType="numeric"
+                            />
+                        </Campo>
+                        <Campo rotulo="Data de nascimento">
+                            <Input
+                                placeholder="DD/MM/AAAA"
+                                value={formData.owner_birth_date} onChangeText={t => updateForm('owner_birth_date', t)}
+                                keyboardType="numeric"
+                                maxLength={10}
+                            />
+                        </Campo>
+                    </Formulario>
+
+                    <Proximos accessibilityLabel="Próximos passos">
+                        <SectionLabel>Depois disso</SectionLabel>
+                        {PROXIMOS_PASSOS.map((passo, i) => (
+                            <View key={passo} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <ProximoNumero><ProximoNumeroTexto>{i + 1}</ProximoNumeroTexto></ProximoNumero>
+                                <ProximoTexto>{passo}</ProximoTexto>
+                            </View>
                         ))}
-                    </ModalContent>
-                </ModalOverlay>
-            </PickerModal>
+                    </Proximos>
+                </Bloco>
+
+                <Rodape>
+                    <BotaoPrincipal titulo="Começar a usar" onPress={handleFinish} carregando={loading} />
+                </Rodape>
+            </TelaAcesso>
         </Container>
     );
 }

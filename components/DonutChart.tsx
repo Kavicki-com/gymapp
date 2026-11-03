@@ -3,9 +3,13 @@ import React from 'react';
 import Svg, { Circle, G } from 'react-native-svg';
 import styled from 'styled-components/native';
 
+/* Rosca "Alunos por plano" do redesign: anel à esquerda com o total no
+   centro, legenda à direita. */
+
 const Container = styled.View`
+  flex-direction: row;
   align-items: center;
-  margin-vertical: ${theme.spacing.md}px;
+  gap: 18px;
 `;
 
 const ChartContainer = styled.View`
@@ -21,48 +25,46 @@ const CenterText = styled.View`
 `;
 
 const TotalValue = styled.Text`
+  font-family: ${theme.fonts.display};
+  font-size: 22px;
   color: ${theme.colors.text};
-  font-size: ${theme.fontSize.xxl}px;
-  font-weight: bold;
 `;
 
 const TotalLabel = styled.Text`
+  font-family: ${theme.fonts.regular};
+  font-size: 11px;
   color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.sm}px;
 `;
 
-const LegendContainer = styled.View`
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: ${theme.spacing.md}px;
+const Legend = styled.View`
+  flex: 1;
+  gap: 10px;
 `;
 
 const LegendItem = styled.View`
   flex-direction: row;
   align-items: center;
-  margin-right: ${theme.spacing.md}px;
-  margin-bottom: ${theme.spacing.sm}px;
+  gap: 8px;
 `;
 
 const LegendDot = styled.View<{ bgColor: string }>`
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
-  background-color: ${(props: { bgColor: string }) => props.bgColor};
-  margin-right: ${theme.spacing.xs}px;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background-color: ${({ bgColor }) => bgColor};
 `;
 
 const LegendText = styled.Text`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSize.sm}px;
+  flex: 1;
+  font-family: ${theme.fonts.regular};
+  font-size: 14px;
+  color: ${theme.colors.text};
 `;
 
 const LegendValue = styled.Text`
+  font-family: ${theme.fonts.semibold};
+  font-size: 14px;
   color: ${theme.colors.text};
-  font-size: ${theme.fontSize.sm}px;
-  font-weight: bold;
-  margin-left: 4px;
 `;
 
 interface DonutChartData {
@@ -76,55 +78,51 @@ interface DonutChartProps {
     size?: number;
 }
 
+/* As quatro primeiras são as do design; as demais seguem a paleta de planos
+   da lista de alunos, para plano nenhum repetir cor até o oitavo. */
 const CHART_COLORS = [
-    '#06B6D4', // cyan
-    '#8B5CF6', // violet
-    '#F97316', // orange
-    '#10B981', // emerald
-    '#EC4899', // pink
-    '#EAB308', // yellow
-    '#6366F1', // indigo
-    '#EF4444', // red
+    '#EAB308',
+    '#60A5FA',
+    '#34D399',
+    '#F97316',
+    '#C4B5FD',
+    '#F9A8D4',
+    '#5EEAD4',
+    '#F87171',
 ];
 
-export function DonutChart({ data, size = 160 }: DonutChartProps) {
+export function DonutChart({ data, size = 120 }: DonutChartProps) {
     if (!data || data.length === 0) {
         return null;
     }
 
     const total = data.reduce((sum, item) => sum + item.count, 0);
 
-    // SVG Donut Chart calculations
-    const strokeWidth = 25;
+    const strokeWidth = 17;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const center = size / 2;
 
-    // Calculate segments
-    let accumulatedPercentage = 0;
+    let accumulated = 0;
     const segments = data.map((item, index) => {
         const percentage = total > 0 ? item.count / total : 0;
-        const strokeDasharray = circumference;
-        const strokeDashoffset = circumference * (1 - percentage);
-        const rotation = accumulatedPercentage * 360 - 90; // Start from top
-        accumulatedPercentage += percentage;
-
+        const rotation = accumulated * 360 - 90; // começa no topo
+        accumulated += percentage;
         return {
             ...item,
             color: item.color || CHART_COLORS[index % CHART_COLORS.length],
-            strokeDasharray,
-            strokeDashoffset,
             rotation,
             percentage,
         };
     });
 
+    const resumo = segments.map(s => `${s.name} ${s.count}`).join(', ');
+
     return (
         <Container>
-            <ChartContainer>
+            <ChartContainer accessible accessibilityRole="image" accessibilityLabel={`Alunos por plano: ${resumo}`}>
                 <Svg width={size} height={size}>
                     <G>
-                        {/* Background circle */}
                         <Circle
                             cx={center}
                             cy={center}
@@ -133,8 +131,7 @@ export function DonutChart({ data, size = 160 }: DonutChartProps) {
                             strokeWidth={strokeWidth}
                             fill="transparent"
                         />
-                        {/* Data segments */}
-                        {segments.map((segment, index) => (
+                        {segments.map(segment => (
                             <Circle
                                 key={segment.name}
                                 cx={center}
@@ -153,26 +150,21 @@ export function DonutChart({ data, size = 160 }: DonutChartProps) {
                 </Svg>
                 <CenterText>
                     <TotalValue>{total}</TotalValue>
-                    <TotalLabel>Total</TotalLabel>
+                    <TotalLabel>alunos</TotalLabel>
                 </CenterText>
             </ChartContainer>
 
-            <LegendContainer>
-                {data.map((item, index) => {
-                    const color = item.color || CHART_COLORS[index % CHART_COLORS.length];
-                    const percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
-                    return (
-                        <LegendItem key={item.name}>
-                            <LegendDot bgColor={color} />
-                            <LegendText>{item.name}:</LegendText>
-                            <LegendValue>{item.count} ({percentage}%)</LegendValue>
-                        </LegendItem>
-                    );
-                })}
-            </LegendContainer>
+            <Legend>
+                {segments.map(item => (
+                    <LegendItem key={item.name}>
+                        <LegendDot bgColor={item.color} />
+                        <LegendText numberOfLines={1}>{item.name}</LegendText>
+                        <LegendValue>{item.count}</LegendValue>
+                    </LegendItem>
+                ))}
+            </Legend>
         </Container>
     );
 }
 
 export { CHART_COLORS };
-
