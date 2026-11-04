@@ -5,7 +5,7 @@ import { FolhaInferior } from './acesso';
 
 /*
  * Política de privacidade em folha inferior (redesign: Cadastro e Mais).
- * O texto é o mesmo de antes; só a apresentação mudou.
+ * Mesmo texto de site-gymapp/privacy.html: mudou lá, muda aqui.
  */
 
 const SectionTitle = styled.Text`
@@ -25,14 +25,6 @@ const Paragraph = styled.Text`
     line-height: 22px;
     color: ${theme.colors.textStrong};
     margin-bottom: 12px;
-`;
-
-const SubSection = styled.Text`
-    font-family: ${theme.fonts.semibold};
-    font-size: 14px;
-    color: ${theme.colors.text};
-    margin-top: 8px;
-    margin-bottom: 4px;
 `;
 
 const BulletPoint = styled.Text`
@@ -59,83 +51,81 @@ interface PrivacyPolicyModalProps {
 export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ visible, onClose }) => {
     return (
         <FolhaInferior visible={visible} onClose={onClose} titulo="Política de Privacidade">
-            <LastUpdate>Última atualização: 15 de janeiro de 2026</LastUpdate>
+            <LastUpdate>Em vigor desde 4 de novembro de 2026.</LastUpdate>
 
             <Paragraph>
-                O Gymapp ("nós", "nosso" ou "aplicativo") compromete-se a proteger a sua privacidade. Esta Política de Privacidade explica como coletamos, usamos e compartilhamos suas informações ao utilizar nosso aplicativo de gestão de academias.
+                Em resumo: o GymApp guarda no servidor os dados da sua academia, dos seus alunos e da sua equipe para que o app funcione em qualquer aparelho. Esses dados são seus. Não vendemos, não alugamos e não usamos para publicidade.
             </Paragraph>
 
+            <SectionTitle>Quem somos</SectionTitle>
             <Paragraph>
-                Ao utilizar o Gymapp, você concorda com a coleta e uso de informações de acordo com esta política.
+                O GymApp é um aplicativo da Kavicki.com, CNPJ 45.625.800/0001-36. Para qualquer assunto sobre privacidade, escreva para design@kavicki.com.
             </Paragraph>
 
-            <SectionTitle>1. Informações que Coletamos</SectionTitle>
+            <SectionTitle>Dados da academia e de quem cadastra</SectionTitle>
+            <BulletPoint>• E-mail e senha da conta (a senha é guardada cifrada)</BulletPoint>
+            <BulletPoint>• Nome, CPF e data de nascimento do responsável</BulletPoint>
+            <BulletPoint>• Nome, CNPJ, endereço, horário de funcionamento e logomarca da academia</BulletPoint>
+            <BulletPoint>• Chave Pix e o texto da mensagem de cobrança, se você usar a aba Cobranças</BulletPoint>
+
+            <SectionTitle>Dados que você cadastra sobre outras pessoas</SectionTitle>
+            <Paragraph>Para gerir a academia, você pode cadastrar no app:</Paragraph>
+            <BulletPoint>• Alunos: nome, e-mail, telefone, data de nascimento, peso, foto, plano, dia de vencimento, pagamentos e cobranças feitas</BulletPoint>
+            <BulletPoint>• Colaboradores: nome, e-mail, telefone, data de nascimento, CPF, RG, foto, função, salário e dia de pagamento</BulletPoint>
+            <BulletPoint>• Planos: nome, preço e serviços inclusos</BulletPoint>
             <Paragraph>
-                Para o funcionamento adequado da gestão da academia, o aplicativo coleta os seguintes tipos de dados:
+                Nesses casos, a academia é a controladora dos dados, nos termos da LGPD (Lei 13.709/2018), e o GymApp os trata em nome dela, só para que o app funcione. Cabe à academia informar alunos e colaboradores e ter base legal para cadastrá-los.
             </Paragraph>
 
-            <SubSection>1.1. Dados do Proprietário e da Academia</SubSection>
-            <BulletPoint>• Nome da Academia e Endereço</BulletPoint>
-            <BulletPoint>• CNPJ e CPF do proprietário</BulletPoint>
-            <BulletPoint>• Data de nascimento do proprietário</BulletPoint>
-            <BulletPoint>• Logomarca da academia (Imagem)</BulletPoint>
-
-            <SubSection>1.2. Dados de Clientes (Alunos)</SubSection>
-            <BulletPoint>• Nome completo e Email</BulletPoint>
-            <BulletPoint>• Telefone e Data de nascimento</BulletPoint>
-            <BulletPoint>• Dados físicos (Peso) para acompanhamento</BulletPoint>
-            <BulletPoint>• Dia de vencimento de pagamentos</BulletPoint>
-
-            <SubSection>1.3. Dados de Funcionários</SubSection>
-            <BulletPoint>• Nome completo e Email</BulletPoint>
-            <BulletPoint>• Telefone e Data de nascimento</BulletPoint>
-            <BulletPoint>• Documentos: CPF e RG</BulletPoint>
-            <BulletPoint>• Informações financeiras: Salário</BulletPoint>
-
-            <SubSection>1.4. Dados Financeiros e Modalides</SubSection>
-            <BulletPoint>• Informações sobre Planos (preços e serviços)</BulletPoint>
-            <BulletPoint>• Registro de custos de manutenção</BulletPoint>
-
-            <SectionTitle>2. Permissões do Dispositivo</SectionTitle>
+            <SectionTitle>Onde os dados ficam</SectionTitle>
             <Paragraph>
-                Para fornecer certas funcionalidades, o Gymapp pode solicitar acesso a recursos do seu dispositivo móvel:
+                Os dados ficam num banco de dados na nuvem, com backup automático, operado pela Supabase. O acesso é protegido por login, e cada academia só enxerga os próprios dados. O app também guarda no celular a sessão ativa e algumas preferências.
             </Paragraph>
-            <BulletPoint>• Galeria de Fotos: Para upload de logomarca e fotos de perfil.</BulletPoint>
-            <BulletPoint>• Armazenamento Local: Para preferências e sessão ativa.</BulletPoint>
 
-            <SectionTitle>3. Como Usamos Suas Informações</SectionTitle>
-            <BulletPoint>• Gerenciamento do Negócio: Cadastro e controle de alunos, funcionários e Planos.</BulletPoint>
-            <BulletPoint>• Identificação: Vincular dados ao usuário autenticado.</BulletPoint>
-            <BulletPoint>• Personalização: Exibir informações específicas da sua academia.</BulletPoint>
-
-            <SectionTitle>4. Armazenamento e Compartilhamento</SectionTitle>
+            <SectionTitle>Cobrança pelo WhatsApp e Pix</SectionTitle>
             <Paragraph>
-                O Gymapp utiliza o Supabase como plataforma de backend para autenticação, banco de dados e armazenamento de arquivos.
-            </Paragraph>
-            <Paragraph>
-                Não vendemos, alugamos ou compartilhamos seus dados pessoais com terceiros para fins de marketing.
+                Quando você cobra um aluno, o app abre o WhatsApp do seu celular com a mensagem pronta, incluindo um link para a página com o Pix copia e cola gerado com a sua chave. O código vai na parte do link depois do #, que não é enviada ao nosso servidor; abrir a página gera só um acesso comum ao site. O envio é feito por você, pelo WhatsApp. O pagamento vai direto da conta do aluno para a sua: o GymApp não recebe nem movimenta esse dinheiro.
             </Paragraph>
 
-            <SectionTitle>5. Segurança dos Dados</SectionTitle>
-            <BulletPoint>• Autenticação: Acesso protegido via autenticação de usuário.</BulletPoint>
-            <BulletPoint>• Row Level Security (RLS): Usuários só acessam seus próprios dados.</BulletPoint>
-
-            <SectionTitle>6. Exclusão de Dados e Seus Direitos</SectionTitle>
+            <SectionTitle>Assinatura da aba Cobranças</SectionTitle>
             <Paragraph>
-                Você tem o direito de solicitar a exclusão de sua conta e de todos os dados associados. Para solicitar a exclusão, entre em contato conosco através do suporte.
+                A assinatura é feita pela App Store (Apple) ou pelo Google Play. Os dados de pagamento ficam com a loja; nós recebemos só a confirmação de que a assinatura está ativa, por meio da RevenueCat, que faz essa verificação. Para quem assinou antes pelo site, com cartão ou Pix, o pagamento é processado pelo Mercado Pago, que guarda os dados do cartão. O GymApp não guarda número de cartão.
             </Paragraph>
 
-            <SectionTitle>7. Alterações nesta Política</SectionTitle>
+            <SectionTitle>Notificações e fotos</SectionTitle>
             <Paragraph>
-                Podemos atualizar nossa Política de Privacidade periodicamente. As alterações entram em vigor imediatamente após serem publicadas.
+                Se você permitir, o app recebe notificações: mensalidades que vencem nos próximos dias, cobranças em aberto e, para quem paga a assinatura por Pix, o aviso de renovação. Para isso, o aparelho gera um identificador de notificação, guardado na sua conta e enviado pelo serviço de notificações da Expo. Fotos e logomarca são escolhidas na galeria só quando você toca para adicionar uma; o app não acessa a galeria por conta própria.
             </Paragraph>
 
-            <SectionTitle>8. Contato</SectionTitle>
+            <SectionTitle>Este site</SectionTitle>
             <Paragraph>
-                Se você tiver dúvidas sobre esta Política de Privacidade:
+                O site gymapp.kavicki.com usa o Microsoft Clarity para entender como as páginas são usadas (cliques e rolagem, de forma agregada). O app não usa ferramentas de publicidade.
             </Paragraph>
-            <BulletPoint>• Desenvolvedor: Kavicki.com</BulletPoint>
-            <BulletPoint>• E-mail: design@kavicki.com</BulletPoint>
+
+            <SectionTitle>Com quem compartilhamos</SectionTitle>
+            <Paragraph>
+                Só com os serviços citados acima (Supabase, Apple, Google, RevenueCat, Mercado Pago e Expo), na medida necessária para o app funcionar, ou quando a lei exigir. Não vendemos nem cedemos dados para marketing.
+            </Paragraph>
+
+            <SectionTitle>Por quanto tempo e como apagar</SectionTitle>
+            <Paragraph>
+                Os dados ficam guardados enquanto a conta existir. Você pode apagar alunos, colaboradores e planos a qualquer momento, e excluir a conta inteira no app: na aba Mais, toque no perfil da academia e em “Excluir minha conta”. A exclusão apaga a academia e tudo o que foi cadastrado nela, e não pode ser desfeita. Se preferir, peça a exclusão por e-mail.
+            </Paragraph>
+
+            <SectionTitle>Seus direitos</SectionTitle>
+            <Paragraph>
+                Você pode pedir acesso, correção, cópia ou exclusão dos seus dados, e tirar dúvidas sobre como são tratados, escrevendo para design@kavicki.com. Alunos e colaboradores cadastrados por uma academia devem falar primeiro com a academia, que é quem controla esses dados; se precisarem, também podem escrever para nós.
+            </Paragraph>
+
+            <SectionTitle>Crianças</SectionTitle>
+            <Paragraph>
+                O app é feito para donos e gestores de academia, não para crianças. Dados de alunos menores de idade só devem ser cadastrados com autorização dos responsáveis.
+            </Paragraph>
+
+            <SectionTitle>Mudanças nesta política</SectionTitle>
+            <Paragraph>
+                Quando esta política mudar, a data no topo é atualizada.
+            </Paragraph>
         </FolhaInferior>
     );
 };
