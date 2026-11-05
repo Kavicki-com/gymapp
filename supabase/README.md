@@ -46,8 +46,7 @@ O `rollback` no final garante que o harness nunca escreve nada.
 
 ### Snapshot de referência — 2026-07-31, antes das migrations
 
-Usuário `80a6befd-ac3a-4087-a858-53a34fe852ac` (academia "Kavicki",
-gym_id `a7c1d566-8baa-44f2-b057-58be5898c04c`):
+Usuário da conta de teste (academia A):
 
 | Tabela | Visível ANTES | Deveria ser |
 |---|---|---|
@@ -62,13 +61,13 @@ gym_id `a7c1d566-8baa-44f2-b057-58be5898c04c`):
 | employee_payments | 3 | 3 |
 | push_tokens | 1 | 1 |
 
-As 2 linhas extras em `equipment_images` pertenciam à academia
-"Academia Hero" — o vazamento entre inquilinos corrigido na Fase 2.
+As 2 linhas extras em `equipment_images` pertenciam à academia B — o
+vazamento entre inquilinos corrigido na Fase 2.
 Todos os outros números devem permanecer idênticos após as migrations.
 
 ### Resultado verificado após as 5 migrations
 
-| Tabela | Kavicki | Academia Hero | Dy fitness |
+| Tabela | Academia A | Academia B | Academia C |
 |---|---|---|---|
 | gym_profiles | 1 | 1 | 1 |
 | clients | 16 | 2 | 230 |

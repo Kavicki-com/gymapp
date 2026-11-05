@@ -7,12 +7,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * A versão anterior mandava UMA NOTIFICAÇÃO POR ALUNO EM ATRASO, POR TOKEN,
  * DUAS VEZES POR DIA. Medido em 18/09/2026, antes desta reescrita:
  *
- *   Gym WM fitness   123 por execução  = 246 por dia   (academia que já saiu)
- *   Cactus Fit        24 por execução  =  48 por dia   (academia ATIVA)
+ *   uma academia que já saiu: centenas de notificações por dia
+ *   uma academia ATIVA: dezenas por dia
  *
- * Isso é spam a ponto de ser motivo para desinstalar o app — e a Gym WM vinha
- * recebendo isso há meses depois de ter parado de usar, porque token de app
- * desinstalado nunca era removido.
+ * Isso é spam a ponto de ser motivo para desinstalar o app — e a academia que
+ * saiu vinha recebendo isso há meses depois de ter parado de usar, porque
+ * token de app desinstalado nunca era removido.
  *
  * O que mudou:
  *  - UMA notificação agregada por academia, por assunto. Nunca uma por aluno.
@@ -119,7 +119,7 @@ async function enviar(mensagens: Mensagem[]) {
       const tickets = json?.data;
       if (!Array.isArray(tickets)) continue;
 
-      // App desinstalado: parar de insistir. Era o que mantinha a Gym WM
+      // App desinstalado: parar de insistir. Era o que mantinha uma academia
       // recebendo notificação meses depois de ter sumido.
       const mortos = tickets
         .map((t: { status?: string; details?: { error?: string } }, idx: number) =>

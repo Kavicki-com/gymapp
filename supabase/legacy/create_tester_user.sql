@@ -26,7 +26,7 @@ WITH new_user AS (
         'authenticated',
         'authenticated',
         'tester@kavicki.com',
-        crypt('T35t3r#$', gen_salt('bf')),
+        crypt('<DEFINIR_SENHA_FORA_DO_REPOSITORIO>', gen_salt('bf')),
         NOW(),
         NOW(),
         NOW(),
