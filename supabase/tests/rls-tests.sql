@@ -8,7 +8,8 @@
 --   Dashboard do Supabase -> SQL Editor -> colar e executar.
 --   Retorna uma tabela com uma linha por teste e o veredito.
 --
--- ANTES DE RODAR, ajuste os 3 UUIDs em `cfg` abaixo:
+-- ANTES DE RODAR, troque os marcadores <UUID_...> em `cfg` abaixo e nos dois
+-- `set local request.jwt.claims` (blocos A e D). Não versione ids reais:
 --   u_a / g_a : um usuário e a academia dele
 --   u_b / g_b : OUTRO usuário e a academia dele (para testar o isolamento)
 --   u_novo    : um usuário autenticado que ainda NÃO tem gym_profile
@@ -25,11 +26,11 @@
 begin;
 
 create temp table cfg on commit drop as select
-  '80a6befd-ac3a-4087-a858-53a34fe852ac'::uuid as u_a,
-  'a7c1d566-8baa-44f2-b057-58be5898c04c'::uuid as g_a,
-  '7df6c854-38f8-4c58-bec0-f740286cdaf2'::uuid as u_b,
-  'a0f9b8f9-ea37-4a0f-a659-4e4269fa4143'::uuid as g_b,
-  '360436d8-ef86-448d-947e-c9ba9eca5d58'::uuid as u_novo;
+  '<UUID_USUARIO_A>'::uuid as u_a,
+  '<UUID_ACADEMIA_A>'::uuid as g_a,
+  '<UUID_USUARIO_B>'::uuid as u_b,
+  '<UUID_ACADEMIA_B>'::uuid as g_b,
+  '<UUID_USUARIO_SEM_ACADEMIA>'::uuid as u_novo;
 
 create temp table r(n int, teste text, esperado text, obtido text, veredito text)
   on commit drop;
@@ -43,7 +44,7 @@ grant select, insert on r to authenticated, service_role;
 -- BLOCO A — leitura como usuário A: só pode enxergar a própria academia
 -- ---------------------------------------------------------------------------
 set local role authenticated;
-set local request.jwt.claims = '{"sub":"80a6befd-ac3a-4087-a858-53a34fe852ac","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"<UUID_USUARIO_A>","role":"authenticated"}';
 
 do $$
 declare
@@ -176,7 +177,7 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- BLOCO D — onboarding, como usuário sem academia
 -- ---------------------------------------------------------------------------
-set local request.jwt.claims = '{"sub":"360436d8-ef86-448d-947e-c9ba9eca5d58","role":"authenticated"}';
+set local request.jwt.claims = '{"sub":"<UUID_USUARIO_SEM_ACADEMIA>","role":"authenticated"}';
 
 -- D1: criar a própria academia -> PERMITIR
 do $$ begin

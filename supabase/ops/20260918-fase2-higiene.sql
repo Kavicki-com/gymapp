@@ -9,11 +9,15 @@
 -- NÃO inclui: os grupos de valor divergente (ver 20260918-fase2-grupos-divergentes.sql)
 -- NÃO inclui: a constraint unique — ver o rodapé daquele arquivo (não aplica).
 --
--- A conta `Empreendimentos S&S` é intocável por decisão do Kavicki (18/09).
+-- Arquivo histórico, anonimizado: nomes reais de academias e alunos e os
+-- números por conta foram retirados. O marcador <...> abaixo é de propósito:
+-- sem trocá-lo o SQL falha em vez de rodar sem a trava. Não executar de novo.
+--
+-- Uma conta é intocável por decisão do Kavicki (18/09), a "conta protegida".
 -- Verificado em 18/09: nenhum dos blocos abaixo a atingiria de qualquer forma
--- (os 23 duplicados estão em Dy fitness 8, Letz 5, Cactus 5, e 1 em cada uma
--- de outras 5; os 34 sem referência estão em GT 3, Hero 2, Gym WM 17,
--- Kavicki 12). O predicado `gym_id <> :ses` abaixo é só trava, não filtro.
+-- (os 23 duplicados e os 34 sem referência estão em outras contas). O
+-- predicado `gym_id not in (select id from _nao_tocar)` abaixo é só trava, não
+-- filtro.
 --
 -- Rollback ao final do arquivo.
 
@@ -21,7 +25,7 @@ begin;
 
 -- trava: id da conta que não pode ser tocada
 create temp table _nao_tocar as
-select id from public.gym_profiles where gym_name = 'Empreendimentos S&S';
+select id from public.gym_profiles where id = '<ID_DA_CONTA_PROTEGIDA>';
 
 -- ---------------------------------------------------------------- 2a
 -- 23 duplicatas de valor idêntico: mantém a mais antiga do grupo.
@@ -46,13 +50,13 @@ delete from public.payments where id in (
 -- esperado: DELETE 23
 
 -- ---------------------------------------------------------------- 2b
--- Os 2 meses inválidos ('30/2026' e '00/4202', ambos Dy fitness).
+-- Os 2 meses inválidos ('30/2026' e '00/4202', ambos da mesma academia).
 --
 -- CORREÇÃO AO PLANO: o plano mandava corrigi-los para a competência do
 -- payment_date. Não dá — os dois clientes JÁ TÊM um pagamento em 04/2026,
--- de mesmo valor (R$ 50) e mesma data (30/04), criado no próprio dia 30/04.
--- Os registros inválidos foram criados em 04/05, quatro dias depois: são a
--- segunda digitação do mesmo pagamento, com o mês errado.
+-- de mesmo valor e mesma data, criado no próprio dia. Os registros inválidos
+-- foram criados quatro dias depois: são a segunda digitação do mesmo
+-- pagamento, com o mês errado.
 --
 -- Corrigir para 04/2026 criaria uma duplicata exata. O certo é apagar.
 -- (E, ao contrário do que o plano dizia, esses alunos NÃO estão marcados
@@ -66,14 +70,14 @@ where reference_month in ('30/2026', '00/4202')
 -- Dos 34 pagamentos sem reference_month, preenche pela competência do
 -- payment_date só os que NÃO colidem com um lançamento existente.
 --
--- Os 12 que colidem são todos da conta de teste "Kavicki" (seed relançado).
+-- Os 12 que colidem são todos da conta de teste (seed relançado).
 -- Ficam com reference_month NULL de propósito: a constraint da 2e é parcial
 -- (`where reference_month is not null`), então linha nula não a viola.
 -- Deixar quieto é mais barato e menos destrutivo que apagar.
 
 -- 2c1 — antes de preencher: 2 linhas nulas do MESMO cliente caem na mesma
--- competência (Academia Hero / Jorginho da Silva, 02/2026, R$ 50 as duas,
--- criadas com 24s de diferença). O backfill puro criaria uma duplicata nova.
+-- competência (valor igual nas duas, criadas com 24s de diferença). O
+-- backfill puro criaria uma duplicata nova.
 -- Mesma regra da 2a: valor idêntico, mantém a mais antiga.
 with alvo as (
   select p.id, p.client_id, p.amount, p.created_at, p.payment_date,
@@ -127,7 +131,7 @@ select
      select 1 from public.payments where reference_month is not null
      group by client_id, reference_month having count(*) > 1) t)
     as grupos_duplicados_restantes;                                 -- esperado 3
-  -- (2 da Cactus Fit, corrigidos no outro arquivo; 1 da S&S, que fica)
+  -- (2 da academia A, corrigidos no outro arquivo; 1 da conta protegida, que fica)
 
 commit;
 

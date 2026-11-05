@@ -41,6 +41,10 @@ yarn-error.*
 /android
 
 
+# Cache local do Supabase CLI e do Python
+supabase/.temp/
+__pycache__/
+
 .agents
 .claude/skills/supabase
 .claude/skills/supabase-postgres-best-practices

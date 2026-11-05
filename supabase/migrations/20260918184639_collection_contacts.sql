@@ -1,10 +1,9 @@
 -- Registro de cobrança enviada.
 --
--- Sem isto a aba Cobranças é um relatório: a Letz tem 116 alunos devendo
--- R$ 12.890, e a cada vez que ela abre a tela não faz ideia de quem já
--- incomodou ontem. Guardar o envio é o que transforma a lista numa fila de
--- trabalho, e é também o que permite medir se a cobrança funcionou —
--- cruzando com a data dos pagamentos.
+-- Sem isto a aba Cobranças é um relatório: uma academia com muitos alunos
+-- devendo abre a tela e não faz ideia de quem já incomodou ontem. Guardar o
+-- envio é o que transforma a lista numa fila de trabalho, e é também o que
+-- permite medir se a cobrança funcionou — cruzando com a data dos pagamentos.
 --
 -- Guarda o que era devido NO MOMENTO do envio, não uma referência viva: é o
 -- que permite dizer "cobrei R$ 111 e ele pagou" depois que a dívida mudou.

@@ -22,6 +22,7 @@ Regras de trabalho:
 - Fonte da verdade do banco: banco + `supabase/migrations/`. `supabase/legacy/` é histórico, não executar; o `MIGRATION_GUIDE.md` aponta para esse legado.
 - Mudança de RLS: rodar o harness de `supabase/README.md` antes e depois.
 - Artes de loja: `python3 scripts/artes-loja.py`.
+- Nada de dado real em arquivo versionado, inclusive comentário, `supabase/ops/`, teste e mensagem de commit: nome de academia, aluno ou inquilino, valor por conta, endereço, id de usuário/academia/pagamento, senha. Use marcador (`<UUID_USUARIO_A>`) ou "academia A". Senha fica no cofre. Chave pública do app (`src/services/supabase.js`, `src/config/revenuecat.ts`, `google-services.json`) pode ficar.
 
 ## 3. Situação real
 
@@ -53,4 +54,4 @@ Regras de trabalho:
 - `ec96d41` (2026-10-30) registra "ainda não aplicado em produção" para a migration `store_subscriptions`; a aplicação posterior não está registrada.
 - Pendências de infraestrutura e de segurança: ver código e `supabase/README.md`, seção "Pendências conhecidas". O item 3 de lá cita `app/equipment-details.tsx`, que não existe mais nesse caminho; revisar.
 - Sem TODO/FIXME/HACK/XXX no código.
-- Acrescentar `__pycache__` ao `.gitignore`.
+- Dados reais e a senha de teste foram tirados dos arquivos atuais, mas seguem no histórico público do git até decisão de tornar o repo privado ou reescrever o histórico.
